@@ -295,6 +295,8 @@ window.openPromoCodeModal = function(codeKey) {
   if (typeEl) typeEl.value = entry && ('flat' in entry) ? "flat" : "pct";
   if (valEl) valEl.value = entry ? String((('flat' in entry) ? entry.flat : entry.pct) ?? "") : "";
   if (descEl) descEl.value = entry ? (entry.label || "") : "";
+  const promoDelivEl = document.getElementById("newPromoDeliverables");
+  if (promoDelivEl) promoDelivEl.value = entry ? (entry.deliverables || "") : "";
   // Carry the existing add-on rule into the form; without this, editing a code
   // to fix a typo would quietly demote it to package-only.
   const addonsEl = document.getElementById("newPromoIncludeAddons");
@@ -461,6 +463,8 @@ window.saveNewPromoCodeFromForm = function() {
   const type = document.getElementById("newPromoType")?.value === "flat" ? "flat" : "pct";
   const val = Math.round(Number(document.getElementById("newPromoVal")?.value));
   const desc = (document.getElementById("newPromoDesc")?.value || "").trim();
+  // This code's own deliverables, in place of the package's (v588). Written only when set.
+  const deliverables = window.cleanDeliverables(document.getElementById("newPromoDeliverables")?.value);
   const hsType = document.getElementById("newPromoHomeStudioType")?.value || "none";
 
   if (!fpKey && !/^[A-Z0-9][A-Z0-9_-]{1,23}$/.test(name)) {
@@ -527,8 +531,8 @@ window.saveNewPromoCodeFromForm = function() {
   if (editing && editing !== name) { delete codes[editing]; window.setCodeRemovedHere("promo", editing, true); }
   window.setCodeRemovedHere("promo", name, false);
   codes[name] = type === "flat"
-    ? { flat: val, label, includeAddons, homeStudioDiscount, active, ...dateFields }
-    : { pct: val, label, includeAddons, homeStudioDiscount, active, ...dateFields };
+    ? { flat: val, label, includeAddons, homeStudioDiscount, active, ...dateFields, ...(deliverables ? { deliverables } : {}) }
+    : { pct: val, label, includeAddons, homeStudioDiscount, active, ...dateFields, ...(deliverables ? { deliverables } : {}) };
   window.adminDraftPromoCodes = { ...codes };
   window._editingPromoKey = null;
 
@@ -693,6 +697,8 @@ window.openInviteCodeModal = function(codeStr) {
   if (codeEl) { codeEl.value = fp ? window.codeForDisplay(existing.code) : (existing ? existing.code : target); codeEl.readOnly = fp; codeEl.title = fp ? "Made on another device: its name can only be seen there. Everything else here can be changed." : ""; }
   if (descEl) descEl.value = existing ? (existing.desc || "") : "";
   if (locationEl) locationEl.value = existing ? (existing.location || "") : "";
+  const inviteDelivEl = document.getElementById("newInviteDeliverables");
+  if (inviteDelivEl) inviteDelivEl.value = existing ? (existing.deliverables || "") : "";
   // Blank cost box means complimentary, which is what most invites are.
   const costEl = document.getElementById("newInviteVenueCost");
   if (costEl) costEl.value = (existing && existing.venueCost !== null && existing.venueCost !== undefined) ? String(existing.venueCost) : "";
@@ -776,8 +782,11 @@ window.saveInviteCodeFromForm = function() {
     return;
   }
 
+  // This invite's own deliverables, in place of the test-shoot default (v588). Written only when set.
+  const deliverables = window.cleanDeliverables(document.getElementById("newInviteDeliverables")?.value);
   const entry = {
     code, desc, location, venueCost, homeStudioDiscount,
+    ...(deliverables ? { deliverables } : {}),
     ...(isOn ? {} : { active: false }),
     ...(dates.startDate ? { startDate: dates.startDate } : {}),
     ...(dates.endDate ? { endDate: dates.endDate } : {})
@@ -3894,7 +3903,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           </div>
           <div id="adminPkgBody" style="display: none; margin-top: 12px;">
             <span id="adminPricingSaveStatus" class="admin-save-status" style="font-size: var(--font-xs); font-weight: 700; color: #059669; background: rgba(5,150,105,0.12); padding: 4px 10px; border-radius: 12px; border: 1px solid #059669; font-family: var(--mono-font); display: inline-block; margin-bottom: 8px;">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">Edit max package rates (INR), package names, or deliverable descriptions. Click <strong>Save &amp; Push Live</strong> to update booking forms.</p>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">Edit max package rates (INR), package names, or deliverable descriptions. These deliverables are the defaults: a promo code can set its own for paid shoots, and an invite code for test shoots. Click <strong>Save &amp; Push Live</strong> to update booking forms.</p>
             <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 16px; margin-bottom: 12px;">
               <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">🏠 ${esc(window.studioText("Home Studio Rental (Sector 46, Noida)"))}</span>
               <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 8px 0; font-family: 'Archivo', sans-serif;">Charged when someone picks the home studio, and shown as its own line in their quote. Set <strong>0</strong> to switch it off. An invite code that locks a venue carries its own price and ignores both of these.</p>
@@ -5015,6 +5024,11 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                 <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">Description Label</label>
                 <input type="text" id="newPromoDesc" placeholder="e.g. 30% Off Summer Shoots" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
               </div>
+                <div style="grid-column: span 2;">
+                  <label for="newPromoDeliverables" style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">📦 Deliverables with this code <span style="font-weight:400;text-transform:none;color:var(--ink-soft);">(optional, paid shoots)</span></label>
+                  <input type="text" id="newPromoDeliverables" maxlength="200" placeholder="e.g. 25 proofs + 6 retouched photos" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
+                  <span style="display: block; margin-top: 5px; font-size: var(--font-xs); line-height: 1.5; color: var(--ink-soft);">Blank: each package keeps its own. Filled: replaces the deliverables of whichever package the client picks, on their quote and in their signed record.</span>
+                </div>
               <div style="grid-column: span 2; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px;">
                 <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Home Studio Rental Discount</label>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -5076,6 +5090,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                   <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px; line-height: 1.3;">📝 ${esc(descStr)}</div>
                   ${itemObj && typeof itemObj === 'object' && itemObj.location ? `<div style="font-size: var(--font-xs); color: #059669; font-weight: 700; margin-top: 4px;">🏠 Location Locked: ${esc(itemObj.location)}</div>` : ''}
                   ${inviteDates ? `<div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px;">📅 ${esc(inviteDates)}</div>` : ''}
+                  ${itemObj && typeof itemObj === 'object' && itemObj.deliverables ? `<div style="font-size: var(--font-xs); color: var(--ink); margin-top: 4px;" title="This invite's deliverables, in place of the test-shoot default">📦 ${esc(itemObj.deliverables)}</div>` : ''}
                   <div class="code-live-note" data-kind="invite" data-fp="${inviteFp}" hidden style="font-size: var(--font-xs); color: #d97706; font-weight: 700; margin-top: 4px;"></div>
                 </div>
                 <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap; flex-shrink: 0; margin-top: 2px;">
@@ -5114,6 +5129,11 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                 <div style="grid-column: span 2;">
                   <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">Description Label</label>
                   <input type="text" id="newInviteDesc" placeholder="e.g. Agency model unlock pass" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
+                </div>
+                <div style="grid-column: span 3;">
+                  <label for="newInviteDeliverables" style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">📦 Deliverables for this invite <span style="font-weight:400;text-transform:none;color:var(--ink-soft);">(optional)</span></label>
+                  <input type="text" id="newInviteDeliverables" maxlength="200" placeholder="e.g. Full proof gallery + 5 retouched photos" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
+                  <span style="display: block; margin-top: 5px; font-size: var(--font-xs); line-height: 1.5; color: var(--ink-soft);">Blank: your test-shoot default (${esc(((typeof getAdminTfpPackage === "function" && getAdminTfpPackage()) || {}).specs || "")}). Filled: talent booking with this code see this instead, and it is named in their signed record.</span>
                 </div>
                 <div style="grid-column: span 3;">
                   <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Lock Location for Client <span style="font-weight:400;text-transform:none;color:var(--ink-soft);">(optional — leave blank to let client fill)</span></label>
@@ -5211,6 +5231,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                 </div>
                 <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">${esc(item.label)}</div>
                 ${promoDates ? `<div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">📅 ${esc(promoDates)}</div>` : ""}
+                ${item.deliverables ? `<div style="font-size: var(--font-xs); color: var(--ink); margin-top: 2px;" title="Replaces the package's deliverables when this code is used">📦 ${esc(item.deliverables)}</div>` : ""}
                 <div class="code-live-note" data-kind="promo" data-fp="${promoFp}" hidden style="font-size: var(--font-xs); color: #d97706; font-weight: 700; margin-top: 4px;"></div>
               </div>
               <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap; flex-shrink: 0;">

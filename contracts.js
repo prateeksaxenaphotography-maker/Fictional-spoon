@@ -638,3 +638,43 @@ window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"].status = "Archived — superseded by V3.
     + "Anyone the Participant brings along to help counts towards the home studio's limit of three people, set out below."
     + at);
 })();
+
+/* ── V4.1 (7 Oct 2026) ──────────────────────────────────────────────────────
+   The owner: "there can be default and then one overide based on test invite"
+   — "same for promocode". A test shoot's deliverables can now be set on the
+   invite code it is booked with, and a paid shoot's on the promo code applied
+   to it, so the contracts can no longer fix them: V4.0-TFP promised "8 to 12
+   Retouched Master Clicks", and V4.0-COMMERCIAL the deliverables "specified in
+   the rate tier booked". In the wording the owner approved on 7 Oct 2026, both
+   now say the deliverables are the ones stated in this booking, and the signed
+   record names them ("Deliverables for this session: …" on a test shoot,
+   "Selected package and contracted deliverables: …" on a paid one).
+   Everything else is V4.0 word for word, and V4.0 is archived unchanged for
+   everyone who agreed to it. Composed with exact sentence swaps; one that
+   fails to match is recorded in WPS_CONTRACT_COMPOSE_MISSES. */
+(() => {
+  const A = window.WPS_CONTRACT_ARCHIVE;
+  const misses = (window.WPS_CONTRACT_COMPOSE_MISSES = window.WPS_CONTRACT_COMPOSE_MISSES || []);
+  const CHANGE = {
+    TFP: ["Standard packages include web gallery access for online proofing and 8 to 12 Retouched Master Clicks.",
+          "The session includes web gallery access for online proofing and the retouched photos stated in this booking."],
+    COMMERCIAL: ["together with the retouched master deliverables specified in the rate tier booked.",
+                 "together with the retouched master deliverables stated in this booking."]
+  };
+  for (const [kind, label] of [["COMMERCIAL", "Paid Commercial"], ["TFP", "Test Shoot / TFP"]]) {
+    const from = A[`V4.0-${kind}`];
+    if (!from) { misses.push(`V4.1-${kind}: no V4.0 to compose from`); continue; }
+    const [was, now] = CHANGE[kind];
+    if (!from.fullText.includes(was)) misses.push(`V4.1-${kind}: ${was.slice(0, 60)}`);
+    A[`V4.1-${kind}`] = {
+      version: `V4.1-${kind}`,
+      title: from.title.replace("V4.0", "V4.1"),
+      effectiveDate: "7 October 2026 - Present",
+      status: `Active / Current (${label})`,
+      summary: from.summary.replace("8-12 retouched deliverable caps", "deliverables as stated in the booking") + " The deliverables are the ones stated in the booking.",
+      fullText: from.fullText.replace(was, () => now)
+    };
+    from.effectiveDate = "26 September - 7 October 2026 (superseded by V4.1)";
+    from.status = "Archived - superseded by V4.1 (deliverables as stated in the booking)";
+  }
+})();

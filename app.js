@@ -441,6 +441,8 @@ window.getAdminInviteCodes = function() {
       const isOff = typeof item === 'object' && item.active === false;
       const startDate = typeof item === 'object' ? window.cleanCodeDate(item.startDate) : "";
       const endDate = typeof item === 'object' ? window.cleanCodeDate(item.endDate) : "";
+      // This invite's own deliverables, in place of the test-shoot default (v588).
+      const deliverables = typeof item === 'object' ? window.cleanDeliverables(item.deliverables) : "";
       if (codeStr && typeof codeStr === 'string' && !seen.has(codeStr.trim().toUpperCase())) {
         const cleanStr = codeStr.trim().toUpperCase();
         seen.add(cleanStr);
@@ -449,7 +451,8 @@ window.getAdminInviteCodes = function() {
           ...(hsDiscount ? { homeStudioDiscount: hsDiscount } : {}),
           ...(isOff ? { active: false } : {}),
           ...(startDate ? { startDate } : {}),
-          ...(endDate ? { endDate } : {})
+          ...(endDate ? { endDate } : {}),
+          ...(deliverables ? { deliverables } : {})
         });
       }
     });
@@ -1021,12 +1024,30 @@ window.getAdminPackages = getAdminPackages;
 // this device's draft, then what is published, then the default.
 const DEFAULT_TFP_PACKAGE = { name: "Test Shoot / TFP Collaboration", specs: "Full proof gallery + 8 retouched photos (RAW files not included)" };
 function getAdminTfpPackage() {
-  const clean = (o) => (o && typeof o === "object") ? { name: String(o.name || "").trim() || DEFAULT_TFP_PACKAGE.name, specs: String(o.specs || "").trim() || DEFAULT_TFP_PACKAGE.specs } : null;
+  // Delivery time too: the panel saves it, and this dropped it, so it never reached the quote (Oct 2026).
+  const clean = (o) => (o && typeof o === "object") ? { name: String(o.name || "").trim() || DEFAULT_TFP_PACKAGE.name, specs: String(o.specs || "").trim() || DEFAULT_TFP_PACKAGE.specs, ...(String(o.delivery || "").trim() ? { delivery: String(o.delivery).trim().slice(0, 60) } : {}) } : null;
   try { const saved = studioLocal("wps_tfp_package"); if (saved) { const c = clean(JSON.parse(saved)); if (c) return c; } } catch(e) {}
   try { const c = clean(window.WPS_DATA && window.WPS_DATA.TFP_PACKAGE); if (c) return c; } catch(e) {}
   return { ...DEFAULT_TFP_PACKAGE };
 }
 window.getAdminTfpPackage = getAdminTfpPackage;
+
+/* What a booking's deliverables are (v588, the owner: "there can be default
+   and then one overide based on test invite" — "same for promocode"). A test
+   shoot gets the test-shoot line above, or the line set on the invite code it
+   is booked with; a paid shoot gets its package's line, or the line set on the
+   promo code applied to it. Contracts V4.1 say the deliverables are the ones
+   stated in the booking, and the signed record names this line. */
+window.cleanDeliverables = (v) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, 200) : "");
+window.bookingDeliverables = function ({ tfp = false, invite = null, promo = null, pkg = null } = {}) {
+  if (tfp) {
+    const own = invite && typeof invite === "object" ? window.cleanDeliverables(invite.deliverables) : "";
+    return own ? { line: own, from: "invite" } : { line: getAdminTfpPackage().specs, from: "default" };
+  }
+  const own = promo && typeof promo === "object" ? window.cleanDeliverables(promo.deliverables) : "";
+  if (own) return { line: own, from: "promo" };
+  return { line: (pkg && pkg.specs) || "", from: "package" };
+};
 
 /* ============================================================
    § STUDIO CONTRACT ARCHIVE & VERSION RESOLUTION
@@ -1035,7 +1056,7 @@ window.getAdminTfpPackage = getAdminTfpPackage;
    opening the Calendar view. Defined inside a view function, the archive
    simply did not exist on those paths.
    ============================================================ */
-window.ACTIVE_CONTRACTS = { commercial: "V4.0-COMMERCIAL", tfp: "V4.0-TFP" };
+window.ACTIVE_CONTRACTS = { commercial: "V4.1-COMMERCIAL", tfp: "V4.1-TFP" };
 
 /* ============================================================
    § CALL TIME, GRACE PERIOD & NO-SHOW
@@ -6916,7 +6937,7 @@ window.resolveContractArchive = function(version) {
                      <option value="Other" ${isSelected("Other")}>Other Focus Area</option>
                    </select>
                     <div id="b_type_notice" style="font-size: var(--font-xs); color: #059669; margin-top: 6px; font-family: var(--mono-font); background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25); border-radius: 6px; padding: 8px 12px; display: none;">
-                      <strong>Test shoot deliverables:</strong> ${esc(getAdminTfpPackage().specs)} · Mandatory Instagram credit @nerdyphotographer.in.
+                      <strong>Test shoot deliverables:</strong> <span data-deliverables-line>${esc(getAdminTfpPackage().specs)}</span> · Mandatory Instagram credit @nerdyphotographer.in.
                     </div>
                   </label>
 
@@ -6930,7 +6951,7 @@ window.resolveContractArchive = function(version) {
                       Session is locked to a <strong>Selective Collaboration / TFP Test Shoot</strong> via your verified Photographer Direct Invite Code.
                     </div>
                     <div style="background: rgba(5,150,105,0.1); border: 1px solid rgba(5,150,105,0.3); border-radius: 6px; padding: 8px 12px; margin-top: 8px; font-family: var(--mono-font); font-size: var(--font-xs); color: #047857; font-weight: 700;">
-                      <strong>Test shoot deliverables:</strong> ${esc(getAdminTfpPackage().specs)} · Mandatory credit @nerdyphotographer.in.
+                      <strong>Test shoot deliverables:</strong> <span data-deliverables-line>${esc(getAdminTfpPackage().specs)}</span> · Mandatory credit @nerdyphotographer.in.
                     </div>
                   </div>
                  <label class="field" id="b_date_field">
@@ -8117,6 +8138,28 @@ window.resolveContractArchive = function(version) {
       savings: 0,
       finalPayable: 0
     };
+    /* This booking's deliverables, read off the form as it stands — the invite
+       or promo code typed in, the kind of shoot, the package (see
+       window.bookingDeliverables). Every place the booking shows or records
+       them asks this, so the quote, the notices and the signed record agree. */
+    function deliverablesNow(tfpOverride) {
+      const tfp = typeof tfpOverride === "boolean" ? tfpOverride : ($("#b_type")?.value || "") === "Selective Collaboration (TFP)";
+      const live = (c) => (window.codeStatus(c) === "live" ? c : null);
+      const typedInvite = ($("#b_invite_code")?.value || "").trim().toUpperCase();
+      const invite = typedInvite ? live((window.getAdminInviteCodes() || []).find((c) => window.codeMatches(typeof c === "object" ? c.code : c, typedInvite))) : null;
+      const typedPromo = ($("#b_discount_code")?.value || "").trim().toUpperCase();
+      const promos = getAdminPromoCodes() || {};
+      const promoKey = typedPromo ? Object.keys(promos).find((k) => window.codeMatches(k, typedPromo)) : null;
+      const promo = promoKey ? live(promos[promoKey]) : null;
+      const v = $("#b_budget")?.value || "";
+      const pkg = (typeof getAdminPackages === "function" ? getAdminPackages() : []).find((p) => v.includes(p.name)) || null;
+      return window.bookingDeliverables({ tfp, invite, promo, pkg });
+    }
+    // Shown everywhere the form names the test-shoot deliverables in its fixed markup.
+    function paintDeliverables() {
+      const dl = deliverablesNow(true);
+      document.querySelectorAll("[data-deliverables-line]").forEach((el) => { el.textContent = dl.line; });
+    }
     /* Whether this booking is at the photographer's home studio: picked in the
        studio-space list, or an invite whose locked venue is the home studio (the
        list is hidden then, and may still hold a stale pick). An invite can lock
@@ -8206,7 +8249,7 @@ window.resolveContractArchive = function(version) {
         if (type === "Selective Collaboration (TFP)") {
           policyNotice.innerHTML = `
             <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">TFP Collaboration &amp; Test Shoot Policy</span>
-            Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. <strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong> Test shoots include a proofing gallery and ${esc(String(getAdminTfpPackage().specs || "").replace(/\s*\((No RAW files delivered|RAW files not included)\)\s*$/i, ""))}. RAW files aren't included — they can be bought separately; ask. <strong>⏰ Call time &amp; no-show:</strong> ${window.buildLateArrivalSummary(true)}
+            Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. <strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong> Test shoots include a proofing gallery and ${esc(String(deliverablesNow(true).line || "").replace(/\s*\((No RAW files delivered|RAW files not included)\)\s*$/i, ""))}. RAW files aren't included — they can be bought separately; ask. <strong>⏰ Call time &amp; no-show:</strong> ${window.buildLateArrivalSummary(true)}
           `;
         } else {
           policyNotice.innerHTML = `
@@ -8251,7 +8294,7 @@ window.resolveContractArchive = function(version) {
                 Peer-to-peer collaboration session for portfolio growth &amp; creative curation. Submissions are reviewed at studio discretion based on creative brief alignment and schedule availability.
               </p>
               <div style="font-family: var(--mono-font); font-size: var(--font-xs); color: #059669; font-weight: 700; background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.2); border-radius: 6px; padding: 6px 10px; margin-top: 6px;">
-                🎁 <strong>Deliverables:</strong> ${esc(getAdminTfpPackage().specs)}.
+                🎁 <strong>Deliverables:</strong> ${esc(deliverablesNow(true).line)}.
               </div>
             `;
           } else {
@@ -8708,7 +8751,9 @@ window.resolveContractArchive = function(version) {
           : (isValidInvite && lockedLocation)
             ? `Provided by the photographer at ${esc(lockedLocation)}. No rental charge to you.`
             : `If a dedicated studio is booked, the rental is quoted in advance once the venue is confirmed and payable in full before shoot day.`;
-        const tfpSpecs = ((typeof getAdminTfpPackage === "function" && getAdminTfpPackage().specs) || "Full proof gallery + 8 retouched photos").replace(/\s*\(No RAW files delivered\)\s*$/i, "");
+        // This booking's: the invite's own line, or the test-shoot default.
+        const tfpSpecs = (deliverablesNow(true).line || "Full proof gallery + 8 retouched photos").replace(/\s*\((No RAW files delivered|RAW files not included)\)\s*$/i, "");
+        paintDeliverables();
         policyNoticeEl.innerHTML = `
           <span class="policy-k">TFP Collaboration &amp; Test Shoot Policy</span>
           <dl class="policy-lines">
@@ -9399,7 +9444,9 @@ window.resolveContractArchive = function(version) {
           pkg = (typeof getAdminPackages === "function" ? getAdminPackages() : []).find(p => v.includes(p.name)) || null;
         }
         const bits = [];
-        if (pkg && pkg.specs) bits.push(pkg.specs);
+        // The booking's deliverables: the package's (or test shoot's), or the line its code sets (v588).
+        const dl = deliverablesNow(isCollab);
+        if (dl.line) bits.push(dl.from === "invite" || dl.from === "promo" ? `${dl.line} (with your code)` : dl.line);
         if (pkg && pkg.delivery) bits.push(`delivered in ${pkg.delivery}`);
         const nothing = $("#summaryNothingToPay"), reserve = $("#summaryReservationCard"), steps = $("#summaryMilestoneBreakdown");
         const visible = (el) => !!el && el.offsetParent !== null;
@@ -10000,6 +10047,15 @@ window.resolveContractArchive = function(version) {
           ? ` The studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} is payable in full as part of the advance retainer, in addition to the package advance above.`
           : "";
         const paymentTermsText = `Payment Terms: ${packageSchedule.contract}.${rentalUpfrontNote}`;
+        /* The deliverables, named in the signed record: contracts V4.1 say they
+           are the ones stated in this booking (v588). A test shoot's are its
+           invite's own line or the default; a paid shoot's, its package's or
+           its promo code's. */
+        const dlNow = deliverablesNow(isTfpCat);
+        const paidPackageLine = budget && dlNow.line ? `${budget} — ${dlNow.line}` : (budget || "as quoted by the Studio");
+        const recordDeliverablesLine = isTfpCat
+          ? `Deliverables for this session: ${dlNow.line}\n`
+          : `Selected package and contracted deliverables: ${paidPackageLine}\n`;
         // A collaboration carries no shoot fee, but it can still owe the home
         // studio rental — and the document the participant agrees to has to say
         // so, in the same terms the quote showed them.
@@ -10007,7 +10063,7 @@ window.resolveContractArchive = function(version) {
           ? (homeStudioRentalFee > 0
               ? studioText(`\n\n7. HOME STUDIO RENTAL & PAYMENT\nThis collaboration carries no shoot fee. A fixed home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} applies for use of the photographer's home studio in ${HOME_STUDIO_AREA}, and is payable IN FULL at least 48 hours before the shoot day to reserve the space. This rental is non-refundable once paid, including where the Participant cancels or reschedules. No other fee is payable to the Studio for this session.`)
               : "")
-          : `\n\n7. ENGAGEMENT FEE, SELECTED PACKAGE & PAYMENT MILESTONES\nSelected package and contracted deliverables: ${budget || "as quoted by the Studio"}.\n${paymentTermsText.replace(/^Payment Terms: /, "Payment terms: ")}\nThe advance retainer moves to a new date if the shoot is rescheduled at least 24 hours before the call time (up to two moves); with less notice, or a no-show, it is kept. If the Studio cancels, the Client is offered a new date or a full refund. ${packageSchedule.release} Any work beyond the contracted package (additional retouched masters, extended usage, gallery buyout) is quoted and invoiced separately.`;
+          : `\n\n7. ENGAGEMENT FEE, SELECTED PACKAGE & PAYMENT MILESTONES\nSelected package and contracted deliverables: ${paidPackageLine}.\n${paymentTermsText.replace(/^Payment Terms: /, "Payment terms: ")}\nThe advance retainer moves to a new date if the shoot is rescheduled at least 24 hours before the call time (up to two moves); with less notice, or a no-show, it is kept. If the Studio cancels, the Client is offered a new date or a full refund. ${packageSchedule.release} Any work beyond the contracted package (additional retouched masters, extended usage, gallery buyout) is quoted and invoiced separately.`;
 
         // Test shoots only. A paid booking already carries this risk through its
         // non-refundable retainer; a collaboration pays nothing, so without this
@@ -10049,6 +10105,7 @@ window.resolveContractArchive = function(version) {
           `Contact Email: ${email}\n` +
           `Contract Status: ${isCustomContract ? 'Custom Contract / Agency MSA Requested (Pending Studio Review)' : `Agreed to Studio Contract ${contractRefDoc}`}\n` +
           (isCustomContract ? `Custom Contract Notes: ${customContractNotes || 'Client requested custom agency MSA'}\n` : '') +
+          (isCustomContract ? '' : recordDeliverablesLine) +
           `--------------------------------------------------\n\n` +
           (isCustomContract ?
             `1. CUSTOM CONTRACT / AGENCY MSA REQUEST\nThis shoot request is submitted under a Custom Client Contract / Agency Master Services Agreement (MSA). The studio's standard terms (${isTfpCat ? window.ACTIVE_CONTRACTS.tfp : window.ACTIVE_CONTRACTS.commercial}) remain subject to custom contract review and mutual alignment prior to shoot day confirmation.\n\n2. CAMERA GEAR & DATA PROTECTION CLAUSE\nAll camera bodies, memory cards, and raw captures remain confidential studio property. Participants may not touch equipment or delete media from cameras.\n` +
@@ -10066,7 +10123,11 @@ window.resolveContractArchive = function(version) {
         // app silently refused to open at all.
         // (packageSchedule / paymentTermsText are resolved above, alongside the
         // release text, so the contract and the email quote identical terms.)
-        const cleanBudget = (budget && budget !== "Not Decided" && budget !== "TBD") ? `Package & Deliverables: ${budget}\n` : "";
+        // With the deliverables this booking gets (v588), not only the package's name.
+        const dlMail = deliverablesNow(isTfpCat);
+        const cleanBudget = isTfpCat
+          ? (dlMail.line ? `Package & Deliverables: Test shoot — ${dlMail.line}\n` : "")
+          : ((budget && budget !== "Not Decided" && budget !== "TBD") ? `Package & Deliverables: ${dlMail.line ? `${budget} — ${dlMail.line}` : budget}\n` : "");
 
         // The studio-space select is hidden on these bookings but keeps its
         // default answer, so reading it verbatim told the studio "client books
@@ -10607,6 +10668,8 @@ window.resolveContractArchive = function(version) {
           // quote, so the email must not read as though one was agreed.
           ...(pricesArePublished() ? {} : { "⚠️ Prices": "The studio's rates could not be loaded in this visitor's browser, so no quote was shown and none was agreed. Quote this request by email." }),
           "Package": isProduction ? "Quoted on the brief" : (pricesArePublished() ? budget : "Not quoted — prices unavailable"),
+          // What this booking delivers, as its signed record names it (v588): the default, or the line its code sets.
+          ...(isProduction ? {} : { "Deliverables": dlNow.line ? `${dlNow.line}${dlNow.from === "invite" ? " (set on the invite code)" : dlNow.from === "promo" ? " (set on the promo code)" : ""}` : "—" }),
           ...(isProduction ? { "What we're shooting": val("p_subject") || "—", "Usage": val("p_usage") || "—", "Budget band": val("p_budget") || "Prefer to discuss", "Rough scale": val("p_scale") || "—" } : {}),
           ...(fallbackPackage ? { "Paid Fallback Package": fallbackPackage } : {}),
           "Invite Code": inviteLine || "—",
@@ -11132,7 +11195,7 @@ window.resolveContractArchive = function(version) {
       }
       if (sec4Text) {
         sec4Text.innerHTML = isTfp
-          ? `As a creative collaboration, test shoots (TFP collabs) include <strong>${esc(getAdminTfpPackage().specs)}</strong>. Deliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for 3 Months (90 days). The Studio retains final artistic authority over image selection and editing styles.${venueSentence} Under no circumstances will raw unedited files (RAW format) be delivered.`
+          ? `As a creative collaboration, test shoots (TFP collabs) include <strong>${esc(deliverablesNow(true).line)}</strong>. Deliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for 3 Months (90 days). The Studio retains final artistic authority over image selection and editing styles.${venueSentence} Under no circumstances will raw unedited files (RAW format) be delivered.`
           : `Commercial productions include a <strong>Full Proofing Gallery + contracted retouched master deliverables</strong> specified in the rate tier. Deliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for 6 Months (180 days). Extended usage licensing or RAW file access requires separate buyout agreements.${venueSentence} Payment terms follow 50/50 non-refundable milestone payments.`;
       }
 

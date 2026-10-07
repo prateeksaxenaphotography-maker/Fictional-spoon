@@ -1067,6 +1067,9 @@ try {
     for (const f of ["startDate", "endDate"]) {
       if (c[f] !== undefined && c[f] !== null && c[f] !== "" && !isDay(c[f])) fail(`${name}: ${f} is not a YYYY-MM-DD date (${JSON.stringify(c[f])})`);
     }
+    // A code's own deliverables line (v588) is shown to the client and named
+    // in their signed record: a line of text, as the admin form keeps it.
+    if (c.deliverables !== undefined && (typeof c.deliverables !== "string" || c.deliverables.length > 200)) fail(`${name}: deliverables must be a line of text of up to 200 characters`);
     // The cheap direction — nobody gets a discount they should not — so it is
     // worth saying but not worth holding the whole site back for.
     if (isDay(c.startDate) && isDay(c.endDate) && c.endDate < c.startDate) warn(`${name} ends (${c.endDate}) before it starts (${c.startDate}), so it can never work`);
