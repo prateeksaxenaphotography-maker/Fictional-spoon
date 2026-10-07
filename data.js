@@ -2924,8 +2924,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1791364943387,
-    "syncedAt": 1791364943387
+    "updatedAt": 1791378686669,
+    "syncedAt": 1791378686669
   },
   "INVITE_CODES": [
     {
@@ -2963,7 +2963,10 @@ window.WPS_DATA = {
       "code": "#d78fd65765d53744297a",
       "desc": "Photographer direct unlock code",
       "location": "Home Studio, Sector 46, Noida",
-      "venueCost": 3000
+      "venueCost": 3000,
+      "homeStudioDiscount": {
+        "type": "free"
+      }
     }
   ],
   "PROMO_CODES": {
@@ -3140,16 +3143,16 @@ window.WPS_DATA = {
   },
   "HOME_STUDIO_RATE_TFP": 4000,
   "SETTINGS_AT": {
-    "INVITE_CODES": 1791364920478,
-    "PROMO_CODES": 1790675065627,
-    "PACKAGES": 1790833862540,
-    "TFP_PACKAGE": 1790661324121,
-    "HOME_STUDIO_RATE": 1790661324121,
+    "INVITE_CODES": 1791378680703,
+    "PROMO_CODES": 1791378680703,
+    "PACKAGES": 1791378680703,
+    "TFP_PACKAGE": 1791378680703,
+    "HOME_STUDIO_RATE": 1791378680703,
     "PORTFOLIO_PDF": 1791302275441,
     "HOME_SLIDESHOW": 1790354674280,
     "STUDIO": 0,
     "MEASURE_UNITS": 1790269147688,
-    "HOME_STUDIO_RATE_TFP": 1790661324121
+    "HOME_STUDIO_RATE_TFP": 1791378680703
   },
   "TESTIMONIALS": {
     "items": [
