@@ -4556,3 +4556,8 @@ html.theme-dark .cx-live.is-going { color: #7aa7ff; background: rgba(122, 167, 2
 .theme-dark .roster-pill-meeting, .theme-dark .admin-calendar-wrap .badge-meeting { background: rgba(90,200,185,0.15); color: #7FD6CB; }
 .admin-cal-day.day-meeting { background: rgba(42,140,130,0.06) !important; }
 .admin-calendar-wrap .admin-cal-day.day-meeting { box-shadow: inset 3px 0 0 #2A8C82; }
+
+/* Talk first (v594): one quiet button under the Contact card. */
+.talk-first-row { display: flex; justify-content: flex-end; margin: -6px 0 22px; }
+.talk-first-btn { height: auto; padding: 10px 20px; font-size: 14px; justify-content: center; text-align: center; }
+@media (max-width: 600px) { .talk-first-row { justify-content: stretch; } .talk-first-btn { width: 100%; } }

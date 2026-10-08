@@ -6894,6 +6894,7 @@ window.resolveContractArchive = function(version) {
                </div>
              </fieldset>
  
+             <div class="talk-first-row"><button type="button" class="btn btn-ghost talk-first-btn" id="talkSubmitBtn">Talk first</button></div>
              <fieldset id="bookShootFs">
                <legend>The shoot</legend>
                 <!-- Two doors. Portfolio / small-brand shoots take the priced
@@ -9902,6 +9903,18 @@ window.resolveContractArchive = function(version) {
         return "";
       }
     }
+
+    // Talk first (v594): the Contact card's details only, nothing booked. Its code (talk-first.js) loads on the press.
+    $("#talkSubmitBtn")?.addEventListener("click", () => {
+      const go = () => window.WPS_TALK_FIRST({ $, esc, setError, clearError, form, panel: successPanel });
+      if (window.WPS_TALK_FIRST) return go();
+      const v = (document.querySelector('script[src*="app.js?v="]')?.getAttribute("src") || "").split("v=")[1] || "";
+      const s = document.createElement("script");
+      s.src = `/talk-first.js${v ? `?v=${v}` : ""}`;
+      s.onload = go;
+      s.onerror = () => toast("Couldn't send just now — please try again in a moment.");
+      document.head.appendChild(s);
+    });
 
     const handleBookingSubmit = (e) => {
       if (e) e.preventDefault();
