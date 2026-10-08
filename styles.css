@@ -4545,3 +4545,14 @@ html.theme-dark .cx-live.is-going { color: #7aa7ff; background: rgba(122, 167, 2
   .cx-badges { max-width: 50%; }
 }
 @media (prefers-reduced-motion: reduce) { .cx-card, .cx-switch-track, .cx-switch-track::after { transition: none; } .cx-form { animation: none; } }
+
+/* Meetings and studio visits (v592): their own colour, a soft teal, beside the
+   workshop's amber and assisting's rose. A field the edit form hides for the
+   kind of entry stays hidden (the field's own display would otherwise win). */
+.dam-field[hidden], .dam-hint[hidden] { display: none !important; }
+.dam-field > span em { font-style: normal; font-weight: 400; color: var(--ink-soft); }
+.chip-meeting::before { background: #2A8C82; }
+.roster-pill-meeting, .admin-calendar-wrap .badge-meeting, .badge-meeting { background: rgba(42,140,130,0.13); color: #1F6B63; }
+.theme-dark .roster-pill-meeting, .theme-dark .admin-calendar-wrap .badge-meeting { background: rgba(90,200,185,0.15); color: #7FD6CB; }
+.admin-cal-day.day-meeting { background: rgba(42,140,130,0.06) !important; }
+.admin-calendar-wrap .admin-cal-day.day-meeting { box-shadow: inset 3px 0 0 #2A8C82; }

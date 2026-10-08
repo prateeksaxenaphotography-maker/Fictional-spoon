@@ -4701,6 +4701,8 @@ window.resolveContractArchive = function(version) {
           const [p, l] = fromDevice ? [have.b, b] : [b, have.b];
           const newerPub = (Number(p.updatedAt) || 0) > (Number(l.updatedAt) || 0);
           have.b = newerPub ? { ...l, ...p } : { ...p, ...l };
+          // Published as "busy" so clients learn nothing; this device knows it is a meeting.
+          if (l.status === "meeting" && have.b.status === "busy") have.b.status = "meeting";
         });
       });
     };
@@ -5004,12 +5006,17 @@ window.resolveContractArchive = function(version) {
     const isWorkshopBooking = (b) => b.status === "workshop";
     const isAssistingBooking = (b) => b.status === "assisting";
     const isTestShootBooking = (b) => /TFP|Selective Collaboration/i.test(`${b.type || ""} ${b.contractVersion || ""} ${b.budget || ""}`);
+    // A meeting or studio visit (v592). The studio's own copy says "meeting";
+    // the published one says only "busy", which is all a client is told.
+    const isBusyBooking = (b) => b.status === "meeting" || b.status === "busy";
 
     const hasConfirmedBooking = bookings.some(b => !isTentativeBooking(b) && !isWorkshopBooking(b) && !isAssistingBooking(b));
     const isTentativeOnly = isBooked && !hasConfirmedBooking && bookings.some(b => isTentativeBooking(b));
     const hasWorkshop = bookings.some(b => isWorkshopBooking(b));
     const hasAssisting = bookings.some(b => isAssistingBooking(b));
     const hasTestShoot = bookings.some(b => isTestShootBooking(b) && !isWorkshopBooking(b) && !isAssistingBooking(b));
+    const hasMeeting = bookings.some(b => b.status === "meeting");
+    const isBusyOnly = isBooked && bookings.every(isBusyBooking);
     
     let isBlocked = false;
     if (isCustomBlocked) {
@@ -5031,6 +5038,8 @@ window.resolveContractArchive = function(version) {
       hasWorkshop,
       hasAssisting,
       hasTestShoot,
+      hasMeeting,
+      isBusyOnly,
       bookings
     };
   }
@@ -5130,6 +5139,15 @@ window.resolveContractArchive = function(version) {
       // Who asked for a test shoot — model, designer, brand, make-up artist… (v591).
       // Kept on this device with the name; never published.
       requesterRole: bookingObj.requesterRole || "",
+      // Workshops, assisting days and meetings (v592): where, when, who runs
+      // it, the fee, and for a meeting whether you go to them or they come.
+      // Kept on this device; never published.
+      place: bookingObj.place || "",
+      timeFrom: bookingObj.timeFrom || "",
+      timeTo: bookingObj.timeTo || "",
+      host: bookingObj.host || "",
+      fee: bookingObj.fee || "",
+      meetWhere: bookingObj.meetWhere || "",
       email: bookingObj.email || "",
       phone: bookingObj.phone || "",
       type: bookingObj.type || "Shoot",
@@ -5153,7 +5171,7 @@ window.resolveContractArchive = function(version) {
       // shipped. Display fallbacks for older stored records are left alone on
       // purpose: relabelling them would misstate what was actually signed.
       contractVersion: bookingObj.contractVersion || (bookingObj.agreedToTerms ? "V3.3" : "Pending Agreement"),
-      agreedToTerms: bookingObj.agreedToTerms !== undefined ? bookingObj.agreedToTerms : (bookingObj.contractVersion && bookingObj.contractVersion !== "Pending Agreement"),
+      agreedToTerms: bookingObj.agreedToTerms !== undefined ? bookingObj.agreedToTerms : (bookingObj.contractVersion && bookingObj.contractVersion !== "Pending Agreement" && bookingObj.contractVersion !== "Not Required"),
       contractNumber: bookingObj.contractNumber || "",
       // When a PDF contract was generated for this date. Set on the hold that
       // printing a contract places, so the roster can say the terms are out
@@ -5192,6 +5210,7 @@ window.resolveContractArchive = function(version) {
           id: cur.id || ("b_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6)),
           name: updatedObj.name || cur.name,
           requesterRole: updatedObj.requesterRole !== undefined ? updatedObj.requesterRole : (cur.requesterRole || ""),
+          ...Object.fromEntries(["place", "timeFrom", "timeTo", "host", "fee", "meetWhere"].map((f) => [f, updatedObj[f] !== undefined ? updatedObj[f] : (cur[f] || "")])),
           email: updatedObj.email !== undefined ? updatedObj.email : cur.email,
           phone: updatedObj.phone !== undefined ? updatedObj.phone : cur.phone,
           type: updatedObj.type || cur.type,
@@ -5289,7 +5308,7 @@ window.resolveContractArchive = function(version) {
     const name = String(b.name || "").trim();
     if (!name || /^anticipated client hold$/i.test(name)) return false;
     const ver = String(b.contractVersion || "").trim();
-    return !!ver && ver !== "Pending Agreement";
+    return !!ver && ver !== "Pending Agreement" && ver !== "Not Required";
   }
 
   // Printing a contract for an off-site / DM inquiry also pencils the date in,
@@ -7765,6 +7784,11 @@ window.resolveContractArchive = function(version) {
           badge.style.color = "#6b7280";
           badge.innerHTML = "🔒 PHOTOGRAPHER AWAY";
           if (bookedNote) bookedNote.style.display = "none";
+        } else if (st.isBusyOnly) {
+          badge.style.background = "rgba(220,38,38,0.12)";
+          badge.style.border = "1px solid rgba(220,38,38,0.3)";
+          badge.style.color = "#dc2626";
+          badge.innerHTML = "🔴 BUSY";
         } else if (st.isBooked) {
           badge.style.background = "rgba(220,38,38,0.12)";
           badge.style.border = "1px solid rgba(220,38,38,0.3)";
@@ -7866,6 +7890,9 @@ window.resolveContractArchive = function(version) {
               classes.push("dp-booked", "dp-assisting");
               titleAttr = "Unavailable: away on another shoot";
               isCellDisabled = true;
+            } else if (status.isBusyOnly) {
+              classes.push("dp-booked");
+              titleAttr = "Busy that day — you can still send a request, and I'll confirm or suggest another time";
             } else if (status.isBooked) {
               classes.push("dp-booked");
               if (status.hasTestShoot) classes.push("dp-testshoot");

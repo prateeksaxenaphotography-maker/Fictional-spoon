@@ -93,9 +93,20 @@ window.isTestShootType = (t) => /TFP|test shoot/i.test(String(t || ""));
 window.isStandInName = (n) => /^(Test Shoot Client|Test shoot)$/i.test(String(n || "").trim());
 window.bookingWho = (b) => {
   if (!b) return "—";
-  const name = window.isStandInName(b.name) ? "Test shoot" : (b.name || "—");
+  const name = window.isStandInName(b.name) ? "Test shoot" : (b.name || (b.status === "busy" ? "Busy" : "—"));
   const role = (window.TEST_SHOOT_ROLES.find(([v]) => v === b.requesterRole) || [])[1];
-  return role && window.isTestShootType(b.type) ? `${name} · ${role}` : name;
+  return role && (window.isTestShootType(b.type) || b.status === "meeting") ? `${name} · ${role}` : name;
+};
+// The studio's own days: a workshop, an assisting day, a meeting (v592). No contract.
+window.isInternalEntry = (b) => !!b && ["workshop", "assisting", "meeting", "busy"].includes(b.status);
+// When and where, for the entries that have them: "11:00–12:30 · At the studio".
+window.bookingWhenWhere = (b) => {
+  if (!b) return "";
+  const time = b.timeFrom ? (b.timeTo ? `${b.timeFrom}–${b.timeTo}` : b.timeFrom) : "";
+  const where = b.status === "meeting"
+    ? ({ studio: "At the studio", theirs: b.place ? `At their place · ${b.place}` : "At their place", call: "Call" })[b.meetWhere || "studio"]
+    : (b.place || "");
+  return [time, where, b.host ? `run by ${b.host}` : "", b.fee ? `fee ${b.fee}` : ""].filter(Boolean).join(" · ");
 };
 window.testShootRoleOptions = (selected) => `<option value="">Choose…</option>` + window.TEST_SHOOT_ROLES.map(([v, label]) => `<option value="${v}"${v === selected ? " selected" : ""}>${label}</option>`).join("");
 
@@ -2236,6 +2247,8 @@ window.moveAdminPackageRow = function(index, dir) {
     const opt = (v, label) => `<option value="${esc(v)}"${v === selected ? " selected" : ""}>${esc(label)}</option>`;
     let html = "";
     if (pending) html += opt("Pending Agreement", "Pending agreement · not signed yet");
+    // Some bookings need no contract at all (the owner, Oct 2026: "this should have an option not required").
+    if (pending) html += opt("Not Required", "Not required · no contract for this booking");
     html += keys.map(k => opt(k, `${contractVersionLabel(k)} ${active.includes(k) ? "(active)" : "(archived)"}`)).join("");
     if (custom) html += opt("Custom Contract", "Custom contract / MSA");
     if (!expanded && keys.length < all.length) html += `<option value="__older__">Older versions…</option>`;
@@ -2925,12 +2938,14 @@ window.moveAdminPackageRow = function(index, dir) {
             // Worked out here rather than published as a name for the reader to
             // pattern-match ("Anticipated…", "Hold…"), which is why the name
             // used to have to travel.
-            isTentative: !!(b.isTentative || b.status === "tentative"
+            isTentative: b.status !== "meeting" && !!(b.isTentative || b.status === "tentative"
               || /anticipated|tentative|hold/i.test(`${b.name || ""} ${b.type || ""}`)),
-            // The kind of day it is, and nothing about who booked it.
-            ...(b.status ? { status: b.status } : {}),
-            ...(b.type ? { type: b.type } : {}),
-            ...(b.contractVersion ? { contractVersion: b.contractVersion } : {}),
+            // The kind of day it is, and nothing about who booked it. A meeting
+            // is published as "busy" and no more (the owner: "it should just
+            // show busy to them").
+            ...(b.status ? { status: b.status === "meeting" ? "busy" : b.status } : {}),
+            ...(b.type && b.status !== "meeting" ? { type: b.type } : {}),
+            ...(b.contractVersion && b.status !== "meeting" ? { contractVersion: b.contractVersion } : {}),
             // The album this day belongs to, when it came from one. Not personal
             // (the album is on the site), and syncCalendarWithShoots matches on
             // it: without it a second device cannot tell the published entry
@@ -3613,7 +3628,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       Object.entries(allBookings).forEach(([dateKey, bookings]) => {
         (bookings || []).forEach(b => {
           const signed = b.agreedContract || b.sigDataUrl || b.agreedToTerms ||
-            (b.contractVersion && b.contractVersion !== "Pending Agreement");
+            (b.contractVersion && b.contractVersion !== "Pending Agreement" && b.contractVersion !== "Not Required");
           if (signed) {
             allSigned.push({ ...b, dateKey });
           }
@@ -4216,7 +4231,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       const raw = String(b.contractVersion || "").trim();
       if (raw === "Custom Contract") return raw;
       const fallback = initialKind === "tfp" ? window.ACTIVE_CONTRACTS.tfp : window.ACTIVE_CONTRACTS.commercial;
-      if (!raw || raw === "Pending Agreement") return fallback;
+      if (!raw || raw === "Pending Agreement" || raw === "Not Required") return fallback;
       const r = window.resolveContractArchive(raw);
       return r ? r.version : fallback;
     })();
@@ -5463,6 +5478,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           dayClasses.push("day-workshop");
         } else if (status.hasAssisting && !status.hasConfirmedBooking) {
           dayClasses.push("day-assisting");
+        } else if (status.isBusyOnly) {
+          dayClasses.push("day-meeting");
         } else if (status.hasTestShoot && status.hasConfirmedBooking) {
           dayClasses.push("day-testshoot");
         } else if (status.hasConfirmedBooking) {
@@ -5481,6 +5498,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               <span class="admin-cal-num">${day}</span>
               ${status.hasWorkshop && !status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-workshop">Workshop</span>` :
                 status.hasAssisting && !status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-assisting">Assisting</span>` :
+                status.isBusyOnly ? `<span class="admin-cal-badge badge-meeting">${status.hasMeeting ? "Meeting" : "Busy"}${status.bookings.length > 1 ? ` · ${status.bookings.length}` : ""}</span>` :
                 status.hasTestShoot && status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-testshoot">Test shoot${status.bookings.length > 1 ? ` · ${status.bookings.length}` : ""}</span>` :
                 status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-booked">Booked${status.bookings.length > 1 ? ` · ${status.bookings.length}` : ""}</span>` :
                 status.isTentativeOnly ? `<span class="admin-cal-badge badge-tentative">Hold${status.bookings.length > 1 ? ` · ${status.bookings.length}` : ""}</span>` :
@@ -5538,20 +5556,21 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       }
 
       const renderBookingCardHtml = (b, isPast = false) => {
-        const isNonContract = (b.type === "Assisting Photographer" || b.type === "Workshop Attended" || (b.title && (b.title.includes("Assisting") || b.title.includes("Workshop"))));
+        const isNonContract = window.isInternalEntry(b) || (b.type === "Assisting Photographer" || b.type === "Workshop Attended" || (b.title && (b.title.includes("Assisting") || b.title.includes("Workshop"))));
         const v = b.contractVersion || (b.agreedToTerms ? "V3.2" : "Pending Agreement");
         const viewTermsBtn = ` <button type="button" class="linkish" onclick="window.openContractArchiveModal('${esc(v)}')">View terms ↗</button>`;
         // agreedToTerms is only explicitly false on a record that was created
         // with terms sent but unsigned — a contract-generated hold. Older
         // records simply don't carry the field, and keep the "Agreed" wording.
-        const awaitingApproval = b.agreedToTerms === false && v !== "Pending Agreement" && v !== "Custom Contract";
+        const awaitingApproval = b.agreedToTerms === false && v !== "Pending Agreement" && v !== "Custom Contract" && v !== "Not Required";
         const contractLine = isNonContract
-          ? `<span>Internal activity · no contract</span>`
+          ? `<span>${esc(window.bookingWhenWhere(b) || "Your own day")} · no contract</span>`
+          : v === "Not Required" ? `<span>No contract needed</span>`
           : v === "Pending Agreement" ? `<span style="color: #B7791F; font-weight: 600;">Agreement pending</span>`
           : v === "Custom Contract" ? `<span>Custom contract / MSA</span>`
           : awaitingApproval ? `<span class="contract-sent-note">Contract sent · ${esc(v)} · awaiting client approval</span>${viewTermsBtn}`
           : `<span><strong>Agreed:</strong> ${esc(v)}</span>${viewTermsBtn}`;
-        const statusPill = b.status === "workshop" ? `<span class="roster-pill roster-pill-workshop">Workshop</span>` : b.status === "assisting" ? `<span class="roster-pill roster-pill-assisting">Assisting</span>` : (b.isTentative || b.status === "tentative") ? `<span class="roster-pill roster-pill-hold">Hold</span>` : `<span class="roster-pill roster-pill-confirmed">Confirmed</span>`;
+        const statusPill = b.status === "workshop" ? `<span class="roster-pill roster-pill-workshop">Workshop</span>` : b.status === "assisting" ? `<span class="roster-pill roster-pill-assisting">Assisting</span>` : (b.status === "meeting" || b.status === "busy") ? `<span class="roster-pill roster-pill-meeting">Meeting</span>` : (b.isTentative || b.status === "tentative") ? `<span class="roster-pill roster-pill-hold">Hold</span>` : `<span class="roster-pill roster-pill-confirmed">Confirmed</span>`;
         const links = (b.links && b.links.length) ? `<div><strong>Reference links:</strong> ${b.links.map(l => `<a href="${esc(l)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-text); word-break: break-all;">${esc(l)} ↗</a>`).join(" · ")}</div>` : "";
         const atts = (b.attachments && b.attachments.length) ? `<div><strong>Attachments:</strong> ${b.attachments.map(att => `<a href="${esc(att.dataUrl)}" download="${esc(att.name)}" target="_blank" style="color: var(--accent-text);">${esc(att.name)} (${Math.round(att.size/1024)} KB)</a>`).join(" · ")}</div>` : "";
         const hasMore = !!(b.email || b.phone || links || atts);
@@ -5659,9 +5678,10 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     window.acceptHoldBooking = (dKey, bId) => {
       const b = findBooking(dKey, bId);
       if (!b) return;
-      const ver = b.contractVersion && b.contractVersion !== "Pending Agreement" ? b.contractVersion : "";
-      if (!confirm(`Accept ${b.name} for ${dKey}?\n\nThe hold becomes a confirmed shoot${ver ? `, agreed on ${ver}` : ""}.`)) return;
-      updateCalBooking(dKey, bId, { status: "confirmed", isTentative: false, agreedToTerms: true });
+      const noContract = b.contractVersion === "Not Required";
+      const ver = b.contractVersion && b.contractVersion !== "Pending Agreement" && !noContract ? b.contractVersion : "";
+      if (!confirm(`Accept ${b.name} for ${dKey}?\n\nThe hold becomes a confirmed shoot${ver ? `, agreed on ${ver}` : noContract ? " (no contract needed)" : ""}.`)) return;
+      updateCalBooking(dKey, bId, { status: "confirmed", isTentative: false, agreedToTerms: !noContract });
       toast(`\u2713 ${b.name} confirmed for ${dKey}. Publish the calendar to show it live.`);
       closeDayModal();
       window.refreshAdminCalendarViews();
@@ -5697,7 +5717,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
 
       const ebSelected = (() => {
         const raw = String(b.contractVersion || "").trim();
-        if (raw === "Custom Contract") return raw;
+        if (raw === "Custom Contract" || raw === "Not Required") return raw;
         if (raw === "Pending Agreement" || (!raw && !b.agreedToTerms)) return "Pending Agreement";
         // The one-tap Test shoot mark stamped the archived V3.7 on bookings nobody
         // signed (until v591). Shown as what it is, so saving cannot record a signature.
@@ -5706,71 +5726,114 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         const r = window.resolveContractArchive(raw);
         return r ? r.version : "Pending Agreement";
       })();
+      /* One form for every kind of entry, shaped by what it is (v592). The owner:
+         "For workshop and assisting the UI/UX is not correct it needs to
+         change" — "I dont know how it should look so you can build it
+         yourself"; and of studio visits: "sometime people come to just visit
+         studio and talk about there vision … or expect me to be going there
+         place … they will need some time". A client booking asks what it
+         always did; a test shoot asks who requested it; a workshop, an
+         assisting day and a meeting ask what they are — what, who, where,
+         when — and never for a contract. Changing the kind reshapes the form
+         where it stands. */
+      const kindOf = (bk) => bk.status === "workshop" ? "workshop" : bk.status === "assisting" ? "assisting"
+        : (bk.status === "meeting" || bk.status === "busy") ? "meeting"
+        : (bk.isTentative || bk.status === "tentative") ? "hold" : window.isTestShootType(bk.type) ? "test" : "booking";
+      const kind0 = kindOf(b);
+      // A one-tap mark's stand-in name is not a name: the box opens empty so the real one is typed.
+      const STAND_IN = { booking: ["Client Booking"], test: ["Test Shoot Client", "Test shoot"], hold: ["Anticipated Client Hold"], workshop: ["Workshop Day"], assisting: ["Assisting Work"], meeting: ["Meeting"] };
+      const nameShown = (STAND_IN[kind0] || []).some((s) => s.toLowerCase() === String(b.name || "").trim().toLowerCase()) ? "" : (b.name || "");
+      const dateTitle = (() => { const [y, m, d] = dKey.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "long", year: "numeric" }); })();
+      const KINDS = [["booking", "Client booking"], ["test", "Test shoot"], ["hold", "Hold — looks taken to visitors"], ["workshop", "Workshop — you are away learning"], ["assisting", "Assisting another photographer"], ["meeting", "Meeting or studio visit"]];
+      const dur = (v, label) => `<option value="${v}"${(b.duration || "Full Day") === v ? " selected" : ""}>${label}</option>`;
+      const where0 = b.meetWhere || "studio";
       modalContainer.innerHTML = `
         <div class="date-admin-modal-overlay" id="editBookingOverlay">
-          <div class="date-admin-modal">
-            <button type="button" id="closeEditModal" style="position: absolute; top: 18px; right: 20px; background: none; border: none; font-size: var(--font-md); cursor: pointer; color: var(--ink-soft);">&times;</button>
-            <p class="eyebrow" style="margin-bottom: 6px;">Edit Client Booking</p>
-            <h2 style="font-family: 'Archivo', sans-serif; font-size: var(--font-md); font-weight: 800; margin: 0 0 16px; color: var(--ink);">Edit Booking for ${dKey}</h2>
-            
-            <form id="editBookingForm" style="display: flex; flex-direction: column; gap: 12px;">
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">${window.isTestShootType(b.type) ? "Requested by *" : "Client / Model Name *"}
-                  <input type="text" id="eb_name" value="${esc(window.isTestShootType(b.type) && window.isStandInName(b.name) ? "" : b.name)}" placeholder="${window.isTestShootType(b.type) ? "Model, designer, brand or make-up artist" : ""}" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+          <div class="date-admin-modal dam" role="dialog" aria-modal="true" aria-labelledby="ebTitle">
+            <button type="button" id="closeEditModal" class="dam-close" aria-label="Close">&times;</button>
+            <header class="dam-head">
+              <p class="eyebrow" id="ebEyebrow">Edit</p>
+              <h2 class="dam-title" id="ebTitle">${esc(dateTitle)}</h2>
+            </header>
+            <section class="dam-section">
+              <form id="editBookingForm" class="dam-form">
+                <label class="dam-field"><span>What it is</span>
+                  <select id="eb_kind">${KINDS.map(([v, l]) => `<option value="${v}"${v === kind0 ? " selected" : ""}>${l}</option>`).join("")}</select>
                 </label>
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Date (YYYY-MM-DD) *
-                  <input type="text" id="eb_date" value="${esc(dKey)}" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-                </label>
-              </div>
-              ${window.isTestShootType(b.type) ? `<label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Their role
-                <select id="eb_requesterRole" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">${window.testShootRoleOptions(b.requesterRole || "")}</select>
-              </label>` : ""}
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Email Address
-                  <input type="email" id="eb_email" value="${esc(b.email || '')}" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-                </label>
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Phone Number
-                  <input type="tel" id="eb_phone" value="${esc(b.phone || '')}" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-                </label>
-              </div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Type
-                  <input type="text" id="eb_type" value="${esc(b.type || 'Shoot')}" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-                </label>
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Duration
-                  <select id="eb_duration" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                    <option value="Full Day" ${(b.duration || 'Full Day') === 'Full Day' ? 'selected' : ''}>Full Day Shoot</option>
-                    <option value="Half Day (Morning)" ${b.duration === 'Half Day (Morning)' ? 'selected' : ''}>Half Day (Morning 9AM - 1PM)</option>
-                    <option value="Half Day (Afternoon)" ${b.duration === 'Half Day (Afternoon)' ? 'selected' : ''}>Half Day (Afternoon 2PM - 6PM)</option>
-                    <option value="Half Day (Flexible)" ${b.duration === 'Half Day (Flexible)' ? 'selected' : ''}>Half Day (Flexible Hours)</option>
+                <div class="dam-row">
+                  <label class="dam-field"><span id="eb_nameLabel">Name</span><input type="text" id="eb_name" value="${esc(nameShown)}" /></label>
+                  <label class="dam-field"><span>Date</span><input type="date" id="eb_date" value="${esc(dKey)}" required /></label>
+                </div>
+                <label class="dam-field" data-kinds="test meeting"><span>Their role</span><select id="eb_requesterRole">${window.testShootRoleOptions(b.requesterRole || "")}</select></label>
+                <label class="dam-field" data-kinds="workshop"><span>Run by <em>optional</em></span><input type="text" id="eb_host" value="${esc(b.host || "")}" placeholder="Who is teaching or organising it" /></label>
+                <label class="dam-field" data-kinds="meeting"><span>Where</span>
+                  <select id="eb_meetWhere">
+                    <option value="studio"${where0 === "studio" ? " selected" : ""}>At the studio — they come to you</option>
+                    <option value="theirs"${where0 === "theirs" ? " selected" : ""}>At their place — you go to them</option>
+                    <option value="call"${where0 === "call" ? " selected" : ""}>Phone or video call</option>
                   </select>
                 </label>
-              </div>
-              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Booking Status
-                <select id="eb_status" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                  <option value="confirmed" ${(!b.isTentative && b.status !== 'tentative' && b.status !== 'workshop' && b.status !== 'assisting') ? 'selected' : ''}>✓ Confirmed Client Booking</option>
-                  <option value="tentative" ${(b.isTentative || b.status === 'tentative') ? 'selected' : ''}>⏳ Anticipated Client Hold (Looks Booked to Public)</option>
-                  <option value="workshop" ${b.status === 'workshop' ? 'selected' : ''}>📚 Workshop Attended (Skill-Up Day)</option>
-                  <option value="assisting" ${b.status === 'assisting' ? 'selected' : ''}>🤝 Assisting Work (Assisting Another Photographer)</option>
-                </select>
-              </label>
-              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Contract Agreement &amp; Version Status
-                <select id="eb_contractVersion" data-contract-select="1" data-pending="1" data-custom="1" data-prev-value="${esc(ebSelected)}" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">${contractVersionOptionsHtml({ selected: ebSelected, pending: true })}</select>
-              </label>
-              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Reference Links (one per line)
-                <textarea id="eb_links" rows="2" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">${esc((b.links || []).join('\n'))}</textarea>
-              </label>
-              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Notes / Concepts
-                <textarea id="eb_notes" rows="2" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">${esc(b.notes || '')}</textarea>
-              </label>
-              <div style="display: flex; gap: 10px; margin-top: 8px;">
-                <button type="submit" class="admin-cal-btn primary">Save Changes</button>
-                <button type="button" id="cancelEditBtn" class="admin-cal-btn">Cancel</button>
-              </div>
-            </form>
+                <label class="dam-field" data-kinds="workshop assisting meeting-theirs"><span id="eb_placeLabel">Where</span><input type="text" id="eb_place" value="${esc(b.place || "")}" /></label>
+                <div class="dam-row" data-kinds="workshop assisting meeting">
+                  <label class="dam-field"><span id="eb_timeFromLabel">From</span><input type="time" id="eb_timeFrom" value="${esc(b.timeFrom || "")}" /></label>
+                  <label class="dam-field"><span id="eb_timeToLabel">To</span><input type="time" id="eb_timeTo" value="${esc(b.timeTo || "")}" /></label>
+                </div>
+                <div class="dam-row" data-kinds="booking test hold">
+                  <label class="dam-field"><span>Project type</span><input type="text" id="eb_type" value="${esc(b.type || "Shoot")}" /></label>
+                  <label class="dam-field"><span>Duration</span><select id="eb_duration">${dur("Full Day", "Full day")}${dur("Half Day (Morning)", "Half day · morning (9 AM – 1 PM)")}${dur("Half Day (Afternoon)", "Half day · afternoon (2 PM – 6 PM)")}${dur("Half Day (Flexible)", "Half day · flexible hours")}</select></label>
+                </div>
+                <div class="dam-row" data-kinds="booking test hold assisting meeting">
+                  <label class="dam-field"><span id="eb_emailLabel">Email</span><input type="email" id="eb_email" value="${esc(b.email || "")}" /></label>
+                  <label class="dam-field"><span id="eb_phoneLabel">Phone</span><input type="tel" id="eb_phone" value="${esc(b.phone || "")}" /></label>
+                </div>
+                <label class="dam-field" data-kinds="assisting"><span>Fee <em>for your records</em></span><input type="text" id="eb_fee" value="${esc(b.fee || "")}" placeholder="e.g. ₹5,000" /></label>
+                <label class="dam-field" data-kinds="booking test hold"><span>Contract</span>
+                  <select id="eb_contractVersion" data-contract-select="1" data-pending="1" data-custom="1" data-prev-value="${esc(ebSelected)}">${contractVersionOptionsHtml({ selected: ebSelected, pending: true, custom: true })}</select>
+                </label>
+                <p class="dam-hint" data-kinds="meeting">Clients see this day as <b>busy</b> — nothing about the meeting is shown to them.</p>
+                <label class="dam-field" data-kinds="booking test hold workshop meeting"><span id="eb_linksLabel">Reference links <em>one per line</em></span><textarea id="eb_links" rows="2">${esc((b.links || []).join("\n"))}</textarea></label>
+                <label class="dam-field"><span id="eb_notesLabel">Notes</span><textarea id="eb_notes" rows="3">${esc(b.notes || "")}</textarea></label>
+                <div class="dam-actions">
+                  <button type="submit" class="admin-cal-btn primary">Save changes</button>
+                  <button type="button" id="cancelEditBtn" class="admin-cal-btn dam-cancel">Cancel</button>
+                </div>
+              </form>
+            </section>
           </div>
         </div>
       `;
+
+      // The words and the fields for the kind chosen.
+      const LABELS = {
+        booking: { eyebrow: "Edit booking", name: "Client / model name", ph: "Name or brand", req: true, notes: "Notes / concepts" },
+        test: { eyebrow: "Edit test shoot", name: "Requested by", ph: "Model, designer, brand or make-up artist", req: true, notes: "Notes / concepts" },
+        hold: { eyebrow: "Edit hold", name: "Held for", ph: "Who you are holding the day for (optional)", req: false, notes: "Notes" },
+        workshop: { eyebrow: "Edit workshop", name: "Workshop", ph: "e.g. Lighting masterclass", req: true, place: "Where it is held", from: "Starts", to: "Ends", links: "Link — registration or details", notes: "Notes" },
+        assisting: { eyebrow: "Edit assisting day", name: "Assisting", ph: "The photographer you are assisting", req: true, place: "Where the shoot is", from: "Call time", to: "Wrap", email: "Their email", phone: "Their phone", notes: "Notes — brief, call sheet, what to bring" },
+        meeting: { eyebrow: "Edit meeting", name: "Meeting with", ph: "Who you are meeting", req: true, place: "Their address", from: "From", to: "To", notes: "What they want to talk about" }
+      };
+      const shapeForm = () => {
+        const k = $("#eb_kind").value, L = LABELS[k] || LABELS.booking;
+        const theirs = k === "meeting" && $("#eb_meetWhere").value === "theirs";
+        document.querySelectorAll("#editBookingForm [data-kinds]").forEach((el) => {
+          const ks = el.dataset.kinds.split(" ");
+          el.hidden = !(ks.includes(k) || (theirs && ks.includes("meeting-theirs")));
+        });
+        $("#ebEyebrow").textContent = L.eyebrow;
+        $("#eb_nameLabel").textContent = L.name + (L.req ? " *" : "");
+        $("#eb_name").placeholder = L.ph;
+        $("#eb_name").required = !!L.req;
+        $("#eb_placeLabel").textContent = L.place || "Where";
+        $("#eb_timeFromLabel").textContent = L.from || "From";
+        $("#eb_timeToLabel").textContent = L.to || "To";
+        $("#eb_emailLabel").textContent = L.email || "Email";
+        $("#eb_phoneLabel").textContent = L.phone || "Phone";
+        $("#eb_notesLabel").textContent = L.notes;
+        $("#eb_linksLabel").innerHTML = L.links ? esc(L.links) : "Reference links <em>one per line</em>";
+      };
+      $("#eb_kind")?.addEventListener("change", shapeForm);
+      $("#eb_meetWhere")?.addEventListener("change", shapeForm);
+      shapeForm();
 
       $("#closeEditModal")?.addEventListener("click", () => modalContainer.innerHTML = "");
       $("#cancelEditBtn")?.addEventListener("click", () => modalContainer.innerHTML = "");
@@ -5780,25 +5843,40 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
 
       $("#editBookingForm")?.addEventListener("submit", (e) => {
         e.preventDefault();
-        const name = $("#eb_name").value.trim();
-        const newDateKey = $("#eb_date").value.trim();
-        const email = $("#eb_email").value.trim();
-        const phone = $("#eb_phone").value.trim();
-        const type = $("#eb_type").value.trim();
-        const duration = $("#eb_duration").value;
-        const status = $("#eb_status").value;
-        const isTentative = (status === "tentative");
-        const isWorkshop = (status === "workshop");
-        const isAssisting = (status === "assisting");
-        const rawLinks = $("#eb_links").value.split("\n").map(s => s.trim()).filter(Boolean);
-        const notes = $("#eb_notes").value.trim();
-        const contractVersion = $("#eb_contractVersion").value;
-        const agreedToTerms = (contractVersion !== "Pending Agreement");
-
+        const k = $("#eb_kind").value;
+        const val = (id) => (($(`#${id}`) || {}).value || "").trim();
+        // A field on show is saved as it reads; one the kind hides keeps what it held.
+        const shown = (id) => { const el = $(`#${id}`); return !!el && !el.closest("[hidden]"); };
+        const pick = (id) => (shown(id) ? val(id) : undefined);
+        const STAND = { booking: "Client Booking", test: "Test shoot", hold: "Anticipated Client Hold", workshop: "Workshop Day", assisting: "Assisting Work", meeting: "Meeting" };
+        const name = val("eb_name") || STAND[k];
+        let type = val("eb_type") || b.type || "Shoot";
+        if (k === "test" && !window.isTestShootType(type)) type = "Selective Collaboration (TFP)";
+        if ((k === "booking" || k === "hold") && window.isTestShootType(type) && kind0 === "test") type = "Shoot";
+        if (k === "workshop") type = "Workshop Attended";
+        if (k === "assisting") type = "Assisting Photographer";
+        if (k === "meeting") type = "Meeting";
+        const status = k === "hold" ? "tentative" : (k === "booking" || k === "test") ? "confirmed" : k;
+        // Workshops, assisting days and meetings are the studio's own: no contract.
+        const internal = k === "workshop" || k === "assisting" || k === "meeting";
+        const contractVersion = internal ? "Not Required" : $("#eb_contractVersion").value;
+        const agreedToTerms = contractVersion !== "Pending Agreement" && contractVersion !== "Not Required";
+        const theirs = k === "meeting" && $("#eb_meetWhere").value === "theirs";
         const targetId = b.id || bookingId || name;
-        const requesterRole = $("#eb_requesterRole") ? $("#eb_requesterRole").value : undefined;
-        updateCalBooking(dKey, targetId, { newDateKey, name, requesterRole, email, phone, type, duration, isTentative, status, links: rawLinks, notes, contractVersion, agreedToTerms });
-        toast("Booking updated successfully!");
+        updateCalBooking(dKey, targetId, {
+          newDateKey: val("eb_date") || dKey, name,
+          requesterRole: pick("eb_requesterRole"),
+          email: pick("eb_email"), phone: pick("eb_phone"),
+          type, duration: shown("eb_duration") ? $("#eb_duration").value : undefined,
+          isTentative: k === "hold", status,
+          links: shown("eb_links") ? $("#eb_links").value.split("\n").map((s) => s.trim()).filter(Boolean) : undefined,
+          notes: val("eb_notes"), contractVersion, agreedToTerms,
+          place: k === "meeting" && !theirs ? "" : pick("eb_place"),
+          timeFrom: pick("eb_timeFrom"), timeTo: pick("eb_timeTo"),
+          host: pick("eb_host"), fee: pick("eb_fee"),
+          meetWhere: k === "meeting" ? $("#eb_meetWhere").value : undefined
+        });
+        toast(k === "meeting" ? "Meeting saved. Clients see the day as busy." : "Saved.");
         modalContainer.innerHTML = "";
         renderAdminGrid();
         renderRoster();
@@ -5828,6 +5906,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         if (st === "tentative") return '<span class="roster-pill roster-pill-hold">Hold</span>';
         if (st === "workshop") return '<span class="roster-pill roster-pill-workshop">Workshop</span>';
         if (st === "assisting") return '<span class="roster-pill roster-pill-assisting">Assisting</span>';
+        if (st === "meeting" || st === "busy") return '<span class="roster-pill roster-pill-meeting">Meeting</span>';
         if (/test|tfp/i.test(b.type || "")) return '<span class="roster-pill roster-pill-test">Test shoot</span>';
         return '<span class="roster-pill roster-pill-confirmed">Booked</span>';
       };
@@ -5835,9 +5914,9 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         <div class="dam-booking">
           <div class="dam-booking-main">
             <div class="dam-booking-name">${esc(window.bookingWho(b))} ${pillFor(b)}</div>
-            <div class="dam-booking-sub">${esc(b.type || "")}${b.duration ? " · " + esc(b.duration) : ""}${b.phone ? " · " + esc(b.phone) : ""}${b.email ? " · " + esc(b.email) : ""}</div>
+            <div class="dam-booking-sub">${window.isInternalEntry(b) ? esc(window.bookingWhenWhere(b) || (b.status === "meeting" ? "Time and place not set yet" : b.type || "")) : `${esc(b.type || "")}${b.duration ? " · " + esc(b.duration) : ""}`}${b.phone ? " · " + esc(b.phone) : ""}${b.email ? " · " + esc(b.email) : ""}</div>
             ${b.notes ? `<div class="dam-booking-sub"><em>${esc(b.notes)}</em></div>` : ""}
-            ${b.agreedContract
+            ${window.isInternalEntry(b) ? "" : b.contractVersion === "Not Required" ? `<div class="dam-booking-sub">No contract needed</div>` : b.agreedContract
               ? `<div class="dam-booking-ok">Contract agreed · ${esc(b.agreedContract)}</div>`
               : isDecidableHold(b)
                 ? `<div class="dam-booking-sub contract-sent-note">Contract sent · ${esc(b.contractVersion)} · awaiting approval</div>`
@@ -5848,7 +5927,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           </div>
           <div class="dam-booking-actions">
             ${isDecidableHold(b) ? `<button type="button" class="linkish hold-accept" onclick="window.acceptHoldBooking('${dKey}', '${b.id}')">✓ Accept</button><button type="button" class="linkish hold-reject" onclick="window.rejectHoldBooking('${dKey}', '${b.id}')">✕ Reject</button>` : ""}
-            <button type="button" class="linkish" onclick="document.getElementById('closeAdminModal')?.click(); window.openPdfContractGenerator('${dKey}', '${b.id}')">Contract PDF</button>
+            ${window.isInternalEntry(b) ? "" : `<button type="button" class="linkish" onclick="document.getElementById('closeAdminModal')?.click(); window.openPdfContractGenerator('${dKey}', '${b.id}')">Contract PDF</button>`}
             <button type="button" class="linkish" onclick="window.openEditBookingModal('${dKey}', '${b.id}')">Edit</button>
             <button type="button" class="linkish muted" onclick="window.removeBookingFromRoster('${dKey}', '${b.id}'); document.getElementById('closeAdminModal')?.click();" title="Take this booking off the calendar">Delete</button>
           </div>
@@ -5865,13 +5944,14 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             </header>
 
             <section class="dam-section">
-              <div class="dam-section-head"><h3>Mark this day</h3><span class="dam-hint">One tap. Hold and Test shoot use the name and notes below if you have typed them.</span></div>
+              <div class="dam-section-head"><h3>Mark this day</h3><span class="dam-hint">One tap. Workshop, Assisting and Meeting then open their details; Hold and Test shoot use the name and notes below if typed.</span></div>
               <div class="dam-chips">
                 <button type="button" class="dam-chip chip-block" id="toggleBlockBtn">${blockLabel}</button>
                 <button type="button" class="dam-chip chip-hold" id="quickHoldBtn">Hold</button>
                 <button type="button" class="dam-chip chip-test" id="quickTestShootBtn">Test shoot</button>
                 <button type="button" class="dam-chip chip-workshop" id="quickWorkshopBtn">Workshop</button>
                 <button type="button" class="dam-chip chip-assisting" id="quickAssistingBtn">Assisting</button>
+                <button type="button" class="dam-chip chip-meeting" id="quickMeetingBtn" title="Someone visiting the studio to talk — or you visiting them. Clients see the day as busy.">Meeting</button>
               </div>
             </section>
 
@@ -5955,7 +6035,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           notes: $("#m_clientNotes").value.trim()
         };
         const ver = $("#m_clientContractVersion")?.value;
-        if (ver && ver !== "Pending Agreement" && ver !== "Custom Contract") typed.contractVersion = ver;
+        if (ver && ver !== "Pending Agreement" && ver !== "Custom Contract" && ver !== "Not Required") typed.contractVersion = ver;
         modalContainer.innerHTML = "";
         window.openPdfContractGenerator(dKey, typed);
       });
@@ -5982,22 +6062,25 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         updateAdminReminders();
       });
 
+      /* The studio's own days (v592): one tap marks the day, then its own form
+         opens for the details — what, who, where, when — with no contract
+         asked for. Closing it keeps the mark. */
+      const markThenDetail = (entry, said) => {
+        const nb = addCalBooking(dKey, { isTentative: false, contractVersion: "Not Required", agreedToTerms: false, ...entry });
+        toast(said);
+        renderAdminGrid();
+        renderRoster();
+        updateAdminReminders();
+        window.openEditBookingModal(dKey, nb.id);
+      };
       $("#quickWorkshopBtn")?.addEventListener("click", () => {
-        addCalBooking(dKey, { name: "Workshop Day", type: "Workshop Attended", notes: "Booked for Workshop (Skill-Up Day)", isTentative: false, status: "workshop", contractVersion: "Pending Agreement", agreedToTerms: false });
-        toast(`📚 Workshop day marked for ${dKey}! (Appears as Booked for Workshop in Yellow)`);
-        modalContainer.innerHTML = "";
-        renderAdminGrid();
-        renderRoster();
-        updateAdminReminders();
+        markThenDetail({ name: $("#m_clientName").value.trim() || "Workshop Day", type: "Workshop Attended", notes: $("#m_clientNotes").value.trim(), status: "workshop" }, `Workshop marked for ${dKey} — add its details.`);
       });
-
       $("#quickAssistingBtn")?.addEventListener("click", () => {
-        addCalBooking(dKey, { name: "Assisting Work", type: "Assisting Photographer", notes: "Booked for Assisting Work", isTentative: false, status: "assisting", contractVersion: "Pending Agreement", agreedToTerms: false });
-        toast(`Assisting work marked for ${dKey}.`);
-        modalContainer.innerHTML = "";
-        renderAdminGrid();
-        renderRoster();
-        updateAdminReminders();
+        markThenDetail({ name: $("#m_clientName").value.trim() || "Assisting Work", type: "Assisting Photographer", notes: $("#m_clientNotes").value.trim(), status: "assisting" }, `Assisting day marked for ${dKey} — add its details.`);
+      });
+      $("#quickMeetingBtn")?.addEventListener("click", () => {
+        markThenDetail({ name: $("#m_clientName").value.trim() || "Meeting", type: "Meeting", notes: $("#m_clientNotes").value.trim(), status: "meeting", meetWhere: "studio", email: $("#m_clientEmail").value.trim(), phone: ($("#m_clientPhone")?.value || "").trim() }, `Meeting marked for ${dKey} — clients see the day as busy.`);
       });
 
       // A test shoot's person is whoever asked for it: the label says so, and their role is asked.
@@ -6040,7 +6123,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         const rawLink = $("#m_clientLinks").value.trim();
         const notes = $("#m_clientNotes").value.trim();
         const contractVersion = $("#m_clientContractVersion")?.value || "Pending Agreement";
-        const agreedToTerms = (contractVersion !== "Pending Agreement");
+        const agreedToTerms = contractVersion !== "Pending Agreement" && contractVersion !== "Not Required";
 
         const links = rawLink ? [rawLink] : [];
         addCalBooking(dKey, { name, requesterRole: isTestShoot ? ($("#m_requesterRole")?.value || "") : "", email, phone, type, duration, isTentative, status: statusVal, links, notes, contractVersion, agreedToTerms });
