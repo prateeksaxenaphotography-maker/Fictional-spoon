@@ -2963,8 +2963,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1791474283061,
-    "syncedAt": 1791474283061
+    "updatedAt": 1791474380240,
+    "syncedAt": 1791474380240
   },
   "INVITE_CODES": [
     {
@@ -3166,7 +3166,7 @@ window.WPS_DATA = {
     }
   },
   "HOME_SLIDESHOW": {
-    "seconds": 5
+    "seconds": 4
   },
   "STUDIO": {
     "kind": "home",
@@ -3186,7 +3186,7 @@ window.WPS_DATA = {
     "TFP_PACKAGE": 1791378727482,
     "HOME_STUDIO_RATE": 1791378727482,
     "PORTFOLIO_PDF": 1791302275441,
-    "HOME_SLIDESHOW": 1791438600855,
+    "HOME_SLIDESHOW": 1791474369889,
     "STUDIO": 0,
     "MEASURE_UNITS": 1790269147688,
     "HOME_STUDIO_RATE_TFP": 1791378727482
