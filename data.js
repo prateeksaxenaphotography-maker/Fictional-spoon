@@ -2720,13 +2720,25 @@ window.WPS_DATA = {
       "2026-10-09": true,
       "2026-10-14": true,
       "2026-10-16": true,
-      "2026-10-12": true
+      "2026-10-12": true,
+      "2026-10-19": true,
+      "2026-10-21": true,
+      "2026-10-23": true,
+      "2026-10-26": true,
+      "2026-10-28": true,
+      "2026-10-30": true
     },
     "dateStamps": {
       "2026-10-09": 1791438629101,
       "2026-10-14": 1791438639063,
       "2026-10-16": 1791438645813,
-      "2026-10-12": 1791438647855
+      "2026-10-12": 1791438647855,
+      "2026-10-19": 1791439771850,
+      "2026-10-21": 1791439776949,
+      "2026-10-23": 1791439778862,
+      "2026-10-26": 1791439782766,
+      "2026-10-28": 1791439784699,
+      "2026-10-30": 1791439787137
     },
     "bookedDates": {
       "2026-08-15": [
@@ -2864,12 +2876,22 @@ window.WPS_DATA = {
       ],
       "2026-10-11": [
         {
-          "id": "b_1790784432842_l7fy",
-          "isTentative": true,
-          "status": "tentative",
-          "type": "Fashion Editorial",
-          "contractVersion": "Pending Agreement",
-          "updatedAt": 1790784710365
+          "id": "b_1791439997048_sm2l",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "V3.7-TFP",
+          "updatedAt": 1791439997049
+        }
+      ],
+      "2026-10-16": [
+        {
+          "id": "b_1791440043708_33o2",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "V3.7-TFP",
+          "updatedAt": 1791440043708
         }
       ]
     },
@@ -2929,12 +2951,13 @@ window.WPS_DATA = {
       "2026-10-17::Prateek",
       "2026-10-17::b_audit_NP-20260929-153038-U78V",
       "2026-10-17::NP-20260929-153038-U78V",
-      "2026-09-29::b_1790668207292_sywn"
+      "2026-09-29::b_1790668207292_sywn",
+      "2026-10-11::b_1790784432842_l7fy"
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1791438731151,
-    "syncedAt": 1791438731151
+    "updatedAt": 1791440052750,
+    "syncedAt": 1791440052750
   },
   "INVITE_CODES": [
     {
