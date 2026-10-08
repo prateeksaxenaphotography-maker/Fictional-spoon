@@ -4157,6 +4157,14 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     const tfpSpecs = String(tfpPkg.specs || "").replace(/\s*\((No RAW files delivered|RAW files not included)\)\s*$/i, "").trim() || "Full proof gallery + 8 retouched photos";
     const pkgValue = (p) => `₹${Number(p.price).toLocaleString("en-IN")} (${p.name})`;
     const promoCodes = (typeof window.getAdminPromoCodes === "function" && window.getAdminPromoCodes()) || {};
+    // Invite codes, for a test shoot's deliverables (v590): a booking made with one reopens with it.
+    const inviteCodes = ((typeof window.getAdminInviteCodes === "function" && window.getAdminInviteCodes()) || []).filter((c) => c && typeof c === "object" && c.code);
+    const initialInvite = (() => {
+      const typed = b.inviteMeta && b.inviteMeta.code;
+      const hit = typed ? inviteCodes.find((c) => window.codeMatches(c.code, typed)) : null;
+      return hit ? hit.code : "";
+    })();
+    const inviteLabel = (c) => window.isCodeFingerprint(c.code) ? `${c.desc || "Invite code"} (made on another device)` : c.code;
     const describePromo = (e) => {
       const hs = window.getPromoHomeStudioDiscount(e), parts = [];
       if (Number(e.flat) > 0) parts.push(`flat ${inr(e.flat)} off ${e.includeAddons ? "package + rental" : "the package"}`);
@@ -4273,8 +4281,14 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               <label class="pdfgen-field" id="pdf_packageWrap">Package &amp; deliverables *<select id="pdf_packageSelect">
                 ${packages.map((p) => `<option value="${esc(pkgValue(p))}"${initialPkg === p ? " selected" : ""}>₹${Number(p.price).toLocaleString("en-IN")} · ${esc(p.name)}${p.specs ? ` (${esc(p.specs)})` : ""}</option>`).join("")}
                 <option value="custom"${!initialPkg ? " selected" : ""}>✏️ Custom package / bespoke deliverables</option>
-              </select></label>
-              <div class="pdfgen-field" id="pdf_tfpPackageWrap">Deliverables<div class="pdfgen-static">Test shoot / TFP · ${esc(tfpSpecs)}. No shoot fee.</div></div>
+              </select><span class="pdfgen-hint" id="pdf_deliverablesHint"></span></label>
+              <div class="pdfgen-field" id="pdf_tfpPackageWrap">Deliverables
+                <select id="pdf_invite" aria-label="Invite code the test shoot was booked with">
+                  <option value="">No invite code — your test-shoot default</option>
+                  ${inviteCodes.map((c) => `<option value="${esc(c.code)}"${initialInvite === c.code ? " selected" : ""}>${esc(inviteLabel(c))}${c.deliverables ? ` · own deliverables` : ""}</option>`).join("")}
+                </select>
+                <div class="pdfgen-static" id="pdf_tfpDeliverables">Test shoot / TFP · ${esc(tfpSpecs)}. No shoot fee.</div>
+              </div>
               <label class="pdfgen-field">Contract document *<select id="pdf_contractVersion" data-contract-select="1" data-custom="1" data-prev-value="${esc(genSelected)}">${contractVersionOptionsHtml({ selected: genSelected })}</select></label>
               <label class="pdfgen-field" id="pdf_scheduleWrap">Payment milestones<select id="pdf_paymentMilestones">
                 ${["5050", "503020", "50301010"].map((k) => `<option value="${k}"${initialSchedule === k ? " selected" : ""}>${esc(PACKAGE_SCHEDULES[k].label)} · ${esc(PACKAGE_SCHEDULES[k].contract.replace(/ \(.*$/, ""))}</option>`).join("")}
@@ -4359,10 +4373,28 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       : q("pdf_duration").value;
     const currentRental = () => (venueOf() === "home" && !q("pdf_venueByStudio").checked) ? Math.max(0, Number(q("pdf_rental").value) || 0) : 0;
     const currentPackagePrice = () => { const sel = q("pdf_packageSelect"); return sel.value === "custom" ? parsePrice(q("pdf_customPkgName").value) : parsePrice(sel.value); };
-    const currentPackageLabel = () => {
-      if (kindOf() === "tfp") return `Test Shoot / TFP · ${tfpSpecs}`;
+    /* The deliverables this contract states, by the booking page's rule
+       (window.bookingDeliverables): a test shoot's are its invite code's own
+       line or the default; a paid shoot's, its package's or the promo code's
+       chosen under Discount. Contracts V4.1 say the deliverables are the ones
+       stated in the booking, so the PDF has to state them (v590). */
+    const pdfDeliverables = () => {
+      const plain = (line) => String(line || "").replace(/\s*\((No RAW files delivered|RAW files not included)\)\s*$/i, "").trim();
+      if (kindOf() === "tfp") {
+        const inv = inviteCodes.find((c) => c.code === q("pdf_invite").value) || null;
+        const d = window.bookingDeliverables({ tfp: true, invite: inv });
+        return { line: plain(d.line) || tfpSpecs, from: d.from };
+      }
       const sel = q("pdf_packageSelect");
-      if (sel.value !== "custom") return sel.value;
+      if (sel.value === "custom") return { line: "", from: "custom" };
+      const disc = currentDiscount();
+      const d = window.bookingDeliverables({ tfp: false, promo: disc.source === "promo" ? disc.entry : null, pkg: packages.find((p) => pkgValue(p) === sel.value) || null });
+      return { line: d.line, from: d.from };
+    };
+    const currentPackageLabel = () => {
+      if (kindOf() === "tfp") return `Test Shoot / TFP · ${pdfDeliverables().line}`;
+      const sel = q("pdf_packageSelect");
+      if (sel.value !== "custom") { const dl = pdfDeliverables().line; return dl ? `${sel.value} — ${dl}` : sel.value; }
       const cloud = q("pdf_customCloudRetention").value === "custom" ? q("pdf_customCloudRetentionInput").value.trim() : q("pdf_customCloudRetention").value;
       return `${q("pdf_customPkgName").value.trim()} — ${q("pdf_customRetouchedCount").value.trim()} (${q("pdf_customDownloadPermission").value}; ${q("pdf_customRevisions").value}; ${cloud})`;
     };
@@ -4434,6 +4466,11 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       const kind = kindOf(), venue = venueOf(), free = q("pdf_venueByStudio").checked;
       q("pdf_packageWrap").style.display = kind === "paid" ? "" : "none";
       q("pdf_tfpPackageWrap").style.display = kind === "tfp" ? "" : "none";
+      {
+        const dl = pdfDeliverables();
+        q("pdf_tfpDeliverables").textContent = `Test shoot / TFP · ${dl.line}${dl.from === "invite" ? " (set on the invite code)" : ""}. No shoot fee.`;
+        q("pdf_deliverablesHint").textContent = kind === "paid" && dl.line ? `Deliverables on this contract: ${dl.line}${dl.from === "promo" ? " — set by the promo code under Discount" : ""}` : "";
+      }
       q("pdf_scheduleWrap").style.display = kind === "paid" ? "" : "none";
       q("pdf_customPackage_wrap").style.display = (kind === "paid" && q("pdf_packageSelect").value === "custom") ? "" : "none";
       q("pdf_customCloudRetentionWrap").style.display = q("pdf_customCloudRetention").value === "custom" ? "" : "none";
@@ -4502,7 +4539,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     document.querySelectorAll('input[name="pdf_venue"]').forEach((r) => r.addEventListener("change", onVenueChange));
     locEl.addEventListener("input", () => { locEl.dataset.auto = ""; });
     q("pdf_rental").addEventListener("input", () => { rentalTouched = true; render(); });
-    ["pdf_venueByStudio", "pdf_packageSelect", "pdf_paymentMilestones", "pdf_customCloudRetention", "pdf_discount", "pdf_discountType", "pdf_duration"].forEach((id) => q(id)?.addEventListener("change", render));
+    ["pdf_venueByStudio", "pdf_packageSelect", "pdf_paymentMilestones", "pdf_customCloudRetention", "pdf_discount", "pdf_discountType", "pdf_duration", "pdf_invite"].forEach((id) => q(id)?.addEventListener("change", render));
     ["pdf_customPkgName", "pdf_customRetouchedCount", "pdf_customCloudRetentionInput", "pdf_discountValue", "pdf_discountReason", "pdf_timeStart", "pdf_timeEnd"].forEach((id) => q(id)?.addEventListener("input", render));
     render();
 
@@ -4556,7 +4593,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         studioProvidedByPhotographer: !!$("#pdf_venueByStudio")?.checked,
         contractVersion: $("#pdf_contractVersion").value,
         package: pkgLabel,
-        tfpSpecs,
+        tfpSpecs: kind === "tfp" ? pdfDeliverables().line : tfpSpecs,
         paymentMilestones: kind === "tfp" ? "tfp" : $("#pdf_paymentMilestones").value,
         homeStudioFee: m.rental,
         homeStudioListPrice: m.listRental,
