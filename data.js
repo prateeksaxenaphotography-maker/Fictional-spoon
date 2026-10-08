@@ -2963,8 +2963,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1791442836929,
-    "syncedAt": 1791442836929
+    "updatedAt": 1791474283061,
+    "syncedAt": 1791474283061
   },
   "INVITE_CODES": [
     {
@@ -3204,8 +3204,9 @@ window.WPS_DATA = {
         "shoot": "Atharv Sharma",
         "shootId": "mubczus1xaoo4q",
         "verified": true,
+        "confidential": false,
         "onHome": true,
-        "updatedAt": 1790054531335
+        "updatedAt": 1791474270494
       }
     ],
     "deleted": []
