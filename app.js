@@ -7852,8 +7852,8 @@ window.resolveContractArchive = function(version) {
             <span class="dp-legend-item"><span class="dp-legend-dot dot-available"></span> Open</span>
             <span class="dp-legend-item"><span class="dp-legend-dot dot-booked"></span> Booked</span>
             <span class="dp-legend-item"><span class="dp-legend-dot dot-testshoot"></span> Test shoot</span>
-            <span class="dp-legend-item"><span class="dp-legend-dot dot-workshop"></span> Away (workshop)</span>
-            <span class="dp-legend-item"><span class="dp-legend-dot dot-assisting"></span> Away (another shoot)</span>
+            <span class="dp-legend-item"><span class="dp-legend-dot dot-workshop"></span> Workshop</span>
+            <span class="dp-legend-item"><span class="dp-legend-dot dot-assisting"></span> Assisting</span>
             <span class="dp-legend-item"><span class="dp-legend-dot dot-blocked"></span> Closed (weekdays)</span>
           </div>
           <div class="dp-nav">
