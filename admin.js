@@ -81,6 +81,25 @@ window.codesAreUnpublished = function() {
 };
 
 
+/* ---- who asked for a test shoot (v591) ---- */
+
+// A test shoot always has someone behind it who asked for it — the owner:
+// "there will always be a model or designer or brand or make up person who
+// might have requested it". The same words as the booking form's "You are".
+window.TEST_SHOOT_ROLES = [["Model", "Model / talent"], ["MUA", "Make-up artist"], ["Stylist", "Stylist / wardrobe"], ["Designer", "Fashion designer"], ["Brand", "Brand"], ["Agency", "Agency"], ["Other", "Other"]];
+window.isTestShootType = (t) => /TFP|test shoot/i.test(String(t || ""));
+// The one-tap Test shoot mark used to save "Test Shoot Client" when no name was
+// typed: a stand-in, not a person, so it reads as what it is.
+window.isStandInName = (n) => /^(Test Shoot Client|Test shoot)$/i.test(String(n || "").trim());
+window.bookingWho = (b) => {
+  if (!b) return "—";
+  const name = window.isStandInName(b.name) ? "Test shoot" : (b.name || "—");
+  const role = (window.TEST_SHOOT_ROLES.find(([v]) => v === b.requesterRole) || [])[1];
+  return role && window.isTestShootType(b.type) ? `${name} · ${role}` : name;
+};
+window.testShootRoleOptions = (selected) => `<option value="">Choose…</option>` + window.TEST_SHOOT_ROLES.map(([v, label]) => `<option value="${v}"${v === selected ? " selected" : ""}>${label}</option>`).join("");
+
+
 /* ---- the dates a code works between ---- */
 
 // One block shared by the promo and the invite creator forms, told apart by
@@ -5470,7 +5489,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               }
             </div>
             <div>
-              ${status.bookings.map(b => `<div class="admin-cal-client-item" title="${esc(b.name)} - ${esc(b.type)}">${esc(b.name)}</div>`).join("")}
+              ${status.bookings.map(b => `<div class="admin-cal-client-item" title="${esc(window.bookingWho(b))} - ${esc(b.type)}">${esc(window.bookingWho(b))}</div>`).join("")}
             </div>
           </div>
         `;
@@ -5540,7 +5559,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         <div class="booking-row${isPast ? " is-past" : ""}">
           <span class="br-date">${esc(b.dateKey)}</span>
           <div class="br-main">
-            <div class="br-name">${esc(b.name)}</div>
+            <div class="br-name">${esc(window.bookingWho(b))}</div>
             <div class="br-sub">${esc(b.type || "General Shoot")}${b.notes ? ` · <em>${esc(b.notes)}</em>` : ""}</div>
             <div class="br-sub br-contract">${contractLine}</div>
           </div>
@@ -5680,6 +5699,9 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         const raw = String(b.contractVersion || "").trim();
         if (raw === "Custom Contract") return raw;
         if (raw === "Pending Agreement" || (!raw && !b.agreedToTerms)) return "Pending Agreement";
+        // The one-tap Test shoot mark stamped the archived V3.7 on bookings nobody
+        // signed (until v591). Shown as what it is, so saving cannot record a signature.
+        if (raw === "V3.7-TFP" && b.agreedToTerms !== true) return "Pending Agreement";
         if (!raw) return window.ACTIVE_CONTRACTS.commercial;
         const r = window.resolveContractArchive(raw);
         return r ? r.version : "Pending Agreement";
@@ -5693,13 +5715,16 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             
             <form id="editBookingForm" style="display: flex; flex-direction: column; gap: 12px;">
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Client / Model Name *
-                  <input type="text" id="eb_name" value="${esc(b.name)}" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">${window.isTestShootType(b.type) ? "Requested by *" : "Client / Model Name *"}
+                  <input type="text" id="eb_name" value="${esc(window.isTestShootType(b.type) && window.isStandInName(b.name) ? "" : b.name)}" placeholder="${window.isTestShootType(b.type) ? "Model, designer, brand or make-up artist" : ""}" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
                 </label>
                 <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Date (YYYY-MM-DD) *
                   <input type="text" id="eb_date" value="${esc(dKey)}" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
                 </label>
               </div>
+              ${window.isTestShootType(b.type) ? `<label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Their role
+                <select id="eb_requesterRole" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">${window.testShootRoleOptions(b.requesterRole || "")}</select>
+              </label>` : ""}
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Email Address
                   <input type="email" id="eb_email" value="${esc(b.email || '')}" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
@@ -5771,7 +5796,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         const agreedToTerms = (contractVersion !== "Pending Agreement");
 
         const targetId = b.id || bookingId || name;
-        updateCalBooking(dKey, targetId, { newDateKey, name, email, phone, type, duration, isTentative, status, links: rawLinks, notes, contractVersion, agreedToTerms });
+        const requesterRole = $("#eb_requesterRole") ? $("#eb_requesterRole").value : undefined;
+        updateCalBooking(dKey, targetId, { newDateKey, name, requesterRole, email, phone, type, duration, isTentative, status, links: rawLinks, notes, contractVersion, agreedToTerms });
         toast("Booking updated successfully!");
         modalContainer.innerHTML = "";
         renderAdminGrid();
@@ -5808,7 +5834,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       const bookingRow = (b) => `
         <div class="dam-booking">
           <div class="dam-booking-main">
-            <div class="dam-booking-name">${esc(b.name)} ${pillFor(b)}</div>
+            <div class="dam-booking-name">${esc(window.bookingWho(b))} ${pillFor(b)}</div>
             <div class="dam-booking-sub">${esc(b.type || "")}${b.duration ? " · " + esc(b.duration) : ""}${b.phone ? " · " + esc(b.phone) : ""}${b.email ? " · " + esc(b.email) : ""}</div>
             ${b.notes ? `<div class="dam-booking-sub"><em>${esc(b.notes)}</em></div>` : ""}
             ${b.agreedContract
@@ -5853,7 +5879,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               <div class="dam-section-head"><h3>Add a booking</h3><span class="dam-hint">Leave the name blank to hold the date.</span></div>
               <form id="modalAddBookingForm" class="dam-form">
                 <div class="dam-row">
-                  <label class="dam-field"><span>Client / model</span><input type="text" id="m_clientName" placeholder="Name or brand" /></label>
+                  <label class="dam-field"><span id="m_nameLabel">Client / model</span><input type="text" id="m_clientName" placeholder="Name or brand" /></label>
                   <label class="dam-field"><span>Status</span>
                     <select id="m_clientStatus">
                       <option value="confirmed">Confirmed booking</option>
@@ -5888,6 +5914,9 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                     </select>
                   </label>
                 </div>
+                <div class="dam-row" id="m_roleRow" hidden>
+                  <label class="dam-field"><span>Their role</span><select id="m_requesterRole">${window.testShootRoleOptions("")}</select></label>
+                </div>
                 <label class="dam-field"><span>Contract</span>
                   <select id="m_clientContractVersion" data-contract-select="1" data-pending="1" data-custom="1" data-prev-value="Pending Agreement">${contractVersionOptionsHtml({ selected: "Pending Agreement", pending: true })}</select>
                 </label>
@@ -5896,6 +5925,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                 <div class="dam-actions">
                   <button type="submit" class="admin-cal-btn primary">Add booking</button>
                   <button type="button" class="admin-cal-btn" id="draftContractBtn" title="Prepare an A4 contract PDF from the details above, without adding a booking">Draft contract PDF</button>
+                  <!-- The way out without adding anything, as × at the top does (the owner, Oct 8 2026: "there should be a cancel button"). -->
+                  <button type="button" class="admin-cal-btn dam-cancel" id="damCancelBtn" onclick="document.getElementById('closeAdminModal')?.click()">Cancel</button>
                 </div>
               </form>
             </section>
@@ -5969,10 +6000,23 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         updateAdminReminders();
       });
 
+      // A test shoot's person is whoever asked for it: the label says so, and their role is asked.
+      const syncWhoFields = () => {
+        const tfp = window.isTestShootType($("#m_clientType")?.value);
+        const lab = $("#m_nameLabel"), box = $("#m_clientName"), row = $("#m_roleRow");
+        if (lab) lab.textContent = tfp ? "Requested by" : "Client / model";
+        if (box) box.placeholder = tfp ? "Model, designer, brand or make-up artist" : "Name or brand";
+        if (row) row.hidden = !tfp;
+      };
+      $("#m_clientType")?.addEventListener("change", syncWhoFields);
+      syncWhoFields();
+
       $("#quickTestShootBtn")?.addEventListener("click", () => {
-        const clientName = $("#m_clientName").value.trim() || "Test Shoot Client";
+        // No name typed: "Test shoot", not a made-up client. And no contract is
+        // signed by tapping — it used to stamp the archived V3.7 on every one (v591).
+        const clientName = $("#m_clientName").value.trim() || "Test shoot";
         const notes = $("#m_clientNotes").value.trim() || "Booked for Test Shoot / TFP Collaboration.";
-        addCalBooking(dKey, { name: clientName, type: "Selective Collaboration (TFP)", notes: notes, isTentative: false, status: "confirmed", contractVersion: "V3.7-TFP", agreedToTerms: false });
+        addCalBooking(dKey, { name: clientName, requesterRole: $("#m_requesterRole")?.value || "", type: "Selective Collaboration (TFP)", notes: notes, isTentative: false, status: "confirmed", contractVersion: "Pending Agreement", agreedToTerms: false });
         toast(`📸 Test Shoot marked for ${dKey}! (Appears as Test Shoot in Blue)`);
         modalContainer.innerHTML = "";
         renderAdminGrid();
@@ -5991,14 +6035,15 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         const isTentative = (statusVal === "tentative");
         const isWorkshop = (statusVal === "workshop");
         const isAssisting = (statusVal === "assisting");
-        const name = rawName || (isWorkshop ? "Workshop Day" : isAssisting ? "Assisting Work" : isTentative ? "Anticipated Client Hold" : "Client Booking");
+        const isTestShoot = window.isTestShootType(type);
+        const name = rawName || (isWorkshop ? "Workshop Day" : isAssisting ? "Assisting Work" : isTentative ? "Anticipated Client Hold" : isTestShoot ? "Test shoot" : "Client Booking");
         const rawLink = $("#m_clientLinks").value.trim();
         const notes = $("#m_clientNotes").value.trim();
         const contractVersion = $("#m_clientContractVersion")?.value || "Pending Agreement";
         const agreedToTerms = (contractVersion !== "Pending Agreement");
 
         const links = rawLink ? [rawLink] : [];
-        addCalBooking(dKey, { name, email, phone, type, duration, isTentative, status: statusVal, links, notes, contractVersion, agreedToTerms });
+        addCalBooking(dKey, { name, requesterRole: isTestShoot ? ($("#m_requesterRole")?.value || "") : "", email, phone, type, duration, isTentative, status: statusVal, links, notes, contractVersion, agreedToTerms });
         toast(isWorkshop ? `Workshop day marked for ${dKey}.` : isAssisting ? `Assisting work marked for ${dKey}.` : isTentative ? `${dKey} held for ${name} — visitors see it as taken.` : `Booking confirmed for ${name} on ${dKey}.`);
         modalContainer.innerHTML = "";
         renderAdminGrid();

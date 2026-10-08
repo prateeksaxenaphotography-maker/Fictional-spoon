@@ -2591,6 +2591,10 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .dam-field input::placeholder, .dam-field textarea::placeholder { color: var(--ink-soft); opacity: .8; }
 .dam-field input:focus, .dam-field select:focus, .dam-field textarea:focus { outline: none; border-color: var(--ink); }
 .dam-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+/* Cancel sits apart from the two actions, at the far end, as the way out (Oct 2026). */
+.dam-actions .dam-cancel { margin-left: auto; }
+/* A row the form hides (the test-shoot role) stays hidden: the row's own display would otherwise win. */
+.dam-row[hidden] { display: none; }
 .dam-list { display: flex; flex-direction: column; gap: 8px; }
 .dam-booking { display: flex; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .dam-booking-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }

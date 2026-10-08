@@ -5127,6 +5127,9 @@ window.resolveContractArchive = function(version) {
     const booking = {
       id: "b_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
       name: bookingObj.name || "Anticipated Client Hold",
+      // Who asked for a test shoot — model, designer, brand, make-up artist… (v591).
+      // Kept on this device with the name; never published.
+      requesterRole: bookingObj.requesterRole || "",
       email: bookingObj.email || "",
       phone: bookingObj.phone || "",
       type: bookingObj.type || "Shoot",
@@ -5188,6 +5191,7 @@ window.resolveContractArchive = function(version) {
           ...cur,
           id: cur.id || ("b_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6)),
           name: updatedObj.name || cur.name,
+          requesterRole: updatedObj.requesterRole !== undefined ? updatedObj.requesterRole : (cur.requesterRole || ""),
           email: updatedObj.email !== undefined ? updatedObj.email : cur.email,
           phone: updatedObj.phone !== undefined ? updatedObj.phone : cur.phone,
           type: updatedObj.type || cur.type,
