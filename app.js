@@ -2233,7 +2233,7 @@ window.resolveContractArchive = function(version) {
         list.push({
           id: t.id,
           quote: t.quote || "",
-          by: t.by || "Anonymous",
+          by: t.by || (t.confidential === true ? "A private client" : "Anonymous"),
           role: t.role || "",
           kind: t.kind || "",
           // What sits under the name on a card. The old cards showed the
@@ -2246,9 +2246,12 @@ window.resolveContractArchive = function(version) {
           // email, a screenshot — in its inbox, and said so. The file itself
           // is never published: see the note on the upload field.
           verified: t.verified === true,
+          confidential: t.confidential === true,
           onHome: t.onHome !== false,
-          shootId: t.shootId || "",
-          shootTitle: t.shoot || ""
+          // A confidential client is never tied to a shoot, whatever an older
+          // copy of the record says.
+          shootId: t.confidential === true ? "" : (t.shootId || ""),
+          shootTitle: t.confidential === true ? "" : (t.shoot || "")
         });
       });
     SHOOTS.forEach(s => {
@@ -2326,6 +2329,7 @@ window.resolveContractArchive = function(version) {
           ${starRow(t.rating, `Rated ${t.rating} out of 5`)}
           ${under ? `<span class="tm-card-meta">${esc(under)}</span>` : ""}
           ${shoot}
+          ${t.confidential ? `<span class="tm-card-meta">Confidential project</span>` : ""}
         </figcaption>
       </figure>`;
   }

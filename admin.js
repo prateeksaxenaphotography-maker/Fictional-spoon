@@ -1674,6 +1674,9 @@ function cleanTestimonials(state) {
       shoot: str(t.shoot, TESTIMONIAL_STORE_LIMITS.shoot),
       shootId: str(t.shootId, 80),
       verified: t.verified === true,
+      // A client who allowed the words but not the name or the project: the
+      // card says "A private client" and never names a shoot.
+      confidential: t.confidential === true,
       onHome: t.onHome !== false,
       updatedAt: Number(t.updatedAt) || 0
     };
@@ -8552,8 +8555,9 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             </div>
           </div>
           <p class="field-hint">Their words, not a summary of them. If they said this to you rather than filling in the form, check they are happy to see it here under their name — the form asks for that in writing, and this does not.</p>
+          <label class="check-line"><input type="checkbox" id="tmE_conf"${t.confidential ? " checked" : ""} /><span>Keep the client and the project private <em>(a shoot under confidentiality). The card says “A private client” unless you type a credit below, and it is never linked to an album or named shoot.</em></span></label>
           <div class="field-row">
-            <label class="field"><span>Name to show *</span><input id="tmE_by" type="text" maxlength="${TESTIMONIAL_STORE_LIMITS.name}" value="${esc(t.by || "")}" placeholder="Aisha Khan" /></label>
+            <label class="field"><span>Name to show <span id="tmE_byReq">${t.confidential ? "(optional)" : "*"}</span></span><input id="tmE_by" type="text" maxlength="${TESTIMONIAL_STORE_LIMITS.name}" value="${esc(t.by || "")}" placeholder="Aisha Khan" /></label>
             <label class="field"><span>Credit them as</span><input id="tmE_role" type="text" maxlength="${TESTIMONIAL_STORE_LIMITS.role}" value="${esc(t.role || "")}" placeholder="Model, Noida" /></label>
           </div>
           <div class="field-row">
@@ -8573,7 +8577,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           <div class="field-row">
             <label class="field"><span>When (shown under their name)</span><input id="tmE_date" type="text" maxlength="40" value="${esc(t.dateLabel || "")}" placeholder="March 2026" /></label>
             <label class="field"><span>Which shoot</span>
-              <select id="tmE_shoot">
+              <select id="tmE_shoot"${t.confidential ? " disabled" : ""}>
                 <option value="">Not about one shoot</option>
                 ${albums.map((s) => `<option value="${esc(s.id)}"${t.shootId === s.id ? " selected" : ""}>${esc(s.title || s.talent || s.id)}</option>`).join("")}
               </select>
@@ -8615,10 +8619,17 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           quote: el("quote").value, by: el("by")?.value || "", role: el("role")?.value || "",
           kind: el("kind")?.value || "", rating: Number(el("rating")?.value) || 0,
           dateLabel: el("date")?.value || "", shootId: el("shoot")?.value || "",
-          verified: !!el("verified")?.checked, onHome: !!el("home")?.checked
+          verified: !!el("verified")?.checked, confidential: !!el("conf")?.checked,
+          onHome: !!el("home")?.checked
         };
       };
-      ["quote", "by", "role", "kind", "rating", "date", "shoot", "verified", "home"].forEach((n) => {
+      const tmConf = root.querySelector("#tmE_conf");
+      if (tmConf) tmConf.addEventListener("change", () => {
+        const shoot = root.querySelector("#tmE_shoot"), req = root.querySelector("#tmE_byReq");
+        if (shoot) { if (tmConf.checked) shoot.value = ""; shoot.disabled = tmConf.checked; }
+        if (req) req.textContent = tmConf.checked ? "(optional)" : "*";
+      });
+      ["quote", "by", "role", "kind", "rating", "date", "shoot", "verified", "conf", "home"].forEach((n) => {
         const el = root.querySelector(`#tmE_${n}`);
         if (!el) return;
         ["input", "change"].forEach((ev) => el.addEventListener(ev, () => {
@@ -8727,7 +8738,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       });
 
       root.querySelector("#tmAddBtn")?.addEventListener("click", () => {
-        tmEditing = { id: A.uid(), quote: "", by: "", role: "", kind: "", rating: 0, dateLabel: "", shoot: "", shootId: "", verified: false, onHome: true, updatedAt: 0 };
+        tmEditing = { id: A.uid(), quote: "", by: "", role: "", kind: "", rating: 0, dateLabel: "", shoot: "", shootId: "", verified: false, confidential: false, onHome: true, updatedAt: 0 };
         paint();
         root.querySelector("#tmE_quote")?.focus();
       });
@@ -8778,12 +8789,13 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         if (!tmEditing || !root.querySelector("#tmE_quote")) return "none";
         const val = (id) => String(root.querySelector(id)?.value || "").trim();
         const err = root.querySelector("#tmE_error");
-        const quote = val("#tmE_quote"), by = val("#tmE_by");
+        const conf = !!root.querySelector("#tmE_conf")?.checked;
+        const quote = val("#tmE_quote"), by = val("#tmE_by") || (conf ? "A private client" : "");
         const problem = !quote ? "Paste what they wrote first — a testimonial needs their words."
           : !by ? "Give the name to show under it (or write “Anonymous”)." : "";
         if (err) { err.textContent = problem; err.hidden = !problem; }
         if (problem) { root.querySelector(problem.startsWith("Paste") ? "#tmE_quote" : "#tmE_by")?.focus(); return "invalid"; }
-        const shootId = val("#tmE_shoot");
+        const shootId = conf ? "" : val("#tmE_shoot");
         const album = shootId ? A.shoots().find((s) => s.id === shootId) : null;
         const store = tmStore();
         const next = {
@@ -8796,6 +8808,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           shootId,
           shoot: album ? (album.title || album.talent || "") : "",
           verified: !!root.querySelector("#tmE_verified")?.checked,
+          confidential: conf,
           onHome: !!root.querySelector("#tmE_home")?.checked,
           updatedAt: Date.now()
         };
