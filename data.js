@@ -2716,9 +2716,18 @@ window.WPS_DATA = {
     "customOpenedDates": {
       "2026-09-07": true,
       "2026-09-09": true,
-      "2026-09-11": true
+      "2026-09-11": true,
+      "2026-10-09": true,
+      "2026-10-14": true,
+      "2026-10-16": true,
+      "2026-10-12": true
     },
-    "dateStamps": {},
+    "dateStamps": {
+      "2026-10-09": 1791438629101,
+      "2026-10-14": 1791438639063,
+      "2026-10-16": 1791438645813,
+      "2026-10-12": 1791438647855
+    },
     "bookedDates": {
       "2026-08-15": [
         {
@@ -2924,8 +2933,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1791438610348,
-    "syncedAt": 1791438610348
+    "updatedAt": 1791438731151,
+    "syncedAt": 1791438731151
   },
   "INVITE_CODES": [
     {
