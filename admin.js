@@ -3977,9 +3977,11 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           <span><i style="background: #A9AAB1;"></i>Blocked (weekdays by default)</span>
           <span><i style="background: #D24E1A;"></i>Booked</span>
           <span><i style="background: #2C6BB5;"></i>Test shoot</span>
-          <span><i style="background: #6B5BD2;"></i>Hold</span>
+          <span><i style="background: #6B5BD2;"></i>Held (awaiting contract)</span>
+          <span><i style="background: transparent; box-shadow: inset 0 0 0 2px #6B7280;"></i>Penciled in (open to others)</span>
           <span><i style="background: #B7791F;"></i>Workshop</span>
           <span><i style="background: #B23A5A;"></i>Assisting</span>
+          <span><i style="background: #2A8C82;"></i>Meeting (shown as busy)</span>
         </div>
 
         <div id="adminCalGridContainer"></div>
