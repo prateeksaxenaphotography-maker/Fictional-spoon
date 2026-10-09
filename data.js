@@ -2883,14 +2883,14 @@ window.WPS_DATA = {
           "updatedAt": 1791442826445
         }
       ],
-      "2026-10-31": [
+      "2026-11-01": [
         {
-          "id": "b_1791529609429_snum",
-          "isTentative": false,
-          "status": "confirmed",
+          "id": "b_1791530321995_p9vy",
+          "isTentative": true,
+          "status": "tentative",
           "type": "Selective Collaboration (TFP)",
           "contractVersion": "V4.1-TFP",
-          "updatedAt": 1791530069001
+          "updatedAt": 1791530321996
         }
       ]
     },
@@ -2966,12 +2966,14 @@ window.WPS_DATA = {
       "2026-10-31::Test shoot",
       "2026-10-15::b_1791474567085_fnb7",
       "2026-10-15::Assisting Work",
-      "2026-10-16::b_1791440043708_33o2"
+      "2026-10-16::b_1791440043708_33o2",
+      "2026-10-31::b_1791529609429_snum",
+      "2026-10-31::Rishabh Kaushik"
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1791530082696,
-    "syncedAt": 1791530082696
+    "updatedAt": 1791530594388,
+    "syncedAt": 1791530594388
   },
   "INVITE_CODES": [
     {
