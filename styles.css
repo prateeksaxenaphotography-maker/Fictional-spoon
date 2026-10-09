@@ -4553,6 +4553,11 @@ html.theme-dark .cx-live.is-going { color: #7aa7ff; background: rgba(122, 167, 2
    kind of entry stays hidden (the field's own display would otherwise win). */
 .dam-field[hidden], .dam-hint[hidden] { display: none !important; }
 .dam-field > span em { font-style: normal; font-weight: 400; color: var(--ink-soft); }
+.chip-pencil::before { background: #8A8F98; }
+.roster-pill-pencil, .admin-calendar-wrap .badge-pencil, .badge-pencil { background: rgba(138,143,152,0.16); color: #4F555E; }
+.theme-dark .roster-pill-pencil, .theme-dark .admin-calendar-wrap .badge-pencil { background: rgba(170,175,184,0.16); color: #C3C8D0; }
+.admin-cal-day.day-pencil { background: rgba(138,143,152,0.07) !important; }
+.admin-calendar-wrap .admin-cal-day.day-pencil { box-shadow: inset 3px 0 0 #8A8F98; }
 .chip-meeting::before { background: #2A8C82; }
 .roster-pill-meeting, .admin-calendar-wrap .badge-meeting, .badge-meeting { background: rgba(42,140,130,0.13); color: #1F6B63; }
 .theme-dark .roster-pill-meeting, .theme-dark .admin-calendar-wrap .badge-meeting { background: rgba(90,200,185,0.15); color: #7FD6CB; }

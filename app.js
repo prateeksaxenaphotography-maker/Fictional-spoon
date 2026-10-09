@@ -5003,7 +5003,15 @@ window.resolveContractArchive = function(version) {
     const isManuallyOpened = !!(settings.customOpenedDates && settings.customOpenedDates[key]);
     const isCustomBlocked = !!(settings.customBlockedDates && settings.customBlockedDates[key]);
     const bookings = (settings.bookedDates && settings.bookedDates[key]) || [];
-    const isBooked = bookings.length > 0;
+    /* A penciled-in day (v598) is someone who has said they will book, kept in
+       the studio's own calendar. It does NOT take the day: everyone else can
+       still book it. So every "is this day taken" answer below is worked out
+       from the firm entries only; the penciled ones are reported on their own
+       for the admin's grid. */
+    const isPencil = (b) => b && b.status === "pencil";
+    const penciled = bookings.filter(isPencil);
+    const firm = bookings.filter((b) => !isPencil(b));
+    const isBooked = firm.length > 0;
 
     const isTentativeBooking = (b) => {
       if (b.isTentative || b.status === "tentative") return true;
@@ -5018,13 +5026,13 @@ window.resolveContractArchive = function(version) {
     // the published one says only "busy", which is all a client is told.
     const isBusyBooking = (b) => b.status === "meeting" || b.status === "busy";
 
-    const hasConfirmedBooking = bookings.some(b => !isTentativeBooking(b) && !isWorkshopBooking(b) && !isAssistingBooking(b));
-    const isTentativeOnly = isBooked && !hasConfirmedBooking && bookings.some(b => isTentativeBooking(b));
-    const hasWorkshop = bookings.some(b => isWorkshopBooking(b));
-    const hasAssisting = bookings.some(b => isAssistingBooking(b));
-    const hasTestShoot = bookings.some(b => isTestShootBooking(b) && !isWorkshopBooking(b) && !isAssistingBooking(b));
-    const hasMeeting = bookings.some(b => b.status === "meeting");
-    const isBusyOnly = isBooked && bookings.every(isBusyBooking);
+    const hasConfirmedBooking = firm.some(b => !isTentativeBooking(b) && !isWorkshopBooking(b) && !isAssistingBooking(b));
+    const isTentativeOnly = isBooked && !hasConfirmedBooking && firm.some(b => isTentativeBooking(b));
+    const hasWorkshop = firm.some(b => isWorkshopBooking(b));
+    const hasAssisting = firm.some(b => isAssistingBooking(b));
+    const hasTestShoot = firm.some(b => isTestShootBooking(b) && !isWorkshopBooking(b) && !isAssistingBooking(b));
+    const hasMeeting = firm.some(b => b.status === "meeting");
+    const isBusyOnly = isBooked && firm.every(isBusyBooking);
     
     let isBlocked = false;
     if (isCustomBlocked) {
@@ -5048,6 +5056,7 @@ window.resolveContractArchive = function(version) {
       hasTestShoot,
       hasMeeting,
       isBusyOnly,
+      hasPencil: penciled.length > 0,
       bookings
     };
   }
