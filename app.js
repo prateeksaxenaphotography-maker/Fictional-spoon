@@ -1041,8 +1041,12 @@ window.getAdminTfpPackage = getAdminTfpPackage;
 window.cleanDeliverables = (v) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, 200) : "");
 window.bookingDeliverables = function ({ tfp = false, invite = null, promo = null, pkg = null } = {}) {
   if (tfp) {
+    // An invite code's own line wins; failing that, a promo code's (a test
+    // shoot can carry one when it owes a home studio rental); then the default.
     const own = invite && typeof invite === "object" ? window.cleanDeliverables(invite.deliverables) : "";
-    return own ? { line: own, from: "invite" } : { line: getAdminTfpPackage().specs, from: "default" };
+    if (own) return { line: own, from: "invite" };
+    const promoOwn = promo && typeof promo === "object" ? window.cleanDeliverables(promo.deliverables) : "";
+    return promoOwn ? { line: promoOwn, from: "promo" } : { line: getAdminTfpPackage().specs, from: "default" };
   }
   const own = promo && typeof promo === "object" ? window.cleanDeliverables(promo.deliverables) : "";
   if (own) return { line: own, from: "promo" };

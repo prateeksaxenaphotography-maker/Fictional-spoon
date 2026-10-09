@@ -4319,7 +4319,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                 ${packages.map((p) => `<option value="${esc(pkgValue(p))}"${initialPkg === p ? " selected" : ""}>₹${Number(p.price).toLocaleString("en-IN")} · ${esc(p.name)}${p.specs ? ` (${esc(p.specs)})` : ""}</option>`).join("")}
                 <option value="custom"${!initialPkg ? " selected" : ""}>✏️ Custom package / bespoke deliverables</option>
               </select><span class="pdfgen-hint" id="pdf_deliverablesHint"></span></label>
-              <div class="pdfgen-field" id="pdf_tfpPackageWrap">Deliverables
+              <div class="pdfgen-field" id="pdf_tfpPackageWrap">Invite code <span class="pdfgen-hint" style="display:inline;">— sets the deliverables when it has its own</span>
                 <select id="pdf_invite" aria-label="Invite code the test shoot was booked with">
                   <option value="">No invite code — your test-shoot default</option>
                   ${inviteCodes.map((c) => `<option value="${esc(c.code)}"${initialInvite === c.code ? " selected" : ""}>${esc(inviteLabel(c))}${c.deliverables ? ` · own deliverables` : ""}</option>`).join("")}
@@ -4335,7 +4335,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <div class="pdfgen-grid" id="pdf_discountRow">
               <label class="pdfgen-field">Discount<select id="pdf_discount">
                 <option value="">None</option>
-                ${Object.keys(promoCodes).map((code) => `<option value="${esc(code)}"${initialPromo === code ? " selected" : ""}>${esc(code)} · ${esc(describePromo(promoCodes[code]))}</option>`).join("")}
+                ${Object.keys(promoCodes).map((code) => `<option value="${esc(code)}"${initialPromo === code ? " selected" : ""}>${esc(code)} · ${esc(describePromo(promoCodes[code]))}${promoCodes[code].deliverables ? " · own deliverables" : ""}</option>`).join("")}
                 <option value="custom"${initialCustomDiscount ? " selected" : ""}>✏️ Custom discount…</option>
               </select></label>
               <div class="pdfgen-field" id="pdf_customDiscountWrap" style="display: none;">Custom discount
@@ -4419,7 +4419,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       const plain = (line) => String(line || "").replace(/\s*\((No RAW files delivered|RAW files not included)\)\s*$/i, "").trim();
       if (kindOf() === "tfp") {
         const inv = inviteCodes.find((c) => c.code === q("pdf_invite").value) || null;
-        const d = window.bookingDeliverables({ tfp: true, invite: inv });
+        const disc = currentDiscount();
+        const d = window.bookingDeliverables({ tfp: true, invite: inv, promo: disc.source === "promo" ? disc.entry : null });
         return { line: plain(d.line) || tfpSpecs, from: d.from };
       }
       const sel = q("pdf_packageSelect");
@@ -4505,7 +4506,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       q("pdf_tfpPackageWrap").style.display = kind === "tfp" ? "" : "none";
       {
         const dl = pdfDeliverables();
-        q("pdf_tfpDeliverables").textContent = `Test shoot / TFP · ${dl.line}${dl.from === "invite" ? " (set on the invite code)" : ""}. No shoot fee.`;
+        q("pdf_tfpDeliverables").textContent = `Test shoot / TFP · ${dl.line}${dl.from === "invite" ? " (set on the invite code)" : dl.from === "promo" ? " (set on the promo code under Discount)" : ""}. No shoot fee.`;
         q("pdf_deliverablesHint").textContent = kind === "paid" && dl.line ? `Deliverables on this contract: ${dl.line}${dl.from === "promo" ? " — set by the promo code under Discount" : ""}` : "";
       }
       q("pdf_scheduleWrap").style.display = kind === "paid" ? "" : "none";
