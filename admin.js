@@ -2278,6 +2278,38 @@ window.moveAdminPackageRow = function(index, dir) {
     const num = (k) => parseFloat((k.match(/V(\d+\.\d+)/) || [])[1] || 0);
     return kind(a) - kind(b) || num(b) - num(a);
   });
+  /* The Contract Vault's cards, one per version in the archive (WPS_CONTRACT_ARCHIVE),
+     so a new version appears here the moment contracts.js has it. These were
+     written out by hand, and stopped at V3.7 while the contracts went on to
+     V4.2. Active versions first, then each kind newest to oldest. */
+  const vaultCardsHtml = () => {
+    const A = window.WPS_CONTRACT_ARCHIVE || {};
+    const act = [window.ACTIVE_CONTRACTS.commercial, window.ACTIVE_CONTRACTS.tfp];
+    const keys = contractVersionKeys().sort((a, b) => (act.includes(b) ? 1 : 0) - (act.includes(a) ? 1 : 0));
+    return keys.map((k) => {
+      const c = A[k] || {};
+      const isAct = act.includes(k), tfp = /TFP/.test(k), com = /COMMERCIAL/.test(k);
+      const tone = tfp ? "#059669" : "var(--accent)";
+      const kindLabel = com ? "COMMERCIAL" : tfp ? "TFP / TEST SHOOT" : "STUDIO TERMS";
+      const num = (k.match(/V(\d+\.\d+)/) || [])[0] || k;
+      const tag = `${num} ${kindLabel} (${isAct ? "ACTIVE" : "ARCHIVED"})`;
+      const tagStyle = isAct
+        ? `background: ${tone}; color: #fff;`
+        : "background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft);";
+      const cardStyle = isAct ? `border: 1.5px solid ${tone}; box-shadow: var(--shadow-sm);` : "border: 1px solid var(--line);";
+      const btn = isAct ? ` primary" style="font-size: var(--font-xs); flex: 1; font-weight: 700;${tfp ? " background: #059669; border-color: #059669;" : ""}` : `" style="font-size: var(--font-xs); flex: 1;`;
+      return `
+          <div style="background: var(--paper); ${cardStyle} border-radius: 12px; padding: 20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap: 8px; flex-wrap: wrap;">
+              <span style="font-family: var(--mono-font); font-size: var(--font-xs); ${tagStyle} padding: 3px 8px; border-radius: 4px; font-weight: 700;">${esc(tag)}</span>
+              <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">${esc(c.effectiveDate || "")}</span>
+            </div>
+            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">${esc(c.title || k)}</h3>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden;">${esc(c.summary || "")}</p>
+            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn${btn}" onclick="window.openContractArchiveModal('${esc(k)}')">👁 Review</button><button type="button" class="admin-cal-btn" style="font-size: var(--font-xs);" onclick="window.openPdfContractGenerator('', '', '${esc(k)}')">📄 Print PDF</button></div>
+          </div>`;
+    }).join("");
+  };
   const contractVersionOptionsHtml = ({ selected = "", pending = false, custom = true, expanded = false } = {}) => {
     const active = [window.ACTIVE_CONTRACTS.commercial, window.ACTIVE_CONTRACTS.tfp];
     const all = contractVersionKeys();
@@ -3732,99 +3764,10 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <p class="eyebrow" style="margin-bottom: 4px; color: var(--accent-text);">Legal Compliance &amp; Version Control</p>
             <h2 style="font-family: 'Archivo', sans-serif; font-size: var(--font-md); font-weight: 700; margin: 0;">📜 Studio Contract &amp; Terms Vault</h2>
           </div>
-          <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); background: var(--accent-soft); padding: 4px 10px; border-radius: 4px; border: 1px solid var(--accent);">8 Historical Contract Versions Preserved</span>
+          <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); background: var(--accent-soft); padding: 4px 10px; border-radius: 4px; border: 1px solid var(--accent);">${contractVersionKeys().length} contract versions preserved</span>
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
-          <div style="background: var(--paper); border: 1.5px solid var(--accent); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.7 COMMERCIAL (ACTIVE)</span>
-              <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Present</span>
-            </div>
-            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">💼 Commercial Shoot Agreement V3.7</h3>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Paid Commercial, Editorial, Fashion &amp; Brand. 50/50 &amp; 50/30/20 retainer milestones (studio rental due in full with the advance), Client/photographer studio-arranger choice with a photographer-arranged studio quoted in advance, commercial licensing, travel &gt;20km, gear &amp; media protection.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.7-COMMERCIAL')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review Commercial</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '')" style="font-size: var(--font-xs); border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">📄 Print PDF</button></div>
-          </div>
-          <div style="background: var(--paper); border: 1.5px solid #059669; border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: #059669; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.7 TFP / TEST SHOOT (ACTIVE)</span>
-              <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Present</span>
-            </div>
-            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.7</h3>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Selective Collaborations via Invite Codes. Non-commercial portfolio licensing, 8-12 retouched caps, Instagram credit, Participant/photographer studio-arranger choice, studio rental quoted in advance, liability waiver, gear protection.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.7-TFP')" style="font-size: var(--font-xs); flex: 1; font-weight: 700; background: #059669; border-color: #059669;">👁 Review TFP Release</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.7-TFP')" style="font-size: var(--font-xs); border-color: #059669; color: #059669; font-weight: 700;">📄 Print PDF</button></div>
-          </div>
-          <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.6 COMMERCIAL (ARCHIVED)</span>
-              <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Sep 2026</span>
-            </div>
-            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">💼 Commercial Shoot Agreement V3.6</h3>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Superseded by V3.7. Same terms, but a photographer-arranged external studio was passed through at cost (billed at actuals). Bookings agreed under it print these terms.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V3.6-COMMERCIAL')" style="font-size: var(--font-xs); flex: 1;">👁 Review</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.6-COMMERCIAL')" style="font-size: var(--font-xs);">📄 Print PDF</button></div>
-          </div>
-          <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.6 TFP / TEST SHOOT (ARCHIVED)</span>
-              <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Sep 2026</span>
-            </div>
-            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.6</h3>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Superseded by V3.7-TFP. Same release with a 20 km travel radius. Bookings agreed under it print these terms.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V3.6-TFP')" style="font-size: var(--font-xs); flex: 1;">👁 Review</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.6-TFP')" style="font-size: var(--font-xs);">📄 Print PDF</button></div>
-          </div>
-          <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.5 TFP / TEST SHOOT (ARCHIVED)</span>
-              <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Sep 2026</span>
-            </div>
-            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.5</h3>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Superseded by V3.6-TFP. Same release, but studio rental and a photographer-arranged studio were billed at actuals. Bookings agreed under it print these terms.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V3.5-TFP')" style="font-size: var(--font-xs); flex: 1;">👁 Review</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.5-TFP')" style="font-size: var(--font-xs);">📄 Print PDF</button></div>
-          </div>
-          <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.2 (ARCHIVED)</span>
-              <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">May 2026 – Aug 2026</span>
-            </div>
-            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">Studio Release &amp; Payment Terms V3.2</h3>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">50/50 &amp; 50/30/20 milestones, RAW exclusion, Test Shoot specs, Studio Space Rental, social media attribution.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.2')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V3.2</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.2')" style="font-size: var(--font-xs); border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">📄 Print PDF</button></div>
-          </div>
-          <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.1 (ARCHIVED)</span>
-              <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">May 2026 – Jul 2026</span>
-            </div>
-            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">TFP Production &amp; Portfolio Release V3.1</h3>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Standard TFP portfolio licensing, model release, basic liability waiver, mandatory credit block.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.1')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V3.1</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.1')" style="font-size: var(--font-xs); border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">📄 Print PDF</button></div>
-          </div>
-          <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.0 (ARCHIVED)</span>
-              <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Jan 2026 – Apr 2026</span>
-            </div>
-            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">Creative Collab &amp; Release V3.0</h3>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Initial TFP structure, non-exclusive social media license, and studio rules.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.0')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V3.0</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.0')" style="font-size: var(--font-xs); border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">📄 Print PDF</button></div>
-          </div>
-          <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V2.0 (ARCHIVED)</span>
-              <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Jun 2025 – Dec 2025</span>
-            </div>
-            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">Studio Model Release V2.0</h3>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Early model release covering digital distribution, copyright ownership, promo usage.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V2.0')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V2.0</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V2.0')" style="font-size: var(--font-xs); border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">📄 Print PDF</button></div>
-          </div>
-          <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V1.0 (ARCHIVED)</span>
-              <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Jan 2025 – May 2025</span>
-            </div>
-            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">Basic Photography Release V1.0</h3>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Foundational photo release and copyright acknowledgment for early studio testing.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V1.0')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V1.0</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V1.0')" style="font-size: var(--font-xs); border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">📄 Print PDF</button></div>
-          </div>
+          ${vaultCardsHtml()}
         </div>
       </section>
       <section class="section container" style="max-width: 900px; margin: 0 auto; padding-top: 36px;">
