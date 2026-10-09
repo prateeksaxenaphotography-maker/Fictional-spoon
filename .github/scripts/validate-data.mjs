@@ -1198,5 +1198,44 @@ try {
   }
 }
 
+// ── Contracts: a new version must not be missed anywhere ───────────────────
+// The Contract Vault page listed V3.7 as "ACTIVE" long after V4.x went live,
+// because its cards were written out by hand (found Oct 2026). Two checks keep
+// that class of miss from coming back; the rest (every version has a card, the
+// active ones are flagged, nothing failed to compose) are in audit-tests.
+//  1. window.ACTIVE_CONTRACTS in app.js must name the newest version of each
+//     kind that contracts.js defines. Add V4.3 to contracts.js and forget to
+//     switch ACTIVE_CONTRACTS, and new bookings would keep signing the old one.
+//  2. No file may write a version's card or "(ACTIVE)" tag by hand: the vault
+//     builds them from the archive.
+{
+  const contractsText = readFileSync("contracts.js", "utf8");
+  const act = appText.match(/window\.ACTIVE_CONTRACTS\s*=\s*\{\s*commercial:\s*"([^"]+)"\s*,\s*tfp:\s*"([^"]+)"/);
+  if (!act) fail("app.js no longer sets window.ACTIVE_CONTRACTS in the form this check reads — the contract versions can no longer be checked");
+  else {
+    const newest = (kind) => {
+      let best = null;
+      for (const m of contractsText.matchAll(new RegExp(`V(\\d+)\\.(\\d+)-(?:${kind}|\\$\\{kind\\})`, "g"))) {
+        const v = [Number(m[1]), Number(m[2])];
+        if (!best || v[0] > best[0] || (v[0] === best[0] && v[1] > best[1])) best = v;
+      }
+      return best;
+    };
+    for (const [kind, key] of [["COMMERCIAL", act[1]], ["TFP", act[2]]]) {
+      const have = (key.match(/^V(\d+)\.(\d+)-/) || []).slice(1).map(Number);
+      const top = newest(kind);
+      if (!top) fail(`contracts.js defines no ${kind} versions this check can find`);
+      else if (have.length !== 2 || have[0] !== top[0] || have[1] !== top[1]) {
+        fail(`ACTIVE_CONTRACTS.${kind.toLowerCase()} is ${key} but contracts.js defines V${top[0]}.${top[1]}-${kind} — a new version is not the active one until app.js says so`);
+      }
+    }
+  }
+  for (const f of ["admin.js", "app.js"]) {
+    const t = f === "app.js" ? appText : readFileSync(f, "utf8");
+    if (/openContractArchiveModal\(\s*['"]V\d/.test(t)) fail(`${f} opens a contract version by a hand-written number — the vault's cards come from the archive (vaultCardsHtml in admin.js)`);
+    if (/V\d+\.\d+[A-Z /]*\((?:ACTIVE|ARCHIVED)\)/.test(t.replace(/\$\{[^}]*\}/g, ""))) fail(`${f} hand-writes an "(ACTIVE)" or "(ARCHIVED)" contract tag — the vault builds these from the archive`);
+  }
+}
+
 if (failed) process.exit(1);
 console.log(`OK: ${shoots.length} albums, ids unique, all photo files present, format contract intact, cache-buster in sync.`);
