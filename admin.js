@@ -1682,7 +1682,7 @@ window.STUDIO_BOOK_LIMITS = STUDIO_BOOK_LIMITS;
    TRAP, the same one the invite codes have: this normaliser drops any field
    it does not name. A new field on a testimonial must be added here too, or
    it will vanish the next time the page is reloaded. */
-const TESTIMONIAL_STORE_LIMITS = { quote: 900, name: 60, role: 80, shoot: 80, items: 200 };
+const TESTIMONIAL_STORE_LIMITS = { quote: 900, name: 60, role: 80, shoot: 80, kindOther: 60, items: 200 };
 function cleanTestimonials(state) {
   if (!state || typeof state !== "object") return { items: [], deleted: [] };
   const str = (v, n) => String(v == null ? "" : v).replace(/\r/g, "").trim().slice(0, n);
@@ -1699,6 +1699,8 @@ function cleanTestimonials(state) {
       by: str(t.by, TESTIMONIAL_STORE_LIMITS.name) || "Anonymous",
       role: str(t.role, TESTIMONIAL_STORE_LIMITS.role),
       kind: KINDS.includes(t.kind) ? t.kind : "",
+      // What an "Other" does ("Stylist"), when the studio or the writer said.
+      kindOther: KINDS.includes(t.kind) && t.kind === "other" ? str(t.kindOther, TESTIMONIAL_STORE_LIMITS.kindOther) : "",
       // Out of five, and 0 means "not rated" rather than "rated nothing".
       rating: rating >= 1 && rating <= 5 ? rating : 0,
       // Free text on purpose ("March 2026", "after the Goa shoot"): it is a
@@ -8651,6 +8653,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                 ${A.TESTIMONIAL_KINDS.map((k) => `<option value="${esc(k.key)}"${t.kind === k.key ? " selected" : ""}>${esc(k.label)}</option>`).join("")}
               </select>
             </label>
+            <label class="field" id="tmE_kindOtherWrap"${t.kind === "other" ? "" : " hidden"}><span>What do they do? <em>optional</em></span><input id="tmE_kindOther" type="text" maxlength="${TESTIMONIAL_STORE_LIMITS.kindOther}" value="${esc(t.kindOther || "")}" placeholder="Stylist, make-up artist…" /></label>
             <label class="field"><span>Stars they gave</span>
               <select id="tmE_rating">
                 <option value="0">No rating</option>
@@ -8701,19 +8704,24 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         return {
           ...(tmEditing || {}),
           quote: el("quote").value, by: el("by")?.value || "", role: el("role")?.value || "",
-          kind: el("kind")?.value || "", rating: Number(el("rating")?.value) || 0,
+          kind: el("kind")?.value || "", kindOther: el("kindOther")?.value || "", rating: Number(el("rating")?.value) || 0,
           dateLabel: el("date")?.value || "", shootId: el("shoot")?.value || "",
           verified: !!el("verified")?.checked, confidential: !!el("conf")?.checked,
           onHome: !!el("home")?.checked
         };
       };
+      const tmKind = root.querySelector("#tmE_kind");
+      if (tmKind) tmKind.addEventListener("change", () => {
+        const w = root.querySelector("#tmE_kindOtherWrap");
+        if (w) w.hidden = tmKind.value !== "other";
+      });
       const tmConf = root.querySelector("#tmE_conf");
       if (tmConf) tmConf.addEventListener("change", () => {
         const shoot = root.querySelector("#tmE_shoot"), req = root.querySelector("#tmE_byReq");
         if (shoot) { if (tmConf.checked) shoot.value = ""; shoot.disabled = tmConf.checked; }
         if (req) req.textContent = tmConf.checked ? "(optional)" : "*";
       });
-      ["quote", "by", "role", "kind", "rating", "date", "shoot", "verified", "conf", "home"].forEach((n) => {
+      ["quote", "by", "role", "kind", "kindOther", "rating", "date", "shoot", "verified", "conf", "home"].forEach((n) => {
         const el = root.querySelector(`#tmE_${n}`);
         if (!el) return;
         ["input", "change"].forEach((ev) => el.addEventListener(ev, () => {
@@ -8822,7 +8830,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       });
 
       root.querySelector("#tmAddBtn")?.addEventListener("click", () => {
-        tmEditing = { id: A.uid(), quote: "", by: "", role: "", kind: "", rating: 0, dateLabel: "", shoot: "", shootId: "", verified: false, confidential: false, onHome: true, updatedAt: 0 };
+        tmEditing = { id: A.uid(), quote: "", by: "", role: "", kind: "", rating: 0, dateLabel: "", shoot: "", shootId: "", verified: false, confidential: false, onHome: true, kindOther: "", updatedAt: 0 };
         paint();
         root.querySelector("#tmE_quote")?.focus();
       });
@@ -8887,6 +8895,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           quote, by,
           role: val("#tmE_role"),
           kind: val("#tmE_kind"),
+          kindOther: val("#tmE_kind") === "other" ? val("#tmE_kindOther") : "",
           rating: Number(val("#tmE_rating")) || 0,
           dateLabel: val("#tmE_date"),
           shootId,

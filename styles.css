@@ -4568,3 +4568,4 @@ html.theme-dark .cx-live.is-going { color: #7aa7ff; background: rgba(122, 167, 2
 .talk-first-row { display: flex; justify-content: flex-end; margin: -6px 0 22px; }
 .talk-first-btn { height: auto; padding: 10px 20px; font-size: 14px; justify-content: center; text-align: center; }
 @media (max-width: 600px) { .talk-first-row { justify-content: stretch; } .talk-first-btn { width: 100%; } }
+#tm_kindOtherWrap[hidden], #tmE_kindOtherWrap[hidden] { display: none; }

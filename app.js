@@ -2131,7 +2131,7 @@ window.resolveContractArchive = function(version) {
   // types into, the studio's own panel, and the publish check in CI. A quote
   // longer than this is not rejected on arrival — it arrives by email, where
   // nothing can reject it — it is trimmed when the studio publishes it.
-  const TESTIMONIAL_LIMITS = { quote: 1000, quoteMin: 30, name: 60, role: 80, shoot: 80 };
+  const TESTIMONIAL_LIMITS = { quote: 1000, quoteMin: 30, name: 60, role: 80, shoot: 80, kindOther: 60 };
   /* Counted in what a person can SEE, not in UTF-16 units, because a
      testimonial is meant to carry emoji: the studio's clients write on
      WhatsApp, Instagram and LinkedIn, where they are ordinary punctuation.
@@ -2240,10 +2240,11 @@ window.resolveContractArchive = function(version) {
           by: t.by || (t.confidential === true ? "A private client" : "Anonymous"),
           role: t.role || "",
           kind: t.kind || "",
+          kindOther: t.kind === "other" ? String(t.kindOther || "") : "",
           // What sits under the name on a card. The old cards showed the
           // album's brand here; a written-in testimonial has the role its
           // author gave instead ("Model, Noida"), which says more.
-          meta: t.role || testimonialKindLabel(t.kind),
+          meta: t.role || (t.kind === "other" && t.kindOther ? String(t.kindOther) : testimonialKindLabel(t.kind)),
           season: t.dateLabel || "",
           rating: Number(t.rating) || 0,
           // The studio saw a document backing this one up — a letterhead, an
@@ -6406,6 +6407,9 @@ window.resolveContractArchive = function(version) {
                 </select>
               </label>
             </div>
+            <label class="field" id="tm_kindOtherWrap" hidden><span>What do you do? <em class="tm-opt">optional</em></span>
+              <input id="tm_kindOther" type="text" maxlength="${TESTIMONIAL_LIMITS.kindOther}" placeholder="e.g. Stylist, make-up artist, photographer, art director" />
+            </label>
 
             <label class="field"><span>Which shoot was it?</span>
               <select id="tm_shoot">
@@ -6651,6 +6655,11 @@ window.resolveContractArchive = function(version) {
     const valOf = (id) => String(field(id)?.value || "").trim();
     const markInvalid = (id, bad) => field(id)?.closest(".field, .check-line")?.classList.toggle("field-invalid", bad);
 
+    // "You are: Other" offers an optional "What do you do?" box.
+    const syncKindOther = () => { const w = field("#tm_kindOtherWrap"); if (w) w.hidden = valOf("#tm_kind") !== "other"; };
+    field("#tm_kind")?.addEventListener("change", syncKindOther);
+    syncKindOther();
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       showError("");
@@ -6681,7 +6690,9 @@ window.resolveContractArchive = function(version) {
       }
 
       const studioEmail = window.STUDIO_CONFIG?.email || "prateeksaxenaphotography@gmail.com";
-      const kindLabel = testimonialKindLabel(kind) || "Other";
+      // "Other" can say what they do. Optional, and only read when Other is chosen.
+      const kindOther = kind === "other" ? trimChars(valOf("#tm_kindOther"), TESTIMONIAL_LIMITS.kindOther) : "";
+      const kindLabel = (testimonialKindLabel(kind) || "Other") + (kindOther ? ` — ${kindOther}` : "");
       const shootLine = shoot.title ? `${shoot.title}${shoot.season ? ` · ${shoot.season}` : ""}` : "Not about one particular shoot";
       const plain = [
         `Testimonial for nerdyphotographer.in`,
