@@ -99,6 +99,39 @@ window.bookingWho = (b) => {
 };
 // The studio's own days: a workshop, an assisting day, a meeting (v592). No contract.
 window.isInternalEntry = (b) => !!b && ["workshop", "assisting", "meeting", "busy"].includes(b.status);
+/* Private notes on days (v597): "31st is Comic Con". The studio's own memory,
+   kept in this browser ONLY, under its own key. It is deliberately not part of
+   CALENDAR_SETTINGS or any booking: everything in those is published to a
+   public file, and a note must never reach a client or a non-admin visitor.
+   Nothing here blocks the day for clients (use Block for that). */
+const PRIVATE_NOTES_KEY = "wps_private_day_notes";
+window.privateNotes = () => {
+  try {
+    const o = JSON.parse(localStorage.getItem(PRIVATE_NOTES_KEY) || "{}");
+    return o && typeof o === "object" && !Array.isArray(o) ? o : {};
+  } catch (e) { return {}; }
+};
+window.privateNotesFor = (dateKey) => {
+  const l = window.privateNotes()[dateKey];
+  return Array.isArray(l) ? l.filter((n) => n && n.id && n.text) : [];
+};
+window.savePrivateNotes = (all) => {
+  const clean = {};
+  Object.keys(all || {}).forEach((k) => { const l = (all[k] || []).filter((n) => n && n.id && n.text); if (l.length) clean[k] = l; });
+  try { localStorage.setItem(PRIVATE_NOTES_KEY, JSON.stringify(clean)); return true; } catch (e) { return false; }
+};
+window.addPrivateNote = (dateKey, text) => {
+  const t = String(text || "").replace(/\s+/g, " ").trim().slice(0, 200);
+  if (!dateKey || !t) return false;
+  const all = window.privateNotes();
+  all[dateKey] = [...window.privateNotesFor(dateKey), { id: "n" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text: t, at: Date.now() }];
+  return window.savePrivateNotes(all);
+};
+window.removePrivateNote = (dateKey, id) => {
+  const all = window.privateNotes();
+  all[dateKey] = window.privateNotesFor(dateKey).filter((n) => n.id !== id);
+  return window.savePrivateNotes(all);
+};
 // When and where, for the entries that have them: "11:00–12:30 · At the studio".
 window.bookingWhenWhere = (b) => {
   if (!b) return "";
@@ -5511,6 +5544,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               }
             </div>
             <div>
+              ${window.privateNotesFor(status.key).map((n) => `<div class="admin-cal-note" title="Private note — only you see this: ${esc(n.text)}">📝 ${esc(n.text)}</div>`).join("")}
               ${status.bookings.map(b => `<div class="admin-cal-client-item" title="${esc(window.bookingWho(b))} - ${esc(b.type)}">${esc(window.bookingWho(b))}</div>`).join("")}
             </div>
           </div>
@@ -5947,6 +5981,15 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               <div class="dam-status">${statusPill}</div>
             </header>
 
+            <section class="dam-section" id="damNotes">
+              <div class="dam-section-head"><h3>Private note</h3><span class="dam-hint">Just for you, on this device. Never shown to clients or visitors, and it does not block the day.</span></div>
+              <div id="damNoteList"></div>
+              <div class="dam-row" style="align-items: flex-end;">
+                <label class="dam-field"><span>Remind me</span><input type="text" id="m_privateNote" maxlength="200" placeholder="e.g. Comic Con — I am away" /></label>
+                <button type="button" class="dam-chip" id="addPrivateNoteBtn" style="flex: 0 0 auto;">Add note</button>
+              </div>
+            </section>
+
             <section class="dam-section">
               <div class="dam-section-head"><h3>Mark this day</h3><span class="dam-hint">One tap. Workshop, Assisting and Meeting then open their details; Hold and Test shoot use the name and notes below if typed.</span></div>
               <div class="dam-chips">
@@ -6069,6 +6112,27 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       /* The studio's own days (v592): one tap marks the day, then its own form
          opens for the details — what, who, where, when — with no contract
          asked for. Closing it keeps the mark. */
+      const paintNotes = () => {
+        const box = $("#damNoteList");
+        if (!box) return;
+        box.innerHTML = window.privateNotesFor(dKey).map((n) => `
+          <div class="dam-private-note"><span>📝 ${esc(n.text)}</span><button type="button" class="linkish" data-note="${esc(n.id)}" aria-label="Delete this note">Delete</button></div>`).join("");
+        box.querySelectorAll("[data-note]").forEach((btn) => btn.addEventListener("click", () => {
+          window.removePrivateNote(dKey, btn.dataset.note);
+          paintNotes(); renderAdminGrid();
+        }));
+      };
+      const addNote = () => {
+        const inp = $("#m_privateNote");
+        if (!inp || !inp.value.trim()) { inp?.focus(); return; }
+        if (!window.addPrivateNote(dKey, inp.value)) { toast("Could not save the note — this browser is out of storage."); return; }
+        inp.value = "";
+        paintNotes(); renderAdminGrid();
+      };
+      $("#addPrivateNoteBtn")?.addEventListener("click", addNote);
+      $("#m_privateNote")?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addNote(); } });
+      paintNotes();
+
       const markThenDetail = (entry, said) => {
         const nb = addCalBooking(dKey, { isTentative: false, contractVersion: "Not Required", agreedToTerms: false, ...entry });
         toast(said);
