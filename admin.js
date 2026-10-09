@@ -6119,25 +6119,11 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       });
 
       $("#quickPencilBtn")?.addEventListener("click", () => {
-        const who = $("#m_clientName").value.trim() || "Someone interested";
-        addCalBooking(dKey, { name: who, type: $("#m_clientType").value.trim() || "Shoot", notes: $("#m_clientNotes").value.trim(), status: "pencil", isTentative: false, contractVersion: "Not Required", agreedToTerms: false, email: $("#m_clientEmail").value.trim(), phone: ($("#m_clientPhone")?.value || "").trim() });
-        toast(`${dKey} penciled in for ${who} — only you see it; the day stays open to others.`);
-        modalContainer.innerHTML = "";
-        renderAdminGrid();
-        renderRoster();
-        updateAdminReminders();
+        markThenDetail({ name: $("#m_clientName").value.trim() || "Someone interested", type: $("#m_clientType").value.trim() || "Shoot", notes: $("#m_clientNotes").value.trim(), status: "pencil", isTentative: false, agreedToTerms: false, email: $("#m_clientEmail").value.trim(), phone: ($("#m_clientPhone")?.value || "").trim() }, `${dKey} penciled in — add who it is. Only you see it; the day stays open to others.`);
       });
 
       $("#quickHoldBtn")?.addEventListener("click", () => {
-        const clientName = $("#m_clientName").value.trim() || "Anticipated Client Hold";
-        const shootType = $("#m_clientType").value.trim() || "Tentative Hold";
-        const notes = $("#m_clientNotes").value.trim() || "Date held by Admin for anticipated client inquiry.";
-        addCalBooking(dKey, { name: clientName, type: shootType, notes: notes, isTentative: true, status: "tentative", contractVersion: "Pending Agreement", agreedToTerms: false });
-        toast(`${dKey} held — visitors see it as taken until you release it.`);
-        modalContainer.innerHTML = "";
-        renderAdminGrid();
-        renderRoster();
-        updateAdminReminders();
+        markThenDetail({ name: $("#m_clientName").value.trim() || "Anticipated Client Hold", type: $("#m_clientType").value.trim() || "Tentative Hold", notes: $("#m_clientNotes").value.trim(), isTentative: true, status: "tentative", contractVersion: "Pending Agreement", agreedToTerms: false, email: $("#m_clientEmail").value.trim(), phone: ($("#m_clientPhone")?.value || "").trim() }, `${dKey} held — visitors see it as taken until you release it. Add who it is.`);
       });
 
       /* The studio's own days (v592): one tap marks the day, then its own form
