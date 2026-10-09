@@ -2875,22 +2875,22 @@ window.WPS_DATA = {
           "updatedAt": 1790680684907
         }
       ],
-      "2026-10-16": [
-        {
-          "id": "b_1791440043708_33o2",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Selective Collaboration (TFP)",
-          "contractVersion": "V3.7-TFP",
-          "updatedAt": 1791440043708
-        }
-      ],
       "2026-10-11": [
         {
           "id": "b_1791442784600_e0yx",
           "isTentative": false,
           "status": "busy",
           "updatedAt": 1791442826445
+        }
+      ],
+      "2026-10-31": [
+        {
+          "id": "b_1791529609429_snum",
+          "isTentative": true,
+          "status": "tentative",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "V4.1-TFP",
+          "updatedAt": 1791529609429
         }
       ]
     },
@@ -2959,12 +2959,19 @@ window.WPS_DATA = {
       "2026-10-11::b_1791439997048_sm2l",
       "2026-10-11::Karan",
       "2026-10-08::b_1791442768751_g7bh",
-      "2026-10-08::Meeting"
+      "2026-10-08::Meeting",
+      "2026-10-28::b_1791474554139_jalb",
+      "2026-10-28::Meeting",
+      "2026-10-31::b_1791529510922_vd14",
+      "2026-10-31::Test shoot",
+      "2026-10-15::b_1791474567085_fnb7",
+      "2026-10-15::Assisting Work",
+      "2026-10-16::b_1791440043708_33o2"
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1791474380240,
-    "syncedAt": 1791474380240
+    "updatedAt": 1791530041962,
+    "syncedAt": 1791530041962
   },
   "INVITE_CODES": [
     {
