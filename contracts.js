@@ -678,3 +678,61 @@ window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"].status = "Archived — superseded by V3.
     from.status = "Archived - superseded by V4.1 (deliverables as stated in the booking)";
   }
 })();
+
+/* ── V4.2 (9 Oct 2026) ──────────────────────────────────────────────────────
+   The owner asked whether the test shoot contract makes anyone who puts a reel
+   or any digital output on social media tag or collaborate. It required the
+   caption credit on any post that used the photographs, and the Instagram
+   Collaborator only for a feed post, carousel or Reel that used them: nothing
+   about video or other material made at the shoot, and no tag outside
+   Instagram. In the wording the owner approved on 9 Oct 2026 (as a new version,
+   V4.2), clause 3 of the test shoot contract now covers every post, Reel,
+   video, Story or other digital output on any platform that uses the
+   photographs or any footage or material created at the shoot: it must credit
+   the Studio and tag @nerdyphotographer.in; on Instagram it must also add the
+   Studio as a Collaborator; where a platform has no Collaborator feature the
+   tag and caption credit are required. Only that clause changes (and its line
+   breaks, so the tag sits on its own line and the on-screen "Instagram
+   Collaborator" sub-header still finds its sentence).
+   The paid-shoot contract has no change in wording: V4.2-COMMERCIAL is
+   V4.1-COMMERCIAL word for word, so the two kinds share one version number as
+   V4.0 and V4.1 did. V4.1 is archived unchanged for everyone who agreed to it.
+   Composed with exact sentence swaps; one that fails to match is recorded in
+   WPS_CONTRACT_COMPOSE_MISSES. */
+(() => {
+  const A = window.WPS_CONTRACT_ARCHIVE;
+  const misses = (window.WPS_CONTRACT_COMPOSE_MISSES = window.WPS_CONTRACT_COMPOSE_MISSES || []);
+  const SWAPS = [
+    ["3. CREDIT & INSTAGRAM COLLABORATOR\nEvery post that uses the photographs must credit the Studio in its caption:",
+     "3. CREDIT, TAGGING & INSTAGRAM COLLABORATOR\nEvery post, Reel, video, Story or other digital output on any social media platform that uses the photographs, or any footage or material created at the shoot, must credit the Studio in its caption:"],
+    ["\nOn Instagram, tagging is not enough: every feed post, carousel or Reel that uses the photographs must also add",
+     "\nand must tag @nerdyphotographer.in on the platform where it is posted.\nOn Instagram, tagging is not enough: every feed post, carousel or Reel must also add"],
+    ["sent before the post is published.",
+     "sent before the post is published. Where a platform has no Collaborator feature, the tag and caption credit are required."]
+  ];
+  for (const [kind, label] of [["COMMERCIAL", "Paid Commercial"], ["TFP", "Test Shoot / TFP"]]) {
+    const from = A[`V4.1-${kind}`];
+    if (!from) { misses.push(`V4.2-${kind}: no V4.1 to compose from`); continue; }
+    let text = from.fullText;
+    if (kind === "TFP") {
+      for (const [was, now] of SWAPS) {
+        if (text.split(was).length !== 2) { misses.push(`V4.2-TFP: ${was.slice(0, 60)}`); continue; }
+        text = text.replace(was, () => now);
+      }
+    }
+    A[`V4.2-${kind}`] = {
+      version: `V4.2-${kind}`,
+      title: from.title.replace("V4.1", "V4.2"),
+      effectiveDate: "9 October 2026 - Present",
+      status: `Active / Current (${label})`,
+      summary: kind === "TFP"
+        ? from.summary + " Anything posted on social media that uses the photographs or footage from the shoot must credit and tag the Studio, and on Instagram add it as a Collaborator."
+        : from.summary,
+      fullText: text
+    };
+    from.effectiveDate = "7 - 9 October 2026 (superseded by V4.2)";
+    from.status = kind === "TFP"
+      ? "Archived - superseded by V4.2 (tagging and credit extended to video and every platform)"
+      : "Archived - superseded by V4.2 (no change to the paid-shoot wording)";
+  }
+})();

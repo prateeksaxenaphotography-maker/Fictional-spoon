@@ -1060,7 +1060,7 @@ window.bookingDeliverables = function ({ tfp = false, invite = null, promo = nul
    opening the Calendar view. Defined inside a view function, the archive
    simply did not exist on those paths.
    ============================================================ */
-window.ACTIVE_CONTRACTS = { commercial: "V4.1-COMMERCIAL", tfp: "V4.1-TFP" };
+window.ACTIVE_CONTRACTS = { commercial: "V4.2-COMMERCIAL", tfp: "V4.2-TFP" };
 
 /* ============================================================
    § CALL TIME, GRACE PERIOD & NO-SHOW
