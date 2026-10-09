@@ -691,7 +691,11 @@ window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"].status = "Archived — superseded by V3.
    photographs or any footage or material created at the shoot: it must credit
    the Studio and tag @nerdyphotographer.in; on Instagram it must also add the
    Studio as a Collaborator; where a platform has no Collaborator feature the
-   tag and caption credit are required. Only that clause changes (and its line
+   tag and caption credit are required. The licence sentence in clause 2 now
+   names footage and other material created at the shoot too ("use the final
+   retouched photos, and footage and other material created at the shoot, for
+   personal self-promotion"), added to V4.2 itself at the owner's instruction
+   (no new number). Otherwise only clause 3 changes (and its line
    breaks, so the tag sits on its own line and the on-screen "Instagram
    Collaborator" sub-header still finds its sentence).
    The paid-shoot contract has no change in wording: V4.2-COMMERCIAL is
@@ -703,6 +707,8 @@ window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"].status = "Archived — superseded by V3.
   const A = window.WPS_CONTRACT_ARCHIVE;
   const misses = (window.WPS_CONTRACT_COMPOSE_MISSES = window.WPS_CONTRACT_COMPOSE_MISSES || []);
   const SWAPS = [
+    ["to use the final retouched photos for personal self-promotion,",
+     "to use the final retouched photos, and footage and other material created at the shoot, for personal self-promotion,"],
     ["3. CREDIT & INSTAGRAM COLLABORATOR\nEvery post that uses the photographs must credit the Studio in its caption:",
      "3. CREDIT, TAGGING & INSTAGRAM COLLABORATOR\nEvery post, Reel, video, Story or other digital output on any social media platform that uses the photographs, or any footage or material created at the shoot, must credit the Studio in its caption:"],
     ["\nOn Instagram, tagging is not enough: every feed post, carousel or Reel that uses the photographs must also add",
