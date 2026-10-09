@@ -2886,11 +2886,11 @@ window.WPS_DATA = {
       "2026-10-31": [
         {
           "id": "b_1791529609429_snum",
-          "isTentative": true,
-          "status": "tentative",
+          "isTentative": false,
+          "status": "confirmed",
           "type": "Selective Collaboration (TFP)",
           "contractVersion": "V4.1-TFP",
-          "updatedAt": 1791529609429
+          "updatedAt": 1791530069001
         }
       ]
     },
@@ -2970,8 +2970,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1791530053738,
-    "syncedAt": 1791530053738
+    "updatedAt": 1791530082696,
+    "syncedAt": 1791530082696
   },
   "INVITE_CODES": [
     {
