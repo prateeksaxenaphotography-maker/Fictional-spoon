@@ -2892,16 +2892,6 @@ window.WPS_DATA = {
           "contractVersion": "V4.1-TFP",
           "updatedAt": 1791531765632
         }
-      ],
-      "2026-10-31": [
-        {
-          "id": "b_1791531121557_v2rn",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Fashion Editorial",
-          "contractVersion": "Pending Agreement",
-          "updatedAt": 1791531121557
-        }
       ]
     },
     "removedBookingIds": [
@@ -2980,12 +2970,14 @@ window.WPS_DATA = {
       "2026-10-31::b_1791529609429_snum",
       "2026-10-31::Rishabh Kaushik",
       "2026-10-25::b_1791531780716_l6nk",
-      "2026-10-25::Someone interested"
+      "2026-10-25::Someone interested",
+      "2026-10-31::b_1791531121557_v2rn",
+      "2026-10-31::Client Booking"
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1791531834311,
-    "syncedAt": 1791531834311
+    "updatedAt": 1791532063342,
+    "syncedAt": 1791532063342
   },
   "INVITE_CODES": [
     {
