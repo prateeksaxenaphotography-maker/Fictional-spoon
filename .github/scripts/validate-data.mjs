@@ -252,6 +252,14 @@ try {
     extractConst("MODEL_TYPE_MAXLEN"),
     extractConst("qualifiesAsCompCard"),
     extractConst("showsOnModelPage"),
+    // Polaroids: usableOnCompCard / usableInPortfolio read them, and
+    // albumFacing is the one place a visitor's album side drops them.
+    extractConst("isPolaroid"),
+    extractConst("polaroidStranded"),
+    extractConst("usageOf"),
+    extractConst("polaroidsShowInAlbum"),
+    extractConst("photoInAlbum"),
+    extractFunction("albumFacing"),
     // buildCompCardDisplayList decides which photos belong on a comp card and
     // on the Model Portfolio page with these two.
     extractConst("usableOnCompCard"),
@@ -279,7 +287,7 @@ try {
     extractConst("compCardContext"),
   ].join("\n");
   const globals = `const MODELS = ${JSON.stringify(modelItemsEarly)};\nconst SHOOTS = ${JSON.stringify(visibleEarly)};\n`;
-  const api = new Function(globals + decls + "\nreturn { shareIdFor, resolveShareId, buildCompCardDisplayList, qualifiesAsCompCard, showsOnModelPage, modelTypesOf, albumModelKeys, photoModelKeys, modelKeyOf };")();
+  const api = new Function(globals + decls + "\nreturn { albumFacing, shareIdFor, resolveShareId, buildCompCardDisplayList, qualifiesAsCompCard, showsOnModelPage, modelTypesOf, albumModelKeys, photoModelKeys, modelKeyOf };")();
 
   // Model types are free text now — the studio can add its own from the panel
   // — so the published values are worth a look. modelTypesOf silently drops
@@ -306,6 +314,16 @@ try {
     ...api.buildCompCardDisplayList(visible.filter((s) => api.showsOnModelPage(s, "Comp Cards")), "type", "Comp Cards", ccCtx),
     ...api.buildCompCardDisplayList(visible.filter((s) => api.showsOnModelPage(s, "Model Portfolio")), "type", "Model Portfolio", ccCtx),
   ].filter((a) => a && a.isCompCard);
+
+  // The album side must never show a Polaroid unless the album's own switch
+  // says so. This runs the very function a visitor's browser runs
+  // (albumFacing) over every published album and fails if one gets through.
+  for (const s of visible) {
+    const seen = api.albumFacing(s);
+    const leaked = seen ? (seen.photos || []).filter((p) => p && p.polaroid === true).length : 0;
+    if (leaked && s.showPolaroidsInAlbum !== true) fail(`album "${s.title || s.id}": ${leaked} Polaroid(s) would show in the album although its "show polaroids" switch is off`);
+    if (seen && !(seen.photos || []).length) fail(`album "${s.title || s.id}" would show an empty gallery to visitors`);
+  }
 
   // ── models: the registry albums and photographs point at ─────────────────
   // A tag naming somebody who is not in the list is a photograph that will
@@ -880,7 +898,11 @@ const POSES = new Set(["full-body", "front", "left-profile", "right-profile", "t
 // A typo such as "None" or "comps" would do exactly that.
 const USAGES = new Set(["both", "portfolio", "comp", "none"]);
 for (const s of shoots) {
+  // A Polaroid is true or absent, and the album switch true or false: the app
+  // tests them with === true, so "yes" or 1 would quietly mean "no".
+  if (s.showPolaroidsInAlbum !== undefined && typeof s.showPolaroidsInAlbum !== "boolean") fail(`album "${s.title || s.id}" has showPolaroidsInAlbum that is not true/false: ${JSON.stringify(s.showPolaroidsInAlbum)}`);
   for (const p of s.photos || []) {
+    if (p.polaroid !== undefined && p.polaroid !== true) fail(`album "${s.title || s.id}" photo ${p.id} has polaroid ${JSON.stringify(p.polaroid)} — it must be true or absent`);
     if (p.angle !== undefined && !POSES.has(p.angle)) fail(`album "${s.title || s.id}" photo ${p.id} has an unknown pose tag ${JSON.stringify(p.angle)}`);
     if (p.usage !== undefined && !USAGES.has(p.usage)) fail(`album "${s.title || s.id}" photo ${p.id} has an unknown usage ${JSON.stringify(p.usage)}`);
   }
@@ -1010,18 +1032,22 @@ try {
   }
   const photosById = (data) => new Map((data.DEMO_SHOOTS || []).flatMap((s) => (s.photos || []).map((p) => [p.id, p])));
   const before = photosById(prevData);
-  let lostPose = 0, lostUsage = 0, lostLook = 0;
+  let lostPose = 0, lostUsage = 0, lostLook = 0, lostPolaroid = 0;
   for (const [id, p] of photosById(win.WPS_DATA)) {
     const q = before.get(id);
     if (!q) continue;
     if (q.angle && !p.angle) lostPose++;
     if (q.usage && !p.usage) lostUsage++;
     if (q.look && !p.look) lostLook++;
+    if (q.polaroid && !p.polaroid) lostPolaroid++;
   }
   // One photo un-tagged on purpose is normal; a batch vanishing at once isn't.
   if (lostPose >= 5) fail(`${lostPose} photos lost their pose tag in one publish.${stale}`);
   if (lostUsage >= 10) fail(`${lostUsage} photos lost their usage setting in one publish.${stale}`);
   if (lostLook >= 5) fail(`${lostLook} photos lost their kind of work in one publish.${stale}`);
+  // An older tab's photo field list has never heard of "polaroid", so saving
+  // from it would turn every one back into an album photo.
+  if (lostPolaroid >= 8) fail(`${lostPolaroid} photos stopped being Polaroids in one publish.${stale}`);
 } catch { /* first commit, shallow clone, or no prior data.js */ }
 
 /* ---- 12 · settings must not vanish or shrink between publishes ----

@@ -186,10 +186,24 @@ const isFutureShoot = (s) => {
   const t = Date.parse(s.date);
   return !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) > todayIST;
 };
-const albums = allShoots
+/* A Polaroid is a frame made for the model's card and PDFs; the album leaves
+   it out unless the album's own switch says otherwise. Mirrors photoInAlbum
+   in app.js — the two must agree, or the page Google reads would show what the
+   site hides. `photos` is what the album shows, and EVERYTHING album-facing
+   below reads it (the page, its ImageObjects, the archive, the sitemap's image
+   list, the kind-of-work grids); `allPhotos` keeps the Polaroids for the one
+   place that builds the models' pages. */
+const photoInAlbum = (p, s) => !p || p.polaroid !== true || s.showPolaroidsInAlbum === true;
+const eligibleAlbums = allShoots
   .filter((s) => !s.isTestimonial && s.type !== "Workshop Attended" && s.isPublic !== false && !isFutureShoot(s))
-  .map((s) => ({ ...s, photos: (s.photos || []).filter((p) => p && typeof p.url === "string" && p.url && !p.url.startsWith("data:")).map(withSize) }))
-  .filter((s) => s.photos.length);
+  .map((s) => {
+    const all = (s.photos || []).filter((p) => p && typeof p.url === "string" && p.url && !p.url.startsWith("data:")).map(withSize);
+    return { ...s, allPhotos: all, photos: all.filter((p) => photoInAlbum(p, s)) };
+  });
+const albums = eligibleAlbums.filter((s) => s.photos.length);
+// An album holding nothing but Polaroids has no page of its own and appears
+// nowhere on the album side; its frames still reach the models' cards.
+const cardOnlyAlbums = eligibleAlbums.filter((s) => !s.photos.length && s.allPhotos.length);
 
 // Oldest album keeps the bare name; a later album of the same name gets its id
 // appended, so publishing a second shoot never moves the first one's address.
@@ -1081,16 +1095,20 @@ function buildModelPages() {
   // A model the studio hid from the cards gets no page either: Sumitt Verma's
   // answered 200 with his name in the title, then said "Album not found"
   // (Sep 2026 audit, V2). Same switch the site reads (showsOnModelPage).
-  const consider = albumsForPage(compCardsPage).filter((s) => !s.hideFromCompCard).concat(
+  // The cards draw from EVERY frame, Polaroids included, so this works from
+  // allPhotos and also takes the albums that hold nothing else.
+  const cardPool = [...albums, ...cardOnlyAlbums].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")) || (b.createdAt || 0) - (a.createdAt || 0));
+  const onPage = cardPool.filter((s) => albumOnClientPage(compCardsPage.albumFilter, s));
+  const consider = onPage.filter((s) => !s.hideFromCompCard).concat(
     // Albums that only contribute frames — a client's job the studio has said
     // the models may show. Same two conditions the site applies: tagged, and
     // ticked.
-    newestFirst.filter((s) => s.feedsModelCards === true && Array.isArray(s.modelKeys) && s.modelKeys.length
-      && s.type !== "Workshop Attended" && !albumsForPage(compCardsPage).includes(s))
+    cardPool.filter((s) => s.feedsModelCards === true && Array.isArray(s.modelKeys) && s.modelKeys.length
+      && s.type !== "Workshop Attended" && !onPage.includes(s))
   );
   for (const s of consider) {
     const inAlbum = new Set();
-    for (const p of s.photos || []) for (const k of photoModelKeys(p, s)) inAlbum.add(k);
+    for (const p of s.allPhotos || s.photos || []) for (const k of photoModelKeys(p, s)) inAlbum.add(k);
     for (const key of inAlbum) {
       if (!key) continue;
       const rec = modelByKey.get(key);
@@ -1101,23 +1119,26 @@ function buildModelPages() {
     }
   }
   return [...groups.entries()].map(([slug, g]) => {
-    const lead = g.albums[0];
+    // The album the page links to must be one that has a page: an album of
+    // nothing but Polaroids has none.
+    const lead = g.albums.find((s) => s.photos.length) || g.albums[0];
+    const leadHasPage = lead.photos.length > 0;
     // Her frames, not every frame in the albums she appears in.
-    const shots = g.albums.reduce((n, s) => n + (s.photos || []).filter((p) => photoModelKeys(p, s).includes(slug)).length, 0);
+    const shots = g.albums.reduce((n, s) => n + (s.allPhotos || s.photos || []).filter((p) => photoModelKeys(p, s).includes(slug)).length, 0);
     const title = `${g.name} — Model Portfolio | ${BRAND}`;
     const description = `${g.name}: ${shots} photograph${shots === 1 ? "" : "s"} in one place, with a comp card and a portfolio PDF to download. Photographed by ${BRAND}, Noida & Delhi NCR.`;
     const urlPath = `/models/${slug}/`;
     const mainHtml = `<div class="prerender">
     <h1>${esc(g.name)}</h1>
     <p>${esc(description)}</p>
-    <p><a href="${esc(compCardsHref)}">See every model</a> &middot; <a href="${esc(albumUrl(lead))}">${esc(g.name)}'s album</a></p>
-    ${g.albums.map((s) => albumCardHtml(s)).join("\n    ")}
+    <p><a href="${esc(compCardsHref)}">See every model</a>${leadHasPage ? ` &middot; <a href="${esc(albumUrl(lead))}">${esc(g.name)}'s album</a>` : ""}</p>
+    ${g.albums.filter((s) => s.photos.length).map((s) => albumCardHtml(s)).join("\n    ")}
   </div>`;
     return {
       rel: `models/${slug}/index.html`,
       html: pageFromTemplate({
         title, description, urlPath,
-        ogImage: absUrl(ogCropFor(slugById.get(lead.id)) || photoPath(albumCover(lead))),
+        ogImage: absUrl(ogCropFor(slugById.get(lead.id)) || photoPath(leadHasPage ? albumCover(lead) : lead.allPhotos[0])),
         ogType: "profile",
         robots: "noindex, follow",
         mainHtml

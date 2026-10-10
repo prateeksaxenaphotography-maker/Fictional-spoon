@@ -1718,8 +1718,31 @@ window.resolveContractArchive = function(version) {
   // Kept as single `const NAME = (p) => …;` statements at this indent because
   // .github/scripts/validate-data.mjs lifts them out of this file by text to
   // run buildCompCardDisplayList in CI.
-  const usableOnCompCard = (p) => !!p && !p.excludeFromCompCard && (p.usage === undefined || p.usage === "both" || p.usage === "comp");
-  const usableInPortfolio = (p) => !!p && (p.usage === undefined || p.usage === "both" || p.usage === "portfolio");
+  const usableOnCompCard = (p) => !!p && (!p.excludeFromCompCard || polaroidStranded(p)) && (usageOf(p) === undefined || usageOf(p) === "both" || usageOf(p) === "comp");
+  const usableInPortfolio = (p) => !!p && (usageOf(p) === undefined || usageOf(p) === "both" || usageOf(p) === "portfolio");
+
+  /* ---- Polaroids ------------------------------------------------------------
+     A Polaroid is a frame made for the model's card and PDFs — an honest,
+     unretouched picture — not for the album it was shot in. Ticked, it is left
+     out of everything the album shows (its page, the Albums archive, the home
+     page, share links, search, the sitemap), and still counts as a normal photo
+     on comp cards, the Model Portfolio page and both PDFs. The album's own
+     switch, showPolaroidsInAlbum, brings them back into the album. Untick
+     Polaroid on a single frame to make it an ordinary photo again.
+
+     What it is (polaroid) and where it may print (usage) are two questions
+     with one bad combination: a Polaroid whose Usage still says "Album only"
+     would be shown nowhere. It is read as "both" instead — the editor never
+     lets that happen, and this is the net for a copy saved by an older tab.
+
+     One-line consts at this indent, because .github/scripts/validate-data.mjs
+     lifts them out of this file by text, like the two above. The same rule is
+     mirrored in .github/scripts/build-seo.mjs for the pages written at deploy. */
+  const isPolaroid = (p) => !!p && p.polaroid === true;
+  const polaroidStranded = (p) => isPolaroid(p) && p.usage === "none";
+  const usageOf = (p) => (polaroidStranded(p) ? "both" : p.usage);
+  const polaroidsShowInAlbum = (s) => !!s && s.showPolaroidsInAlbum === true;
+  const photoInAlbum = (p, s) => !!p && (!isPolaroid(p) || polaroidsShowInAlbum(s));
 
   /* ---- Who is in this photograph? -----------------------------------------
 
@@ -1870,7 +1893,7 @@ window.resolveContractArchive = function(version) {
       if (name && !seen.has(name.toLowerCase())) seen.set(name.toLowerCase(), name);
     };
     MODEL_TYPES.forEach(add);
-    (Array.isArray(SHOOTS) ? SHOOTS : []).forEach((s) => modelTypesOf(s).forEach(add));
+    cardShoots().forEach((s) => modelTypesOf(s).forEach(add));
     (Array.isArray(extra) ? extra : [extra]).forEach(add);
     return [...seen.values()];
   }
@@ -1968,6 +1991,11 @@ window.resolveContractArchive = function(version) {
     }
     if (local.feedsModelCards === undefined && typeof published.feedsModelCards === "boolean") {
       local.feedsModelCards = published.feedsModelCards;
+    }
+    // Whether the album shows its Polaroids. A copy saved before the switch
+    // existed has no field; publishing from it must not hide them again.
+    if (local.showPolaroidsInAlbum === undefined && typeof published.showPolaroidsInAlbum === "boolean") {
+      local.showPolaroidsInAlbum = published.showPolaroidsInAlbum;
     }
     return local;
   }
@@ -2677,6 +2705,15 @@ window.resolveContractArchive = function(version) {
     ? { path: location.pathname, title: document.title, desc: (document.querySelector('meta[name="description"]') || {}).content || "" }
     : null;
   let SHOOTS = [];      // live shoots (real or demo)
+  // Every album a model's card may draw from, polaroids included. For the
+  // studio this IS SHOOTS (one array, so a push shows in both). For a visitor
+  // SHOOTS is the album's own view — polaroids left out, see albumFacing — and
+  // only the code that builds comp cards, the Model Portfolio page and the
+  // PDFs reads this one. Reading SHOOTS where this was meant costs a card its
+  // polaroids; reading this where SHOOTS was meant would leak a polaroid into
+  // an album, which is why the album side is the default and this is opt in.
+  let CARD_SHOOTS = [];
+  const cardShoots = () => (CARD_SHOOTS.length ? CARD_SHOOTS : SHOOTS);
   let usingDemo = true;
   let CURRENT_VIEW_SHOOTS = [];
   // Resolves once boot() has loaded shoots and painted the first render (or
@@ -2703,6 +2740,22 @@ window.resolveContractArchive = function(version) {
       shoot.photographer = brandName();
     }
     return shoot;
+  }
+
+  // What a visitor's album pages get to see of an album: the same album with
+  // its Polaroids left out (unless the album's switch shows them). A copy, so
+  // the stored album is never touched — the studio's own SHOOTS is the full
+  // list and is what gets published, which is why this runs for visitors
+  // only. An album holding nothing but hidden Polaroids has nothing left to
+  // show and is dropped from the album side (null); its photographs still
+  // reach the models' cards through CARD_SHOOTS. `allPhotos` keeps the full
+  // list on the copy for anything that needs to see both.
+  function albumFacing(s) {
+    if (!s || !Array.isArray(s.photos) || !s.photos.some(isPolaroid)) return s;
+    const shown = s.photos.filter((p) => photoInAlbum(p, s));
+    if (shown.length === s.photos.length) return s;
+    if (!shown.length) return null;
+    return { ...s, photos: shown, allPhotos: s.photos };
   }
 
   async function loadShoots() {
@@ -2748,8 +2801,10 @@ window.resolveContractArchive = function(version) {
     
     if (isAdmin()) {
       SHOOTS = sorted;
+      CARD_SHOOTS = sorted;
     } else {
-      SHOOTS = sorted.filter(s => s && !isFutureShoot(s) && s.isPublic !== false);
+      CARD_SHOOTS = sorted.filter(s => s && !isFutureShoot(s) && s.isPublic !== false);
+      SHOOTS = CARD_SHOOTS.map(albumFacing).filter(Boolean);
     }
     if (typeof syncCalendarWithShoots === "function") syncCalendarWithShoots();
   }
@@ -2912,18 +2967,18 @@ window.resolveContractArchive = function(version) {
        measurements print (an under-18's are already blanked on the card). */
     talentList: () => {
       try {
-        return buildCompCardDisplayList(SHOOTS.filter((s) => qualifiesAsCompCard(s)), "type", "Comp Cards", compCardContext())
+        return buildCompCardDisplayList(cardShoots().filter((s) => qualifiesAsCompCard(s)), "type", "Comp Cards", compCardContext())
           .filter((c) => c.modelKey).map((c) => ({ key: c.modelKey, cleared: portfolioPdfPhotos(c).length }));
       } catch (e) { return []; }
     },
     talent: (key) => {
       try {
-        const card = buildCompCardDisplayList(SHOOTS.filter((s) => qualifiesAsCompCard(s)), "type", "Comp Cards", compCardContext()).find((c) => c.modelKey === key);
+        const card = buildCompCardDisplayList(cardShoots().filter((s) => qualifiesAsCompCard(s)), "type", "Comp Cards", compCardContext()).find((c) => c.modelKey === key);
         if (!card) return null;
         const facts = window.WPS_PDF && typeof window.WPS_PDF.modelFacts === "function" ? window.WPS_PDF.modelFacts(card) : { stats: [], contacts: [] };
         const cleared = portfolioPdfPhotos(card);
         // The brands of the albums they appear in, for a comp card's "brand experience".
-        const brands = [...new Set((card.sourceShootIds || []).map((id) => ((SHOOTS || []).find((s) => s && s.id === id) || {}).brand).map((b) => String(b || "").trim()).filter((b) => b && !/^personal project$/i.test(b)))];
+        const brands = [...new Set((card.sourceShootIds || []).map((id) => (cardShoots().find((s) => s && s.id === id) || {}).brand).map((b) => String(b || "").trim()).filter((b) => b && !/^personal project$/i.test(b)))];
         return { key, name: getTalentCleanName(card.talent || card.title), types: modelTypesOf(card).map(modelTypeLabel), photoIds: cleared.map((p) => p.id), photos: cleared.map((p) => ({ id: p.id, angle: p.angle || "", pos: p.objectPosition || "" })), brands, stats: facts.stats || [], contacts: facts.contacts || [] };
       } catch (e) { return null; }
     },
@@ -3053,7 +3108,7 @@ window.resolveContractArchive = function(version) {
   }
 
   function renderLbSidebar(p) {
-    const shoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
+    const shoot = cardShoots().find(x => x.id === p.shootId) || p.shoot;
     if (!shoot) return "";
     const isCc = (shoot.type === "Selective Collaboration (TFP)" || shoot.type === "Test Shoot" || shoot.isCompCard) && isCurrentlyCompCardView();
     
@@ -3225,7 +3280,7 @@ window.resolveContractArchive = function(version) {
       // Compared as slugs, because that is how the link resolves: a second
       // album of the same model typed in a different case used to fail this
       // test and hide a link to a card that exists.
-      && SHOOTS.some((x) => showsOnModelPage(x, "Comp Cards")
+      && cardShoots().some((x) => showsOnModelPage(x, "Comp Cards")
         && slugify(getTalentCleanName(x.talent)) === slugify(getTalentCleanName(shoot.talent))
         && (x.photos || []).length);
     if (hasCompCard) {
@@ -4531,7 +4586,7 @@ window.resolveContractArchive = function(version) {
 
   // Shared album view — anyone with the link can view
   function viewSharedAlbum(albumId) {
-    const album = resolveShareId(albumId, SHOOTS);
+    const album = resolveShareId(albumId, SHOOTS, cardShoots());
     // `isPublic !== false`, not `isPublic` — every other gate in the app
     // treats a missing flag as public (see loadShoots and viewAlbums), and
     // the flag only exists on albums saved since the checkbox was added.
@@ -5421,7 +5476,10 @@ window.resolveContractArchive = function(version) {
   // runs it with nothing but the published data around it.
   const compCardContext = () => ({
     roster: modelRoster(),
-    pool: (typeof SHOOTS !== "undefined" && Array.isArray(SHOOTS)) ? SHOOTS : []
+    // The card pool, which keeps the polaroids the album side leaves out.
+    // Falls back to SHOOTS where CI runs this with nothing but published data.
+    pool: (typeof CARD_SHOOTS !== "undefined" && CARD_SHOOTS.length) ? CARD_SHOOTS
+      : (typeof SHOOTS !== "undefined" && Array.isArray(SHOOTS)) ? SHOOTS : []
   });
   function buildCompCardDisplayList(list, kind, d, ctx) {
     let displayList = list;
@@ -5457,7 +5515,7 @@ window.resolveContractArchive = function(version) {
       // …except a photo the studio marked "Albums only". The rule above says
       // none means no comp card, and the card showed them anyway: six and nine
       // photos on two models' cards (Sep 2026 audit, P4).
-      const usableHere = (p) => !!p && p.usage !== "none";
+      const usableHere = (p) => !!p && (p.usage !== "none" || polaroidStranded(p));
       const newestFirst = (a, b) => {
         const when = (x) => x.date ? Date.parse(x.date) : (x.createdAt || 0);
         return when(b) - when(a);
@@ -5786,10 +5844,15 @@ window.resolveContractArchive = function(version) {
       </section>
       <section class="section container album-page">
         <div class="album-page-grid" data-shoot="${esc(album.id)}">
-          ${album.photos.map((p, i) => `
-            <button type="button" class="album-page-photo" data-index="${i}" aria-label="Open photo ${i + 1} of ${album.photos.length}">
+          ${album.photos.map((p, i) => {
+            // The studio sees every frame, so a Polaroid that visitors will not
+            // see in this album says so on the picture.
+            const hiddenPolaroid = isAdmin() && isPolaroid(p) && !polaroidsShowInAlbum(album);
+            return `
+            <button type="button" class="album-page-photo" data-index="${i}"${hiddenPolaroid ? ` data-polaroid-hidden="1" style="position: relative;"` : ""} aria-label="Open photo ${i + 1} of ${album.photos.length}">${hiddenPolaroid ? `<span class="album-polaroid-note" style="position: absolute; left: 8px; bottom: 8px; z-index: 2; background: rgba(14,14,14,.78); color: #fff; font-family: var(--mono-font); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 100px;">Polaroid · hidden from visitors</span>` : ""}
               <img src="${esc(photoSrc(p))}"${srcsetAttr(p, "(max-width: 760px) 45vw, 30vw")}${sizeAttr(p)} alt="${esc(p.caption || altFor(album, i + 1))}" ${i < 3 ? `fetchpriority="${i === 0 ? "high" : "auto"}" decoding="async"` : `loading="lazy" decoding="async"`} />
-            </button>`).join("")}
+            </button>`;
+          }).join("")}
         </div>
         ${credits.length ? `<p class="album-page-credits">${credits.map(([k, v]) => `<span><strong>${esc(k)}</strong> ${esc(v)}</span>`).join("")}</p>` : ""}
         ${(() => {
@@ -5900,7 +5963,11 @@ window.resolveContractArchive = function(version) {
   // link that has ever been sent out resolvable. Accepts a real album id, the
   // slug form, the legacy percent-encoded synthetic id, and the raw talent
   // string. Returns the album object, or null when nothing matches.
-  function resolveShareId(rawId, shoots) {
+  // `cardList` is the list a model's card is built from (polaroids included);
+  // `shoots` is the album side. A shared album must not give up a polaroid, a
+  // shared card must not lose one, so each branch reads its own list. Left
+  // out, both read `shoots`, as they did before polaroids existed.
+  function resolveShareId(rawId, shoots, cardList) {
     const list = Array.isArray(shoots) ? shoots : [];
     let id = String(rawId ?? "");
     if (!id) return null;
@@ -5920,7 +5987,7 @@ window.resolveContractArchive = function(version) {
       // otherwise slugify into something no album's clean name can match.
       const wanted = new Set([slugify(m[2]), slugify(getTalentCleanName(m[2]))].filter(Boolean));
       const category = m[1] === "portfolio" ? "Model Portfolio" : "Comp Cards";
-      const unified = buildCompCardDisplayList(list.filter((s) => showsOnModelPage(s, category)), "type", category, compCardContext());
+      const unified = buildCompCardDisplayList((Array.isArray(cardList) ? cardList : list).filter((s) => showsOnModelPage(s, category)), "type", category, compCardContext());
       const hit = unified.find((a) => wanted.has(nameSlug(a)));
       if (hit) return hit;
     }
@@ -5935,7 +6002,10 @@ window.resolveContractArchive = function(version) {
     // Detail: a filtered work list
     if (kind && val) {
       const d = decodeURIComponent(val);
-      const list = SHOOTS.filter((s) => {
+      // A model page is built from the card pool (polaroids included); every
+      // other category is a list of albums, which is the album side.
+      const modelPage = kind === "type" && (d === "Model Portfolio" || d === "Comp Cards" || d === "Selective Collaboration (TFP)");
+      const list = (modelPage ? cardShoots() : SHOOTS).filter((s) => {
         if (kind === "brand" && (!s.client || !s.client.trim())) return false;
         if (kind === "type" && (d === "Model Portfolio" || d === "Comp Cards" || d === "Selective Collaboration (TFP)" || d === "Test Shoot")) {
           return d === "Model Portfolio" ? showsOnModelPage(s, "Model Portfolio") : qualifiesAsCompCard(s);
@@ -11690,7 +11760,7 @@ window.resolveContractArchive = function(version) {
   function paintServiceCompCards() {
     const slot = view.querySelector("[data-comp-cards]");
     if (!slot) return;
-    const list = buildCompCardDisplayList(SHOOTS.filter((s) => qualifiesAsCompCard(s)), "type", "Comp Cards", compCardContext());
+    const list = buildCompCardDisplayList(cardShoots().filter((s) => qualifiesAsCompCard(s)), "type", "Comp Cards", compCardContext());
     if (!list.length) return;
     const firstPaint = !slot.dataset.painted;
     CURRENT_VIEW_SHOOTS = list;
@@ -12820,7 +12890,7 @@ window.resolveContractArchive = function(version) {
     const key = shoot.modelKey || modelKeyOf(shoot.talent || shoot.title);
     let photos = [];
     if (key) {
-      photos = (Array.isArray(SHOOTS) ? SHOOTS : []).flatMap((s) => {
+      photos = cardShoots().flatMap((s) => {
         if (!s || s.type === "Workshop Attended") return [];
         // An album that says who is in it answers frame by frame, and only if
         // the studio has said its photographs may travel to the models' own

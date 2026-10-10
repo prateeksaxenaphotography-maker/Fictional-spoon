@@ -2785,6 +2785,7 @@ window.moveAdminPackageRow = function(index, dir) {
           // "Unspecified" from the edit form, and that must still publish.
           if (p.angle === undefined && rp.angle) p.angle = rp.angle;
           if (p.usage === undefined && rp.usage) p.usage = rp.usage;
+          if (p.polaroid === undefined && rp.polaroid === true) p.polaroid = true;
           if (p.look === undefined && rp.look) p.look = rp.look;
           // Who is in the frame, by the same additive rule. An empty array is
           // a deliberate "nobody is tagged here yet" and still publishes.
@@ -2948,6 +2949,10 @@ window.moveAdminPackageRow = function(index, dir) {
               // visitor ever saw one: the portfolio PDF had nothing to offer.
               ...(p.angle ? { angle: p.angle } : {}),
               ...(p.usage ? { usage: p.usage } : {}),
+              // A Polaroid is left out of the album and kept on the cards and
+              // PDFs. Missing from this list it would stay on the studio's
+              // device and every visitor would see it in the album.
+              ...(p.polaroid === true ? { polaroid: true } : {}),
               // The kind of work a photo was tagged as puts it on that page's grid.
               ...(p.look ? { look: p.look } : {}),
               // Who is in this frame. This is what sends one photograph to two
@@ -6351,6 +6356,10 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               <span style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft);">Kind of work:</span>
               ${LOOKS.map((l) => `<button type="button" class="thumb-bulk-look-btn" data-look="${esc(l.key)}" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">${esc(l.label)}</button>`).join("")}
               <button type="button" class="thumb-bulk-look-btn" data-look="" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink-soft); cursor:pointer;">Follow album</button>
+              <span style="width:1px; align-self:stretch; background:var(--line-2);"></span>
+              <span style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft);">Polaroid:</span>
+              <button type="button" class="thumb-bulk-polaroid-btn" data-on="1" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">Mark as Polaroid</button>
+              <button type="button" class="thumb-bulk-polaroid-btn" data-on="0" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink-soft); cursor:pointer;">Not a Polaroid</button>
               <!-- Filled in whenever the album has more than one model in it:
                    with six models and forty frames, tagging one at a time is
                    the difference between the feature being used and not. -->
@@ -6576,6 +6585,10 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                   <span class="tog-text"><strong>Show on Model portfolio</strong><small>On for test shoots unless you untick it. Its photos can go into portfolio PDFs.</small></span>
                 </label>
                 <label>
+                  <input id="f_show_polaroids" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent-text); margin: 3px 0 0;" />
+                  <span class="tog-text"><strong>Show polaroids in this album</strong><small>Photos marked Polaroid stay on comp cards and PDFs and are left out of the album. Tick this to show them in the album too.</small></span>
+                </label>
+                <label>
                   <input id="f_disable_download" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent-text); margin: 3px 0 0;" />
                   <span class="tog-text"><strong>Turn off the comp card download</strong><small>People can still see the comp card, just not download it. The paid portfolio PDF isn't affected.</small></span>
                 </label>
@@ -6695,6 +6708,15 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     // shoots with a dozen-plus frames. selectedForBulk is transient UI state
     // (never saved), cleared on every re-render of the grid.
     const selectedForBulk = new Set();
+    // A Polaroid is left out of the album, and a photo with Usage "Album only"
+    // is left out of the cards: both together would show it nowhere. Ticking
+    // Polaroid on an "Album only" photo therefore makes it Both, and the Usage
+    // list stops offering "Album only" while it is ticked.
+    const polaroidsOn = () => !!$("#f_show_polaroids")?.checked;
+    function setPolaroid(item, on) {
+      item.polaroid = !!on;
+      if (on && item.usage === "none") { item.usage = "both"; item.excludeFromCompCard = false; }
+    }
     // "Show on Comp cards" and "Show on Model portfolio" start ticked for a
     // test shoot. On a new album they follow the Type until either is touched;
     // an album being edited keeps what it has.
@@ -6738,6 +6760,18 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         toast(`Tagged ${n} photo${n > 1 ? "s" : ""} as ${ANGLE_LABELS[angle]}.`);
       });
     });
+    // Polaroids, a batch at a time: tick the photos, then Mark as Polaroid.
+    bulkToolbar?.querySelectorAll(".thumb-bulk-polaroid-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (!selectedForBulk.size) { toast("Tick the checkbox on each photo first."); return; }
+        const on = btn.dataset.on === "1";
+        let n = 0;
+        staged.forEach((item) => { if (selectedForBulk.has(item.id)) { setPolaroid(item, on); n++; } });
+        selectedForBulk.clear();
+        renderStaged();
+        toast(on ? `${n} photo${n > 1 ? "s" : ""} marked as Polaroid.` : `${n} photo${n > 1 ? "s" : ""} no longer ${n > 1 ? "are" : "is a"} Polaroid${n > 1 ? "s" : ""}.`);
+      });
+    });
     // Kind of work, a look at a time: tick the photos of one look, click its kind.
     // "Follow album" clears the tag, so the photos go back to the album's Activity.
     bulkToolbar?.querySelectorAll(".thumb-bulk-look-btn").forEach((btn) => {
@@ -6755,6 +6789,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     // right now — and says it again whenever Activity or Type changes.
     const syncFollowText = () => grid.querySelectorAll('.thumb-look-select option[value=""]').forEach((o) => { o.textContent = followAlbumText(); });
     $("#f_activity")?.addEventListener("change", syncFollowText);
+    $("#f_show_polaroids")?.addEventListener("change", () => renderStaged());
     $("#f_type")?.addEventListener("change", syncFollowText);
     // "Also for" never repeats the main client.
     const forSelect = $("#f_for_client");
@@ -7288,6 +7323,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         if (onCompcardsInput) onCompcardsInput.checked = showsOnModelPage(editingShoot, "Comp Cards");
         const onPortfolioInput = $("#f_on_portfolio");
         if (onPortfolioInput) onPortfolioInput.checked = showsOnModelPage(editingShoot, "Model Portfolio");
+        const polaroidsInput = $("#f_show_polaroids");
+        if (polaroidsInput) polaroidsInput.checked = editingShoot.showPolaroidsInAlbum === true;
         const disableDownloadInput = $("#f_disable_download");
         if (disableDownloadInput) {
           disableDownloadInput.checked = !!editingShoot.disableCompCardDownload;
@@ -7330,8 +7367,10 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             caption: p.caption || "",
             onHome: !!p.onHome,
             ...(typeof p.homeFocalX === "number" ? { homeFocalX: p.homeFocalX, homeFocalY: p.homeFocalY } : {}),
-            excludeFromCompCard: !!p.excludeFromCompCard,
-            usage: p.usage || (p.excludeFromCompCard ? "portfolio" : "both"),
+            // A Polaroid with Usage "Album only" would show nowhere: read as Both.
+            excludeFromCompCard: (p.polaroid === true && p.usage === "none") ? false : !!p.excludeFromCompCard,
+            usage: (p.polaroid === true && p.usage === "none") ? "both" : (p.usage || (p.excludeFromCompCard ? "portfolio" : "both")),
+            polaroid: p.polaroid === true,
             angle: p.angle || "",
             look: p.look || "",
             // Who is in the frame. Another field this explicit list would drop
@@ -7531,6 +7570,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               <span class="thumb-focal-dot" style="left:${fp.x}%; top:${fp.y}%;"></span>
             </div>
             <button type="button" class="thumb-remove" data-id="${f.id}" aria-label="Remove">×</button>
+            ${f.polaroid ? `<span class="thumb-polaroid-tag" style="position: absolute; left: 6px; bottom: 6px; z-index: 3; background: rgba(14,14,14,.78); color: #fff; font-family: var(--mono-font); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 100px;">Polaroid</span>` : ""}
           </div>
           ${f.onHome ? `<div class="thumb-dot-mode" role="group" aria-label="The dot sets">
             <span>Dot sets:</span>
@@ -7546,6 +7586,10 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             </label>
             <input type="text" class="thumb-caption-input" data-id="${f.id}" value="${esc(f.caption || '')}" placeholder="Add caption…" style="width: 100%; box-sizing: border-box; font-size: var(--font-xs); padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); color: var(--ink); outline: none;" />
             
+            <label class="thumb-polaroid-row" title="A Polaroid is kept for comp cards and PDFs and left out of the album." style="display: flex; align-items: flex-start; gap: 6px; font-size: var(--font-xs); color: var(--ink); cursor: pointer;">
+              <input type="checkbox" class="thumb-polaroid-check" data-id="${f.id}" ${f.polaroid ? 'checked' : ''} style="width: 13px; height: 13px; accent-color: var(--accent-text); margin: 1px 0 0; cursor: pointer;" />
+              <span><strong>Polaroid</strong>${f.polaroid ? `<br /><span class="thumb-polaroid-note" style="color: var(--ink-soft);">${polaroidsOn() ? "Also shown in the album" : "Not shown in the album"}</span>` : ""}</span>
+            </label>
             <div style="display: grid; grid-template-columns: 1fr; gap: 4px;">
               <label style="font-size: var(--font-xs); color: var(--ink-soft); display: flex; flex-direction: column; gap: 2px;">
                 <span>Kind of work</span>
@@ -7570,7 +7614,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                   <option value="both" ${f.usage === 'both' ? 'selected' : ''}>Both (Comp & Port)</option>
                   <option value="portfolio" ${f.usage === 'portfolio' ? 'selected' : ''}>Portfolio Only</option>
                   <option value="comp" ${f.usage === 'comp' ? 'selected' : ''}>Comp Card Only</option>
-                  <option value="none" ${f.usage === 'none' ? 'selected' : ''}>Album only (not on the model's card or PDFs)</option>
+                  ${f.polaroid ? "" : `<option value="none" ${f.usage === 'none' ? 'selected' : ''}>Album only (not on the model's card or PDFs)</option>`}
                 </select>
               </label>
               <label style="font-size: var(--font-xs); color: var(--ink-soft); display: flex; flex-direction: column; gap: 2px;">
@@ -7615,6 +7659,16 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           renderStaged();
         });
         btn.addEventListener("mousedown", (e) => e.stopPropagation());
+      });
+
+      grid.querySelectorAll(".thumb-polaroid-check").forEach((cb) => {
+        cb.addEventListener("change", () => {
+          const item = staged.find((x) => x.id === cb.dataset.id);
+          if (!item) return;
+          setPolaroid(item, cb.checked);
+          renderStaged();
+        });
+        cb.addEventListener("mousedown", (e) => e.stopPropagation());
       });
 
       grid.querySelectorAll(".thumb-usage-select").forEach((sel) => {
@@ -8154,6 +8208,10 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           // dropdown (see the change handler in renderStaged).
           excludeFromCompCard: !!f.excludeFromCompCard || f.usage === "portfolio" || f.usage === "none",
           usage: f.usage || (f.excludeFromCompCard ? "portfolio" : "both"),
+          // Written as an explicit true/false so that unticking really
+          // unticks: an absent field is what the publish step fills in from
+          // the live copy, and a stale "true" there would put it back.
+          polaroid: f.polaroid === true,
           angle: f.angle || "",
           // "" is "follows the album", on purpose: a missing field is what the
           // publish step fills in from the live copy (see syncToGitHub).
@@ -8179,6 +8237,9 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         hideFromCompCard: !($("#f_on_compcards")?.checked ?? false),
         showOnModelPortfolio: $("#f_on_portfolio")?.checked ?? false,
         disableCompCardDownload: $("#f_disable_download")?.checked ?? false,
+        // Explicit true/false, so switching it off really switches it off (see
+        // backfillPublishedOnlyFields: an absent field is filled from the live copy).
+        showPolaroidsInAlbum: $("#f_show_polaroids")?.checked ?? false,
         isPublic: $("#f_is_public")?.checked ?? true,
         showCredits: $("#f_show_credits")?.checked ?? true,
         showPdf: $("#f_show_pdf")?.checked ?? true,
