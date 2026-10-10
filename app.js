@@ -348,6 +348,9 @@ window.codeStatus = function(entry, todayKey) {
   return "live";
 };
 
+// An expired code says so plainly and sends them to the studio (the owner,
+// Oct 10 2026: "code has expired please connect with the studio"); the end date
+// is no use to them, so it is no longer quoted.
 // What to tell a client whose code is real but outside its dates. A code that
 // is switched off says nothing here on purpose — it behaves as if it had never
 // been created — but "not recognised" for a code that simply starts next week
@@ -355,7 +358,7 @@ window.codeStatus = function(entry, todayKey) {
 window.codeDatesReason = function(entry) {
   const st = window.codeStatus(entry);
   if (st === "early") return `starts working on ${window.formatCodeDate(entry.startDate)}`;
-  if (st === "ended") return `ended on ${window.formatCodeDate(entry.endDate)}`;
+  if (st === "ended") return "has expired — please get in touch with the studio";
   return "";
 };
 
