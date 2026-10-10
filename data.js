@@ -2371,6 +2371,7 @@ window.WPS_DATA = {
           "objectPosition": "top",
           "angle": "full-body",
           "usage": "both",
+          "polaroid": true,
           "small": "photos/mubczus1xaoo4q/muca56vgez53vb-0@480.jpg",
           "medium": "photos/mubczus1xaoo4q/muca56vgez53vb-0@960.jpg"
         },
@@ -2380,6 +2381,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "left-profile",
           "usage": "both",
+          "polaroid": true,
           "small": "photos/mubczus1xaoo4q/muca57hap5pcdi-1@480.jpg",
           "medium": "photos/mubczus1xaoo4q/muca57hap5pcdi-1@960.jpg"
         },
@@ -2389,6 +2391,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "left-profile",
           "usage": "both",
+          "polaroid": true,
           "small": "photos/mubczus1xaoo4q/muca57r58dg197-2@480.jpg",
           "medium": "photos/mubczus1xaoo4q/muca57r58dg197-2@960.jpg"
         },
@@ -2398,6 +2401,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "right-profile",
           "usage": "both",
+          "polaroid": true,
           "small": "photos/mubczus1xaoo4q/muca57yixr16s8-3@480.jpg",
           "medium": "photos/mubczus1xaoo4q/muca57yixr16s8-3@960.jpg"
         },
@@ -2407,6 +2411,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "back",
           "usage": "both",
+          "polaroid": true,
           "small": "photos/mubczus1xaoo4q/muca5877bysjsu-4@480.jpg",
           "medium": "photos/mubczus1xaoo4q/muca5877bysjsu-4@960.jpg"
         },
@@ -2647,6 +2652,7 @@ window.WPS_DATA = {
       "hideFromCompCard": false,
       "showOnModelPortfolio": true,
       "disableCompCardDownload": false,
+      "showPolaroidsInAlbum": false,
       "isPublic": true,
       "showCredits": true,
       "showPdf": true,
@@ -2656,9 +2662,10 @@ window.WPS_DATA = {
       "showStats": true,
       "showGear": true,
       "showLocation": true,
-      "showModelInstagramOnCompCard": true,
-      "showModelInstagramOnHome": true,
-      "showModelInstagramOnPdf": true,
+      "socialsChosen": true,
+      "showModelInstagramOnCompCard": false,
+      "showModelInstagramOnHome": false,
+      "showModelInstagramOnPdf": false,
       "showModelKavyarOnCompCard": false,
       "showModelKavyarOnHome": false,
       "showModelKavyarOnPdf": false,
@@ -2695,8 +2702,9 @@ window.WPS_DATA = {
       "showAgencyEmailOnCompCard": false,
       "showAgencyEmailOnHome": false,
       "showAgencyEmailOnPdf": false,
+      "showCrewSocials": false,
       "coverPhotoId": "muca5a1qkkj6qh",
-      "updatedAt": 1790401878851
+      "updatedAt": 1791645190309
     }
   ],
   "DELETED_IDS": [
@@ -2970,8 +2978,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1791618752034,
-    "syncedAt": 1791618752034
+    "updatedAt": 1791645193961,
+    "syncedAt": 1791645193961
   },
   "INVITE_CODES": [
     {
@@ -3371,12 +3379,12 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1790401878852,
+        "updatedAt": 1791645190310,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
-        "showModelInstagramOnCompCard": true,
-        "showModelInstagramOnHome": true,
-        "showModelInstagramOnPdf": true,
+        "showModelInstagramOnCompCard": false,
+        "showModelInstagramOnHome": false,
+        "showModelInstagramOnPdf": false,
         "showModelKavyarOnCompCard": false,
         "showModelKavyarOnHome": false,
         "showModelKavyarOnPdf": false,
@@ -3412,7 +3420,8 @@ window.WPS_DATA = {
         "showAgencyWebsiteOnPdf": false,
         "showAgencyEmailOnCompCard": false,
         "showAgencyEmailOnHome": false,
-        "showAgencyEmailOnPdf": false
+        "showAgencyEmailOnPdf": false,
+        "socialsChosen": true
       },
       {
         "key": "devesh-baisoya",
