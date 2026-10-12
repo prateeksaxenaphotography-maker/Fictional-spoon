@@ -2913,6 +2913,26 @@ window.WPS_DATA = {
           "contractVersion": "Pending Agreement",
           "updatedAt": 1791805270591
         }
+      ],
+      "2026-10-25": [
+        {
+          "id": "b_1791826082744_l81g",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "V4.2-TFP",
+          "updatedAt": 1791826082744
+        }
+      ],
+      "2026-10-18": [
+        {
+          "id": "b_1791827047985_26i8",
+          "isTentative": true,
+          "status": "tentative",
+          "type": "Fashion Editorial",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1791827047985
+        }
       ]
     },
     "removedBookingIds": [
@@ -2994,12 +3014,18 @@ window.WPS_DATA = {
       "2026-10-25::Someone interested",
       "2026-10-31::b_1791531121557_v2rn",
       "2026-10-31::Client Booking",
-      "2026-11-01::b_1791530321995_p9vy"
+      "2026-11-01::b_1791530321995_p9vy",
+      "2026-10-24::b_1791825420063_9co3",
+      "2026-10-24::yuvraj",
+      "2026-10-24::b_1791825436587_uwe3",
+      "2026-10-24::Anticipated Client Hold",
+      "2026-10-25::b_1791825432312_0b1i",
+      "2026-10-25::Anticipated Client Hold"
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1791810351558,
-    "syncedAt": 1791810351558
+    "updatedAt": 1791827074534,
+    "syncedAt": 1791827074534
   },
   "INVITE_CODES": [
     {
