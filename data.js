@@ -2726,13 +2726,12 @@ window.WPS_DATA = {
       "2026-09-09": true,
       "2026-09-11": true,
       "2026-10-09": true,
-      "2026-10-14": true,
       "2026-10-16": true,
       "2026-10-12": true
     },
     "dateStamps": {
       "2026-10-09": 1791438629101,
-      "2026-10-14": 1791438639063,
+      "2026-10-14": 1791805280172,
       "2026-10-16": 1791438645813,
       "2026-10-12": 1791438647855,
       "2026-10-19": 1791537733322,
@@ -2887,12 +2886,32 @@ window.WPS_DATA = {
       ],
       "2026-11-01": [
         {
-          "id": "b_1791530321995_p9vy",
+          "id": "b_1791810259119_c2fb",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "V4.2-TFP",
+          "updatedAt": 1791810306467
+        }
+      ],
+      "2026-10-21": [
+        {
+          "id": "b_1791805260731_y3a5",
           "isTentative": true,
           "status": "tentative",
-          "type": "Selective Collaboration (TFP)",
-          "contractVersion": "V4.1-TFP",
-          "updatedAt": 1791531765632
+          "type": "Fashion Editorial",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1791805263818
+        }
+      ],
+      "2026-10-20": [
+        {
+          "id": "b_1791805267974_bjr1",
+          "isTentative": true,
+          "status": "tentative",
+          "type": "Fashion Editorial",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1791805270591
         }
       ]
     },
@@ -2974,12 +2993,13 @@ window.WPS_DATA = {
       "2026-10-25::b_1791531780716_l6nk",
       "2026-10-25::Someone interested",
       "2026-10-31::b_1791531121557_v2rn",
-      "2026-10-31::Client Booking"
+      "2026-10-31::Client Booking",
+      "2026-11-01::b_1791530321995_p9vy"
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1791645202730,
-    "syncedAt": 1791645202730
+    "updatedAt": 1791810328778,
+    "syncedAt": 1791810328778
   },
   "INVITE_CODES": [
     {
