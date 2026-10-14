@@ -2947,6 +2947,36 @@ window.WPS_DATA = {
           "contractVersion": "Not Required",
           "updatedAt": 1791955045973
         }
+      ],
+      "2026-11-14": [
+        {
+          "id": "b_1791958234100_xx1j",
+          "isTentative": false,
+          "status": "workshop",
+          "type": "Workshop Attended",
+          "contractVersion": "Not Required",
+          "updatedAt": 1791958244293
+        }
+      ],
+      "2026-11-15": [
+        {
+          "id": "b_1791958247602_jrx9",
+          "isTentative": false,
+          "status": "assisting",
+          "type": "Assisting Photographer",
+          "contractVersion": "Not Required",
+          "updatedAt": 1791958253166
+        }
+      ],
+      "2026-11-21": [
+        {
+          "id": "b_1791958261395_9sm3",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1791958261395
+        }
       ]
     },
     "removedBookingIds": [
@@ -3040,8 +3070,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1791955159512,
-    "syncedAt": 1791955159512
+    "updatedAt": 1791958273836,
+    "syncedAt": 1791958273836
   },
   "INVITE_CODES": [
     {
