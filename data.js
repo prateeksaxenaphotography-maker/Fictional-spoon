@@ -2732,11 +2732,11 @@ window.WPS_DATA = {
       "2026-10-12": true
     },
     "dateStamps": {
+      "2026-11-08": 1791954976635,
+      "2026-11-07": 1791954978813,
       "2026-10-09": 1791438629101,
       "2026-10-16": 1791438645813,
       "2026-10-12": 1791438647855,
-      "2026-11-08": 1791954976635,
-      "2026-11-07": 1791954978813,
       "2026-10-14": 1791805280172,
       "2026-10-19": 1791537733322,
       "2026-10-21": 1791537735330,
@@ -2925,7 +2925,7 @@ window.WPS_DATA = {
           "status": "confirmed",
           "type": "Selective Collaboration (TFP)",
           "contractVersion": "V4.2-TFP",
-          "updatedAt": 1791826082744
+          "updatedAt": 1791955128735
         }
       ],
       "2026-10-18": [
@@ -2936,6 +2936,16 @@ window.WPS_DATA = {
           "type": "Fashion Editorial",
           "contractVersion": "Pending Agreement",
           "updatedAt": 1791827047985
+        }
+      ],
+      "2026-10-24": [
+        {
+          "id": "b_1791955001441_ettt",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "Not Required",
+          "updatedAt": 1791955045973
         }
       ]
     },
@@ -3024,12 +3034,14 @@ window.WPS_DATA = {
       "2026-10-24::b_1791825436587_uwe3",
       "2026-10-24::Anticipated Client Hold",
       "2026-10-25::b_1791825432312_0b1i",
-      "2026-10-25::Anticipated Client Hold"
+      "2026-10-25::Anticipated Client Hold",
+      "2026-10-24::b_1791955006902_rqq9",
+      "2026-10-24::Test shoot"
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1791954986574,
-    "syncedAt": 1791954986574
+    "updatedAt": 1791955148336,
+    "syncedAt": 1791955148336
   },
   "INVITE_CODES": [
     {
