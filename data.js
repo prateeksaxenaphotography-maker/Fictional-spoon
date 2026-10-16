@@ -3070,14 +3070,14 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1792140544228,
-    "syncedAt": 1792140544228,
+    "updatedAt": 1792145225637,
+    "syncedAt": 1792145225637,
     "testShootLimits": {
       "default": 2,
       "months": {
-        "2026-11": 2
+        "2026-11": 3
       },
-      "at": 1792138119276
+      "at": 1792144392952
     }
   },
   "INVITE_CODES": [
