@@ -2751,18 +2751,18 @@ window.moveAdminPackageRow = function(index, dir) {
      anyone looking at the screen (Sep 2026 audit, A18). A small form of the
      site's own now, with the characters hidden unless "Show" is ticked.
      Resolves the token, or null when cancelled. */
-  function askForToken() {
+  function askForToken(why = "It publishes this change for everyone.", button = "Publish") {
     return new Promise((resolve) => {
       const back = document.createElement("div");
       back.className = "token-ask";
       back.innerHTML = `
         <form class="token-ask-box" role="dialog" aria-modal="true" aria-labelledby="tokenAskTitle">
           <h2 id="tokenAskTitle">Paste your GitHub token</h2>
-          <p>It publishes this change for everyone. Use a fine-grained token for this one repository, with Contents: read &amp; write and an expiry date. This device forgets it after 30 days.</p>
+          <p>${why} Use a fine-grained token for this one repository, with Contents: read &amp; write and an expiry date. This device forgets it after 30 days.</p>
           <label for="tokenAskInput">GitHub token</label>
           <input id="tokenAskInput" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="github_pat_…" />
           <label class="token-ask-show"><input type="checkbox" id="tokenAskShow" /> Show</label>
-          <div class="token-ask-acts"><button type="button" class="btn btn-ghost" data-token-cancel>Cancel</button><button type="submit" class="btn btn-dark">Publish</button></div>
+          <div class="token-ask-acts"><button type="button" class="btn btn-ghost" data-token-cancel>Cancel</button><button type="submit" class="btn btn-dark">${button}</button></div>
         </form>`;
       const input = back.querySelector("#tokenAskInput");
       const done = (v) => { back.remove(); document.removeEventListener("keydown", onKey); resolve(v); };
@@ -2776,6 +2776,26 @@ window.moveAdminPackageRow = function(index, dir) {
     });
   }
 
+  /* The GitHub token as syncToGitHub reads it — remembered for 30 days, asked for when it is not there — for the private
+     copy of books (v618), which writes its own files to the repository and so needs the same key. Returns null if none
+     is given. */
+  async function githubToken(why, button) {
+    let pat = localStorage.getItem("wps-github-pat");
+    if (pat) {
+      const at = Number(localStorage.getItem("wps-github-pat-at")) || 0;
+      if (!at) localStorage.setItem("wps-github-pat-at", String(Date.now()));
+      else if (Date.now() - at > 30 * 86400000) { localStorage.removeItem("wps-github-pat"); localStorage.removeItem("wps-github-pat-at"); pat = null; }
+    }
+    if (!pat && why !== false) {
+      pat = await askForToken(why, button);
+      if (pat) { pat = pat.trim(); localStorage.setItem("wps-github-pat", pat); localStorage.setItem("wps-github-pat-at", String(Date.now())); }
+    }
+    return pat || null;
+  }
+  // One file's bytes straight from the repository (never from the site's cache), as the token sees them.
+  async function githubRaw(pat, path, ref = GH_BRANCH) {
+    return ghFetch(`${GH_API}/contents/${path}?ref=${ref}`, { headers: { "Authorization": `token ${pat}`, "Accept": "application/vnd.github.raw+json" } });
+  }
   async function syncToGitHub(shootsList, { deletedIds = [], attempt = 0 } = {}) {
     /* The token used to stay in this browser for ever. It is now forgotten
        30 days after it was entered, and asked for again (Sep 2026 audit, S5,
@@ -9179,7 +9199,9 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     wireCalendar: () => wireCalendar(),
     updateReminders: () => updateAdminReminders(),
     initStudioSettings: () => initStudioSettingsControls(),
-    loadBookBuilder: () => loadBookBuilder()
+    loadBookBuilder: () => loadBookBuilder(),
+    // For the portfolio builder's private copy of books (v618): the same token and the same careful calls publishing uses.
+    github: { api: (pat, path, opts) => ghApi(pat, path, opts), raw: (pat, path, ref) => githubRaw(pat, path, ref), token: (why, button) => githubToken(why, button), stale: () => staleBuildCheck(), branch: GH_BRANCH }
   };
 
   // The only chance the studio-links editor gets when admin mode is switched

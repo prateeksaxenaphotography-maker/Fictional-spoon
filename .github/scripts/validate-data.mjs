@@ -5,7 +5,7 @@
 // deploy; its own workflow ran the same checks a second time and was removed
 // in Sep 2026, audit A18); a failure emails the repo
 // owner instead of being discovered as a broken website.
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { execSync } from "node:child_process";
 
 let failed = false;
@@ -1315,6 +1315,29 @@ try {
     const t = f === "app.js" ? appText : readFileSync(f, "utf8");
     if (/openContractArchiveModal\(\s*['"]V\d/.test(t)) fail(`${f} opens a contract version by a hand-written number — the vault's cards come from the archive (vaultCardsHtml in admin.js)`);
     if (/V\d+\.\d+[A-Z /]*\((?:ACTIVE|ARCHIVED)\)/.test(t.replace(/\$\{[^}]*\}/g, ""))) fail(`${f} hand-writes an "(ACTIVE)" or "(ARCHIVED)" contract tag — the vault builds these from the archive`);
+  }
+}
+
+// ── The private copy of books (v618): nothing readable may ever sit in private/ ─────────────────
+// The repository is public. The portfolio builder writes a studio's moodboards and client books there
+// ENCRYPTED, with a key made from a passphrase only the owner knows (see PRIV in book-builder.js). This stops a bug,
+// a hand edit or an old tab from ever putting a book there as plain text: only a manifest of the known shape and files
+// that are not text may be in the folder.
+if (existsSync("private")) {
+  for (const name of readdirSync("private")) {
+    const path = `private/${name}`;
+    if (name === "manifest.json") {
+      let m = null; try { m = JSON.parse(readFileSync(path, "utf8")); } catch (e) { fail(`${path} is not JSON`); continue; }
+      const keys = Object.keys(m || {}).sort().join();
+      if (keys !== "at,box,iter,salt,v") fail(`${path} must hold only v, salt, iter, at and box (it holds: ${keys})`);
+      else if (m.v !== 1 || typeof m.salt !== "string" || typeof m.box !== "string" || !Number.isInteger(m.iter) || m.iter < 100000) fail(`${path} is not a well-formed manifest`);
+    } else if (/^[bp]-[A-Za-z0-9_-]+\.bin$/.test(name)) {
+      const buf = readFileSync(path);
+      if (buf.length < 29) fail(`${path} is too short to be an encrypted file`);
+      // An encrypted file starts with a random 12-byte nonce. Text, JSON or a picture's data address never does.
+      const head = buf.subarray(0, 24).toString("latin1");
+      if (/^\s*[\[{"]/.test(head) || /^data:/i.test(head) || /^(?:\x89PNG|\xFF\xD8\xFF|GIF8|RIFF)/.test(head)) fail(`${path} looks like readable text or a picture, not an encrypted file`);
+    } else fail(`${path}: only manifest.json and encrypted b-/p- .bin files belong in private/`);
   }
 }
 

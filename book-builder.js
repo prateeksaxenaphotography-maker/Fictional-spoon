@@ -1013,6 +1013,63 @@
     });
   }
 
+  /* The passphrase for the private copy (v618). "new": a first one, typed twice, with the warning that it cannot be
+     recovered; "unlock": the one the site's copy was made with. Resolves with the text, or null if given up. */
+  function askPassphrase(mode) {
+    return new Promise((resolve) => {
+      const isNew = mode === "new";
+      const box = document.createElement("div");
+      box.className = "sb-modal-back";
+      box.innerHTML = `
+        <form class="sb-modal" role="dialog" aria-modal="true" aria-labelledby="sbPassTitle">
+          <h3 id="sbPassTitle">${isNew ? "Choose a passphrase" : "Type your passphrase"}</h3>
+          <p class="sb-hint">${isNew
+            ? "Your private books are saved on your site <b>encrypted</b>, so nobody else can read them even though the site's files are public. This passphrase is the key: <b>four ordinary words together</b> (at least 12 characters) is strong and easy to remember. You type it once on each computer you use."
+            : "Your site holds a private, encrypted copy of your books. Type the passphrase you chose to open it on this computer."}</p>
+          <label class="sb-passfield"><span class="sb-label">Passphrase</span><input type="password" id="sbPass1" autocomplete="${isNew ? "new-password" : "current-password"}" spellcheck="false" autocapitalize="off"></label>
+          ${isNew ? `<label class="sb-passfield"><span class="sb-label">Once more</span><input type="password" id="sbPass2" autocomplete="new-password" spellcheck="false" autocapitalize="off"></label>
+          <p class="sb-passwarn"><b>Write it down somewhere safe.</b> There is no way to get it back, and without it the copy on your site can never be opened. (Your books on this computer stay as they are.)</p>` : ""}
+          <p class="sb-passbad" id="sbPassBad" role="alert"></p>
+          <div class="sb-modal-foot">
+            <button type="button" class="sb-btn" data-pass-cancel>Cancel</button>
+            <button type="submit" class="sb-btn dark">${isNew ? "Use this passphrase" : "Unlock"}</button>
+          </div>
+        </form>`;
+      const close = (v) => { box.remove(); document.removeEventListener("keydown", onKey); resolve(v); };
+      box._cancel = () => close(null);
+      const onKey = (e) => { if (e.key === "Escape") close(null); };
+      box.addEventListener("click", (e) => { if (e.target === box || e.target.closest("[data-pass-cancel]")) close(null); });
+      box.querySelector("form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const a = box.querySelector("#sbPass1").value, bad = box.querySelector("#sbPassBad");
+        if (isNew) {
+          if (a.length < 12) { bad.textContent = "Use at least 12 characters: four ordinary words together is best."; return; }
+          if (a !== box.querySelector("#sbPass2").value) { bad.textContent = "The two don't match."; return; }
+        } else if (!a) { bad.textContent = "Type the passphrase."; return; }
+        close(a);
+      });
+      document.addEventListener("keydown", onKey);
+      document.body.appendChild(box);
+      box.querySelector("#sbPass1").focus();
+    });
+  }
+  // A question with two named buttons (the second is the one that does it).
+  function askYesNo(title, html, yes, no) {
+    return new Promise((resolve) => {
+      const box = document.createElement("div");
+      box.className = "sb-modal-back";
+      box.innerHTML = `<div class="sb-modal" role="alertdialog" aria-modal="true" aria-labelledby="sbYnTitle"><h3 id="sbYnTitle">${API.esc(title)}</h3><p class="sb-hint">${html}</p><div class="sb-modal-foot"><button type="button" class="sb-btn" data-yn-no>${API.esc(no)}</button><button type="button" class="sb-btn dark" data-yn-yes>${API.esc(yes)}</button></div></div>`;
+      const close = (v) => { box.remove(); document.removeEventListener("keydown", onKey); resolve(v); };
+      box._cancel = () => close(false);
+      const onKey = (e) => { if (e.key === "Escape") close(false); };
+      box.addEventListener("click", (e) => { if (e.target === box || e.target.closest("[data-yn-no]")) close(false); else if (e.target.closest("[data-yn-yes]")) close(true); });
+      document.addEventListener("keydown", onKey);
+      document.body.appendChild(box);
+      box.querySelector("[data-yn-no]").focus();
+    });
+  }
+  // What a book's private-copy switch says under it.
+  const keepNote = (k) => (k.state === "off" ? "private and encrypted: opens on any computer you sign in on" : k.state === "waiting" ? "not on your site yet: press Sync now" : k.state === "changed" ? "changed since it was last saved to your site" : `saved to your site ${new Date(k.at || Date.now()).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}`);
   function askToDeleteBook(name) {
     return new Promise((resolve) => {
       const box = document.createElement("div");
@@ -6172,6 +6229,331 @@
     return ok;
   }
 
+  /* ---- A private copy of books on the site (v618) -----------------------------------------------------------------------
+     The owner (Oct 16 2026), about a moodboard: "i want to publish on site so that i can access it from anywhere when i
+     log in as admin" — and, offered the choice, the private way. Books made for someone else, and every moodboard and plan,
+     live on this computer only (see readState). A book switched to "Keep on my site" is also written into the repository,
+     ENCRYPTED with a key made from a passphrase only the owner knows, so a copy of it can be opened on any computer after
+     signing in and typing that passphrase once. The repository is public, so what lands there is ciphertext: AES-GCM,
+     the key stretched from the passphrase with PBKDF2 (600 000 rounds) and a random salt. Nothing readable is stored:
+     not the titles, not the pictures, not even how many books there are (the file names are random ids).
+
+       private/manifest.json   { v, salt, iter, at, box }   box = the encrypted list of books kept, and those deleted
+       private/b-<id>.bin      one book (its JSON + the details of its local pictures), encrypted
+       private/p-<id>.bin      one picture from this computer (pasted, dropped, a logo), encrypted once and never re-sent
+
+     The key is derived once per computer and kept (non-extractable) in IndexedDB, so the passphrase is typed once per device.
+     A wrong passphrase is told apart from a right one because the manifest's box only decrypts with the right key. Newest
+     edit wins book by book; when both sides changed the same book, the older version is kept as a second book, never lost.
+     A deleted book is deleted on the other computers too, only if they hadn't changed it since. It uses the studio's own
+     GitHub token (the same 30-day one publishing uses) and the same careful calls (WPS_ADMIN.github). */
+  const PRIV = (() => {
+    const DIR = "private", MANIFEST = `${DIR}/manifest.json`, ITER = 600000, SYNC_KEY = "wps_private_sync", KEY_DB = "wps-private-key", KEY_STORE = "k";
+    const TEXT = new TextEncoder(), UNTEXT = new TextDecoder();
+    const ID_OK = /^bf[A-Za-z0-9_-]{2,60}$/, PIC_OK = /^(?:out|lg)_[a-z0-9_]+$/;
+    const b64 = (u8) => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+    const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+    const gh = () => (window.WPS_ADMIN && window.WPS_ADMIN.github) || null;
+
+    /* ---- the key ---- */
+    async function deriveKey(pass, salt, iter) {
+      const base = await crypto.subtle.importKey("raw", TEXT.encode(String(pass).normalize("NFKC")), "PBKDF2", false, ["deriveKey"]);
+      return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: iter, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+    }
+    async function seal(key, bytes) {
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, bytes));
+      const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12); return out;
+    }
+    async function unseal(key, bytes) {
+      if (!bytes || bytes.length < 29) throw new Error("That file is too short to be one of ours.");
+      return new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: bytes.subarray(0, 12) }, key, bytes.subarray(12)));
+    }
+    const kdb = () => new Promise((res, rej) => { let r; try { r = indexedDB.open(KEY_DB, 1); } catch (e) { return rej(e); } r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains(KEY_STORE)) r.result.createObjectStore(KEY_STORE, { keyPath: "id" }); }; r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const keyGet = async () => { try { const d = await kdb(); return await new Promise((res) => { const q = d.transaction(KEY_STORE, "readonly").objectStore(KEY_STORE).get("key"); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); }); } catch (e) { return null; } };
+    const keyPut = async (rec) => { const d = await kdb(); return new Promise((res, rej) => { const tx = d.transaction(KEY_STORE, "readwrite"); tx.objectStore(KEY_STORE).put({ id: "key", ...rec }); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); };
+    const keyDel = async () => { try { const d = await kdb(); await new Promise((res) => { const tx = d.transaction(KEY_STORE, "readwrite"); tx.objectStore(KEY_STORE).delete("key"); tx.oncomplete = res; tx.onerror = res; }); } catch (e) { /* nothing kept */ } };
+
+    /* ---- what this computer remembers: which books it keeps on the site, and the edit each was last in step at ---- */
+    const emptySync = () => ({ keep: {}, off: [], at: 0, remoteAt: 0 });
+    function readSync() {
+      try {
+        const s = JSON.parse(localStorage.getItem(SYNC_KEY) || "null");
+        if (!s || typeof s !== "object") return emptySync();
+        const keep = {}; for (const [id, v] of Object.entries(s.keep && typeof s.keep === "object" ? s.keep : {})) if (ID_OK.test(id)) keep[id] = { at: Number(v && v.at) || 0 };
+        return { keep, off: (Array.isArray(s.off) ? s.off : []).filter((id) => ID_OK.test(id)), at: Number(s.at) || 0, remoteAt: Number(s.remoteAt) || 0 };
+      } catch (e) { return emptySync(); }
+    }
+    const writeSync = (s) => { try { localStorage.setItem(SYNC_KEY, JSON.stringify(s)); return true; } catch (e) { return false; } };
+    const isKept = (id) => !!readSync().keep[id];
+    function setKeep(id, on) {
+      const s = readSync();
+      if (on) { if (!s.keep[id]) s.keep[id] = { at: 0 }; s.off = s.off.filter((x) => x !== id); }
+      else { if (s.keep[id]) s.off = [...new Set([...s.off, id])]; delete s.keep[id]; }
+      return writeSync(s);
+    }
+    // "off" (not kept) · "waiting" (kept, never sent) · "changed" (edited since) · "synced"
+    function bookState(v) {
+      const s = readSync(), k = s.keep[v.id];
+      if (!k) return { state: "off" };
+      if (!k.at) return { state: "waiting" };
+      return (v.updatedAt || 0) > k.at ? { state: "changed", at: s.at } : { state: "synced", at: s.at };
+    }
+    const anyKept = () => Object.keys(readSync().keep).length > 0;
+
+    /* ---- the files on the site ---- */
+    async function readFile(pat, path, ref) {
+      let res;
+      if (pat && gh()) res = await gh().raw(pat, path, ref);
+      else res = await fetch(`/${path}?live=${Date.now()}`, { cache: "no-store" });
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error(`The site answered ${res.status} for ${path}.`);
+      return res;
+    }
+    async function readManifest(pat, ref) {
+      const res = await readFile(pat, MANIFEST, ref);
+      if (!res) return null;
+      let j; try { j = JSON.parse(await res.text()); } catch (e) { throw new Error("The private copy on your site could not be read."); }
+      if (!j || j.v !== 1 || typeof j.salt !== "string" || !Number.isInteger(j.iter) || j.iter < 100000 || j.iter > 5000000 || typeof j.box !== "string") throw new Error("The private copy on your site is not in a shape this page knows.");
+      return j;
+    }
+    const emptyPayload = () => ({ at: 0, keep: {}, gone: [] });
+    async function openPayload(key, manifest) {
+      let o; try { o = JSON.parse(UNTEXT.decode(await unseal(key, unb64(manifest.box)))); } catch (e) { const err = new Error("wrong passphrase"); err.wrong = true; throw err; }
+      const out = emptyPayload(); out.at = Number(o && o.at) || 0;
+      for (const [id, v] of Object.entries(o && o.keep && typeof o.keep === "object" ? o.keep : {})) if (ID_OK.test(id)) out.keep[id] = { at: Number(v && v.at) || 0 };
+      out.gone = (Array.isArray(o && o.gone) ? o.gone : []).filter((id) => ID_OK.test(id)).slice(-300);
+      return out;
+    }
+
+    /* ---- the state of things, for the books screen ----
+       off: nothing set up anywhere · ready: a key is here (and the site's copy opens with it, or there is none yet)
+       locked: the site holds a private copy this computer can't open yet · offline: the site could not be asked */
+    async function check() {
+      const key = await keyGet();
+      let m = null;
+      try { m = await readManifest(null); } catch (e) { return { state: "offline", set: !!key }; }
+      if (!m) return { state: key ? "ready" : "off", set: !!key, manifest: null };
+      if (!key) return { state: "locked", manifest: m };
+      if (key.salt !== m.salt || key.iter !== m.iter) return { state: "locked", manifest: m, again: true };
+      return { state: "ready", set: true, manifest: m };
+    }
+    // The passphrase, tried on the site's manifest; the key is kept on this computer if it opens it.
+    async function unlock(pass, manifest) {
+      const salt = unb64(manifest.salt), key = await deriveKey(pass, salt, manifest.iter);
+      await openPayload(key, manifest);
+      await keyPut({ key, salt: manifest.salt, iter: manifest.iter });
+      return true;
+    }
+    // A first passphrase for a site with no private copy yet (the manifest is written with the first push).
+    async function create(pass) {
+      const saltBytes = crypto.getRandomValues(new Uint8Array(16)), key = await deriveKey(pass, saltBytes, ITER);
+      await keyPut({ key, salt: b64(saltBytes), iter: ITER });
+      return true;
+    }
+    const forget = async () => { await keyDel(); };
+    /* Forgot the passphrase: the private copy is removed from the site (the books on each computer stay, as they are) and
+       everything starts again with a new passphrase. */
+    async function reset(pat) {
+      const G = gh(); if (!G) throw new Error("Sign in as admin first.");
+      const ref = await G.api(pat, `/git/ref/heads/${G.branch}`), baseSha = ref.object.sha, baseCommit = await G.api(pat, `/git/commits/${baseSha}`);
+      let listing = []; try { const l = await G.api(pat, `/contents/${DIR}?ref=${baseSha}`); listing = Array.isArray(l) ? l : []; } catch (e) { if (e.status !== 404) throw e; }
+      if (listing.length) {
+        const tree = await G.api(pat, "/git/trees", { method: "POST", body: JSON.stringify({ base_tree: baseCommit.tree.sha, tree: listing.map((f) => ({ path: `${DIR}/${f.name}`, mode: "100644", type: "blob", sha: null })) }) });
+        const commit = await G.api(pat, "/git/commits", { method: "POST", body: JSON.stringify({ message: "Private books: started over", tree: tree.sha, parents: [baseSha] }) });
+        await G.api(pat, `/git/refs/heads/${G.branch}`, { method: "PATCH", body: JSON.stringify({ sha: commit.sha, force: false }) });
+      }
+      await keyDel();
+      const S = readSync(); for (const id of Object.keys(S.keep)) S.keep[id] = { at: 0 };
+      writeSync({ keep: S.keep, off: [], at: 0, remoteAt: 0 });
+      return listing.length;
+    }
+
+    /* ---- pictures from this computer ---- */
+    const picIdsOf = (book) => [...new Set(JSON.stringify(book).match(/\b(?:out|lg)_[a-z0-9_]+/g) || [])].filter((id) => PIC_OK.test(id));
+    async function restorePics(key, pat, metas) {
+      const have = new Set((await outAll()).filter((r) => r && typeof r.dataUrl === "string").map((r) => r.id));
+      let n = 0;
+      for (const m of metas || []) {
+        if (!m || !PIC_OK.test(String(m.id || "")) || have.has(m.id)) continue;
+        const res = await readFile(pat, `${DIR}/p-${m.id}.bin`);
+        if (!res) continue;   // the picture never reached the site: the frame stays empty rather than the sync failing
+        const dataUrl = UNTEXT.decode(await unseal(key, new Uint8Array(await res.arrayBuffer())));
+        if (!/^data:image\//.test(dataUrl)) continue;
+        await outPut({ id: m.id, name: String(m.name || "").slice(0, 120), dataUrl, forSite: false, at: Number(m.at) || Date.now(), ...(m.logo ? { logo: true } : {}), ...(m.pasted ? { pasted: true } : {}), ...(m.brand ? { brand: true } : {}), ...(m.credit ? { credit: String(m.credit).slice(0, 80) } : {}), ...(m.source ? { source: String(m.source).slice(0, 500) } : {}) });
+        n++;
+      }
+      if (n) await outsideRefresh();
+      return n;
+    }
+
+    /* ---- one book, as a file ---- */
+    async function packBook(key, book) {
+      const ids = new Set(picIdsOf(book));
+      const recs = (await outAll()).filter((r) => r && ids.has(r.id) && typeof r.dataUrl === "string");
+      const photos = recs.map((r) => ({ id: r.id, name: r.name || "", at: r.at || 0, ...(r.logo ? { logo: true } : {}), ...(r.pasted ? { pasted: true } : {}), ...(r.brand ? { brand: true } : {}), ...(r.credit ? { credit: r.credit } : {}), ...(r.source ? { source: r.source } : {}) }));
+      return { bytes: await seal(key, TEXT.encode(JSON.stringify({ v: 1, book, photos }))), recs };
+    }
+    async function unpackBook(key, pat, id) {
+      const res = await readFile(pat, `${DIR}/b-${id}.bin`);
+      if (!res) return null;
+      let o;
+      try { o = JSON.parse(UNTEXT.decode(await unseal(key, new Uint8Array(await res.arrayBuffer())))); }
+      catch (e) { throw new Error("A file on your site could not be opened (it was changed, or damaged), so nothing from it was taken in."); }
+      if (!o || o.v !== 1 || !o.book || typeof o.book !== "object") return null;
+      const clean = window.cleanStudioPortfolios ? window.cleanStudioPortfolios({ versions: [o.book], deleted: [] }) : null;
+      const b = clean && clean.versions && clean.versions[0];
+      // Only a book that lives on the shelf is ever taken in, so nothing here can reach the public list.
+      if (!b || b.id !== id || !isForOthers(b) || !/^bf/.test(b.id)) return null;
+      await restorePics(key, pat, o.photos);
+      return b;
+    }
+
+    /* ---- one round: take what the other computers did, then send what this one did ---- */
+    const newId = () => `bf${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    async function round({ pat, key, attempt = 0 }) {
+      const G = gh(); if (!G) throw new Error("Sign in as admin first.");
+      const ref = await G.api(pat, `/git/ref/heads/${G.branch}`);
+      const baseSha = ref.object.sha;
+      const baseCommit = await G.api(pat, `/git/commits/${baseSha}`);
+      // Everything below is read at THIS commit, so a push from another computer a moment ago can't be written over unseen.
+      const manifest = await readManifest(pat, baseSha);
+      let payload = emptyPayload();
+      // This computer has synced before and the site holds nothing: the copy was cleared on another computer ("Forgot it…").
+      // It is not silently started again with the old passphrase.
+      if (!manifest && readSync().remoteAt > 0) { const e = new Error("removed"); e.removed = true; throw e; }
+      if (manifest) {
+        if (manifest.salt !== key.salt || manifest.iter !== key.iter) { const e = new Error("locked"); e.locked = true; throw e; }
+        payload = await openPayload(key.key, manifest);
+      }
+      const S = readSync();
+      let st = readState(), versions = st.versions.slice(), deleted = st.deleted.slice();
+      const did = { got: 0, updated: 0, removed: 0, conflicts: 0, sent: 0, dropped: 0 };
+
+      /* 1. take in what the site holds */
+      for (const [id, rb] of Object.entries(payload.keep)) {
+        if (deleted.includes(id)) continue;                       // deleted here: that is sent below, not undone
+        if (S.off.includes(id)) continue;                         // switched off here: sent below
+        const local = versions.find((v) => v.id === id), known = S.keep[id];
+        if (!local) {
+          const b = await unpackBook(key.key, pat, id);
+          if (b) { versions = [b, ...versions]; S.keep[id] = { at: rb.at || b.updatedAt || 0 }; did.got++; }
+          continue;
+        }
+        if (!known) S.keep[id] = { at: Math.min(rb.at, local.updatedAt || 0) };   // the same book, new to this computer's list: step in line
+        const at = S.keep[id].at, localChanged = (local.updatedAt || 0) > at, remoteChanged = rb.at > at;
+        if (!remoteChanged) continue;
+        const b = await unpackBook(key.key, pat, id);
+        if (!b) continue;
+        if (!localChanged) { versions = versions.map((v) => (v.id === id ? b : v)); S.keep[id] = { at: rb.at }; did.updated++; continue; }
+        // Both sides edited it: the newer stays as the book, the older is kept beside it as a book of its own.
+        const keepNew = (b.updatedAt || 0) >= (local.updatedAt || 0), older = keepNew ? local : b, newer = keepNew ? b : local;
+        const copy = { ...older, id: newId(), name: `${String(older.name || "Book").slice(0, 50)} (other version)`, updatedAt: Date.now() };
+        versions = [copy, ...versions.map((v) => (v.id === id ? newer : v))];
+        S.keep[id] = { at: keepNew ? rb.at : at };
+        did.conflicts++;
+      }
+      // Gone on another computer: removed here too, if this one hasn't changed it since the two last agreed.
+      for (const id of payload.gone) {
+        const local = versions.find((v) => v.id === id), k = S.keep[id];
+        if (k && local && (local.updatedAt || 0) <= k.at && !payload.keep[id]) { versions = versions.filter((v) => v.id !== id); deleted = [...new Set([...deleted, id])]; delete S.keep[id]; did.removed++; }
+      }
+      // A book this computer once sent that the site no longer lists (switched off elsewhere): no longer kept in step here, still here.
+      for (const id of Object.keys(S.keep)) if (S.keep[id].at && !payload.keep[id] && !payload.gone.includes(id) && versions.some((v) => v.id === id) && !S.off.includes(id)) { delete S.keep[id]; did.dropped++; }
+      if ((did.got || did.updated || did.removed || did.conflicts) && !writeState({ versions, deleted })) throw new Error("Not saved: this computer's storage for the site is full.");
+      writeSync({ keep: S.keep, off: S.off, at: S.at, remoteAt: S.remoteAt });   // what was taken in is down, whatever happens to the sending
+
+      /* 2. send what changed here */
+      const next = { at: Date.now(), keep: {}, gone: [...payload.gone] };
+      const files = new Map(), dropFiles = new Set(), picsSent = new Set();
+      const listing = await (async () => { try { const l = await G.api(pat, `/contents/${DIR}?ref=${baseSha}`); return Array.isArray(l) ? l : []; } catch (e) { if (e.status === 404) return []; throw e; } })();
+      const onSite = new Set(listing.map((f) => f.name));
+      const referenced = new Set();
+      for (const id of Object.keys(S.keep)) {
+        const v = versions.find((x) => x.id === id);
+        if (!v) { if (deleted.includes(id)) { next.gone.push(id); dropFiles.add(`b-${id}.bin`); delete S.keep[id]; } continue; }
+        const rb = payload.keep[id];
+        const changed = !rb || (v.updatedAt || 0) > (rb.at || 0) || !onSite.has(`b-${id}.bin`);
+        const packed = changed ? await packBook(key.key, v) : null;
+        for (const pid of picIdsOf(v)) referenced.add(pid);   // used, even if this computer does not hold it (another one sent it)
+        if (packed) {
+          files.set(`${DIR}/b-${id}.bin`, packed.bytes);
+          for (const r of packed.recs) if (!onSite.has(`p-${r.id}.bin`) && !picsSent.has(r.id)) { files.set(`${DIR}/p-${r.id}.bin`, await seal(key.key, TEXT.encode(r.dataUrl))); picsSent.add(r.id); }
+          next.keep[id] = { at: v.updatedAt || 0 };
+        } else next.keep[id] = { at: rb.at || 0 };
+      }
+      // Switched off here, or deleted here but never listed: off the site.
+      for (const id of S.off) { dropFiles.add(`b-${id}.bin`); }
+      for (const id of deleted) if (payload.keep[id] && !next.keep[id]) { if (!next.gone.includes(id)) next.gone.push(id); dropFiles.add(`b-${id}.bin`); }
+      // Books the site lists that this computer neither keeps nor dropped (taken in elsewhere, or a file it could not read): left as they were.
+      for (const [id, rb] of Object.entries(payload.keep)) if (!next.keep[id] && !S.off.includes(id) && !deleted.includes(id) && !payload.gone.includes(id)) next.keep[id] = rb;
+      // A picture no kept book names any more goes — unless a book this computer does not hold might still use it.
+      const foreign = Object.keys(next.keep).some((id) => !(id in S.keep));
+      if (!foreign) for (const f of listing) if (/^p-.+\.bin$/.test(f.name) && !referenced.has(f.name.slice(2, -4))) dropFiles.add(f.name);
+      next.gone = [...new Set(next.gone)].slice(-300);
+      const sig = (keep) => JSON.stringify(Object.keys(keep).sort().map((id) => [id, keep[id].at]));
+      const changedSomething = files.size > 0 || [...dropFiles].some((n) => onSite.has(n)) || !manifest || sig(next.keep) !== sig(payload.keep) || [...next.gone].sort().join() !== [...payload.gone].sort().join();
+      if (!changedSomething) { writeSync({ ...S, off: [], at: Date.now(), remoteAt: (manifest && manifest.at) || S.remoteAt }); return { ...did, same: true }; }
+      const bytes = (m) => [...m.values()].reduce((a, u) => a + u.length, 0);
+      if (bytes(files) > 60 * 1024 * 1024) throw new Error("That is more than 60 MB of pictures to send at once. Take some out of the books you keep on your site, or save a copy file instead.");
+      const box = b64(await seal(key.key, TEXT.encode(JSON.stringify(next))));
+      files.set(MANIFEST, TEXT.encode(JSON.stringify({ v: 1, salt: key.salt, iter: key.iter, at: next.at, box }, null, 1) + "\n"));
+      const entries = [];
+      for (const [path, u8] of files) { const blob = await G.api(pat, "/git/blobs", { method: "POST", body: JSON.stringify({ content: b64(u8), encoding: "base64" }) }); entries.push({ path, mode: "100644", type: "blob", sha: blob.sha }); did.sent++; }
+      for (const name of dropFiles) if (onSite.has(name)) entries.push({ path: `${DIR}/${name}`, mode: "100644", type: "blob", sha: null });
+      const tree = await G.api(pat, "/git/trees", { method: "POST", body: JSON.stringify({ base_tree: baseCommit.tree.sha, tree: entries }) });
+      const commit = await G.api(pat, "/git/commits", { method: "POST", body: JSON.stringify({ message: "Private books (encrypted)", tree: tree.sha, parents: [baseSha] }) });
+      try { await G.api(pat, `/git/refs/heads/${G.branch}`, { method: "PATCH", body: JSON.stringify({ sha: commit.sha, force: false }) }); }
+      catch (e) {
+        // Another computer published a moment ago: start again from what it left.
+        if ((e.status === 422 || e.status === 409) && attempt < 3) return round({ pat, key, attempt: attempt + 1 });
+        throw e;
+      }
+      // Only now is it on the branch: what each book was last in step at is written down.
+      for (const [id, k] of Object.entries(next.keep)) if (id in S.keep) S.keep[id] = { at: k.at };
+      writeSync({ keep: S.keep, off: [], at: Date.now(), remoteAt: next.at });
+      return did;
+    }
+
+    /* ---- the two ways in ----
+       sync(): everything, asking for the passphrase and token when they are missing (the buttons).
+       quiet(): the same when nothing has to be asked for (a book was closed, the books screen opened). */
+    let busy = null;
+    async function sync({ ask = null, quiet = false } = {}) {
+      if (busy) return busy;
+      busy = (async () => {
+        try {
+          if (window.siteBuildIsStale && window.siteBuildIsStale()) return { skipped: "stale" };
+          const G = gh(); if (!G) return { skipped: "admin" };
+          let key = await keyGet();
+          if (!key) {
+            if (quiet || !ask) return { skipped: "locked" };
+            const m = await readManifest(null).catch(() => null);
+            const pass = await ask(m ? "unlock" : "new");
+            if (!pass) return { skipped: "cancelled" };
+            if (m) { try { await unlock(pass, m); } catch (e) { if (e.wrong) return { error: "That isn't the passphrase for the private books on your site." }; throw e; } } else await create(pass);
+            key = await keyGet();
+          }
+          const pat = await G.token(quiet ? false : "It saves a private, encrypted copy of your books on your site.", "Save");
+          if (!pat) return { skipped: "token" };
+          try { return await round({ pat, key }); }
+          catch (e) {
+            if (e.removed) {
+              await keyDel(); const S2 = readSync(); for (const id of Object.keys(S2.keep)) S2.keep[id] = { at: 0 };
+              writeSync({ keep: S2.keep, off: [], at: 0, remoteAt: 0 });
+              return { error: "The private copy on your site was cleared on another computer. Your books here are untouched: press Sync now to start a new copy with a new passphrase." };
+            }
+            if (e.locked) return { error: "Your site's private copy was started with a different passphrase. Lock this computer and type that one." };
+            if (e.wrong) return { error: "That isn't the passphrase for the private books on your site." };
+            throw e;
+          }
+        } finally { busy = null; }
+      })();
+      return busy;
+    }
+    return { check, unlock, create, forget, reset, sync, setKeep, isKept, bookState, anyKept, readSync, _t: { deriveKey, seal, unseal, b64, unb64, readManifest, openPayload, packBook, picIdsOf, keyGet, round } };
+  })();
+
   /* ---------- the builder UI ---------------------------------------------------
      A workspace, not a long form: the pages down the left, the page itself in
      the middle, and on the right only what the selected page needs ("This
@@ -6405,6 +6787,19 @@
   .sb-empty .sb-hint { max-width: 56ch; font-size: 13px; }
   .sb-foot { max-width: 90ch; margin-top: 24px; }
   .sb-shelftag { color: var(--sb-text-2); }
+  .sb-keep { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; font: 400 12px/1.45 var(--sb-font); color: var(--sb-text-2); cursor: pointer; }
+  .sb-keep input { margin-top: 2px; flex: none; }
+  .sb-keep b { color: var(--sb-text); font-weight: 600; }
+  .sb-keepnote { color: var(--sb-text-3); }
+  .sb-keepnote.due { color: var(--sb-warn); font-weight: 600; }
+  .sb-privbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 18px; padding: 10px 14px; border: 1px solid var(--sb-line); border-radius: var(--sb-r-lg); background: var(--sb-sunk); font: 400 12.5px/1.5 var(--sb-font); color: var(--sb-text-2); }
+  .sb-privbar[hidden] { display: none; }
+  .sb-privbar .sb-privtext { flex: 1 1 320px; }
+  .sb-privbar .sb-privtext b { color: var(--sb-text); font-weight: 600; }
+  .sb-modal .sb-passfield { display: block; margin: 10px 0 0; }
+  .sb-modal .sb-passfield input { width: 100%; box-sizing: border-box; margin-top: 4px; padding: 9px 11px; border: 1px solid var(--sb-line); border-radius: var(--sb-r-md); font: 400 14px var(--sb-font); background: var(--sb-panel); color: var(--sb-text); }
+  .sb-modal .sb-passwarn { margin: 12px 0 0; padding: 8px 10px; border-radius: var(--sb-r-md); background: var(--sb-sunk); color: var(--sb-text); font: 500 12px/1.5 var(--sb-font); }
+  .sb-modal .sb-passbad { margin: 8px 0 0; color: var(--sb-danger); font: 600 12px/1.4 var(--sb-font); min-height: 1em; }
   .sb-copydue { color: var(--sb-warn); font-weight: 600; }
 
   /* ── The editor: a workspace that fills the window ─────────────────────── */
@@ -9458,7 +9853,7 @@
        "when i right click and copy image.. can i directly paste it"). Copy
        image in any tab, then Ctrl+V (⌘V on a Mac) anywhere in the builder but
        a box of words, or the Paste picture button. A picture from the
-       internet is somebody else's, so it is kept on this computer only and
+       internet is somebody else's, so it is kept on this computer and
        never offered to the site. On an Anything page it goes into the photo
        chosen, then the empty frames in order, then on as new photos; on any
        other page where a dropped photograph would. The site's own rules
@@ -9542,7 +9937,7 @@
       if (made.length) chooseBlocks(made);
       pastedInto = made.length === 1 ? { e, i: made[0], id: bl[made[0]].p.id } : null;
       const n = made.length, framed = n - added;
-      API.toast(`${n > 1 ? `${n} pictures` : "Picture"} pasted${framed && added ? ` · ${framed} into empty frames` : framed ? ` into ${framed > 1 ? "the frames" : "the frame"}` : ""}${full ? ` · ${full} didn't fit: they're under From this computer` : ""} · kept on this computer only · Ctrl+Z to undo`);
+      API.toast(`${n > 1 ? `${n} pictures` : "Picture"} pasted${framed && added ? ` · ${framed} into empty frames` : framed ? ` into ${framed > 1 ? "the frames" : "the frame"}` : ""}${full ? ` · ${full} didn't fit: they're under From this computer` : ""} · kept on this computer · Ctrl+Z to undo`);
     }
     const onPaste = (ev) => {
       if (!root.isConnected) { stopDrops(); return; }
@@ -9718,6 +10113,7 @@
             <button type="button" class="sb-btn dark" id="sbNew" ${atLimit ? "disabled" : ""}>${uiIc("plus")}New book</button>
           </div>
         </div>
+        <div class="sb-privbar" id="sbPrivBar" hidden></div>
         ${(() => {
           const card = (v) => `
           <article class="sb-card">
@@ -9726,7 +10122,8 @@
               <h4 data-name="${esc(v.id)}">${esc(v.name)}</h4>
               <span class="sb-meta">${esc((STYLES.find((s) => s.key === v.style) || {}).name || "")} · ${esc(colourway(v.colourway).name)} · ${esc(paperOf(v).name)} ${esc(v.orientation)} · ${renderedCount(v)} page${renderedCount(v) === 1 ? "" : "s"}</span>
               <span class="sb-meta">Edited ${esc(new Date(v.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }))}</span>
-              ${isForOthers(v) ? (() => { const cs = copyState(v); const who = v.plan ? `${PLAN_NAME[v.plan] || "Moodboard"}${v.madeFor && v.madeFor.name ? ` for ${v.madeFor.name}` : ""}` : `For ${(v.madeFor && v.madeFor.name) || "someone else"}`; return `<span class="sb-meta sb-shelftag">${esc(who)} · on this computer only · <span class="${cs.ok ? "" : "sb-copydue"}">${esc(cs.text)}</span></span>`; })() : ""}
+              ${isForOthers(v) ? (() => { const cs = copyState(v); const who = v.plan ? `${PLAN_NAME[v.plan] || "Moodboard"}${v.madeFor && v.madeFor.name ? ` for ${v.madeFor.name}` : ""}` : `For ${(v.madeFor && v.madeFor.name) || "someone else"}`; const kp = PRIV.bookState(v); return `<span class="sb-meta sb-shelftag">${esc(who)} · ${kp.state === "off" ? "on this computer only" : "on this computer and your site (private)"} · <span class="${cs.ok ? "" : "sb-copydue"}">${esc(cs.text)}</span></span>
+              <label class="sb-keep"><input type="checkbox" data-keep="${esc(v.id)}" ${kp.state === "off" ? "" : "checked"}><span><b>Keep on my site</b> <span class="sb-keepnote${kp.state === "waiting" || kp.state === "changed" ? " due" : ""}" data-keepnote="${esc(v.id)}">${esc(keepNote(kp))}</span></span></label>`; })() : ""}
               <div class="sb-cardacts">
                 <button type="button" class="sb-btn dark" data-open="${esc(v.id)}">Open</button>
                 <button type="button" class="sb-btn quiet" data-rename="${esc(v.id)}" title="Rename">${uiIc("pencil")}<span>Rename</span></button>
@@ -9746,19 +10143,19 @@
             <p class="sb-hint">A collection look by look, for a brand or a designer: its own covers, the collection, the looks, details, credits and how to order.</p>
             <div class="sb-cards">${looks.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="lookbook" ${atLimit ? "disabled" : ""}>New lookbook<small>A cover, the collection, six looks and a back cover</small></button></div></section>
           <section class="sb-plans" aria-labelledby="sbPitchHead"><h2 class="sb-plansh" id="sbPitchHead">Pitches</h2>
-            <p class="sb-hint">To win a shoot from a brand or a client: the idea, references, the team, what they get and your past work. Kept on this computer only and never published.</p>
+            <p class="sb-hint">To win a shoot from a brand or a client: the idea, references, the team, what they get and your past work. Kept on this computer and never published; a private, encrypted copy on your site is one switch away.</p>
             <div class="sb-cards">${pitches.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="pitch" ${atLimit ? "disabled" : ""}>New pitch<small>The idea, the references, the team and what they get</small></button></div></section>
           <section class="sb-plans" aria-labelledby="sbPlansHead"><h2 class="sb-plansh" id="sbPlansHead">Moodboards &amp; shoot plans</h2>
-            <p class="sb-hint">Plan the shoot and get the team on the same page: a board of your photographs and pictures pasted from anywhere, or the whole plan — looks, shot list, call sheet — with the production documents and a model measurements sheet. Kept on this computer only and never published, whoever they're for.</p>
+            <p class="sb-hint">Plan the shoot and get the team on the same page: a board of your photographs and pictures pasted from anywhere, or the whole plan — looks, shot list, call sheet — with the production documents and a model measurements sheet. Kept on this computer and never published, whoever they're for; a private, encrypted copy on your site is one switch away.</p>
             <div class="sb-cards">${plans.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="moodboard" ${atLimit ? "disabled" : ""}>New moodboard or shoot plan<small>Plug in your photographs, or paste pictures from anywhere</small></button><button type="button" class="sb-card sb-newcard" data-newkind="measure" ${atLimit ? "disabled" : ""}>New model measurements sheet<small>A figure with numbered marks and blanks, for a brand that asks for a model's sizes</small></button></div></section>
           <section class="sb-plans" aria-labelledby="sbCalHead"><h2 class="sb-plansh" id="sbCalHead">Calendars</h2>
-            <p class="sb-hint">Wall, desk and poster calendars for any year — a hundred ahead if you like — in the standard sizes. Kept on this computer only: save a copy for the print shop.</p>
+            <p class="sb-hint">Wall, desk and poster calendars for any year — a hundred ahead if you like — in the standard sizes. Kept on this computer: save a copy for the print shop, or keep a private one on your site.</p>
             <div class="sb-cards">${cals.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="calendar" ${atLimit ? "disabled" : ""}>New calendar<small>A cover, twelve months and the year on the back</small></button></div></section>
           <section class="sb-plans" aria-labelledby="sbMiscHead"><h2 class="sb-plansh" id="sbMiscHead">Miscellaneous</h2>
-            <p class="sb-hint">Postcards, a poster, a zine, gift vouchers, a rate card, cards, certificates for prints you sell, invitations — or a page of any size for something nobody else makes. Kept on this computer only.</p>
+            <p class="sb-hint">Postcards, a poster, a zine, gift vouchers, a rate card, cards, certificates for prints you sell, invitations — or a page of any size for something nobody else makes. Kept on this computer.</p>
             <div class="sb-cards">${miscs.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="misc" ${atLimit ? "disabled" : ""}>Make something<small>A postcard, a poster, a voucher… or any size</small></button></div></section>`;
         })()}
-        <p class="sb-hint sb-foot">Your own books save on this device as you work, and go into your site's files when you publish, so they open on any device — visitors see no page, but anyone can read those files. Books made for a brand, a client or a talent, and every moodboard, stay on this computer only: save a copy of each to move it or keep it safe.${atLimit ? ` You have ${LIMIT} books, the most there can be: delete one to start another.` : ""}</p>`;
+        <p class="sb-hint sb-foot">Your own books save on this device as you work, and go into your site's files when you publish, so they open on any device — visitors see no page, but anyone can read those files. Books made for a brand, a client or a talent, and every moodboard, stay on this computer: save a copy of each to move it or keep it safe, or switch on “Keep on my site” to also hold a private copy there, encrypted with a passphrase only you know, that opens on any computer you sign in on.${atLimit ? ` You have ${LIMIT} books, the most there can be: delete one to start another.` : ""}</p>`;
       const copyFile = $("#sbCopyFile");
       $("#sbOpenCopy").addEventListener("click", () => copyFile.click());
       copyFile.addEventListener("change", async () => {
@@ -9786,8 +10183,8 @@
       let board = "mb_grid";
       const KIND_NOTE = { magazine: "A cover, a page of photographs and a back cover. Contents, a letter, features and interviews are in Add page.",
         pitch: "Eleven pages to fill: a cover, the idea and its mood words, references, colours, the model, styling, hair & make-up, location, light, what they get and your past work.",
-        misc: "Pick one, or type a size of your own for a blank page. Kept on this computer only.",
-        calendar: "Any year, a hundred ahead if you like. Pick the year, the month it starts in and the first day of the week, then its shape. Kept on this computer only.",
+        misc: "Pick one, or type a size of your own for a blank page. Kept on this computer.",
+        calendar: "Any year, a hundred ahead if you like. Pick the year, the month it starts in and the first day of the week, then its shape. Kept on this computer.",
         measure: "Two pages for a brand that asks for a model's sizes: a figure with numbered marks and blanks for height, bust or chest, waist, hips, legs and arms, the sizes they wear and their agreement to share them; then the back view and a box for notes. Not every blank has to be filled. Pick the figure below.",
         shootplan: "Everything for the day, eleven pages: the brief, the moodboard in six parts, three looks, hair & make-up, this-not-that, the shot list, the call sheet and the credits.",
         production: "Every document for a shoot, twenty-two pages: the schedule, call sheet, script breakdown, shot lists and a storyboard, the colours, wardrobe, props and equipment, travel, permits, the location agreement, insurance, releases, the budget and the final deliverables. Take out what you do not need; money and paperwork start as team-only.",
@@ -9879,12 +10276,12 @@
         return nb;
       };
       const TEAM_PAGES = new Set(["sp_shots", "sp_call", "tm_hairmakeup"]);
-      const forNoteNow = () => (forWho === "studio" && KIND_PLAN[kind] ? (kind === "calendar" || kind === "misc" ? `Your own ${kind === "calendar" ? "calendar" : "one-off"}: kept on this computer only and never published — save a copy to take it to a print shop.` : (kind === "measure" ? "Your own measurements sheet: kept on this computer only and never published — it holds a model's body measurements." : `Your own ${PLAN_NAME[KIND_PLAN[kind]].toLowerCase()}: kept on this computer only and never published — it is planning work, often with pictures that aren't yours.`)) : FOR_NOTE[forWho]);
+      const forNoteNow = () => (forWho === "studio" && KIND_PLAN[kind] ? (kind === "calendar" || kind === "misc" ? `Your own ${kind === "calendar" ? "calendar" : "one-off"}: kept on this computer and never published — save a copy to take it to a print shop.` : (kind === "measure" ? "Your own measurements sheet: kept on this computer and never published — it holds a model's body measurements." : `Your own ${PLAN_NAME[KIND_PLAN[kind]].toLowerCase()}: kept on this computer and never published — it is planning work, often with pictures that aren't yours.`)) : FOR_NOTE[forWho]);
       const FOR_NOTE = {
         studio: "Your own book. Publishing puts it in your site's files, so it opens on any device.",
-        brand: "Kept on this computer only — never published to your site. Their name goes where yours would be; your credit is a line on the last page, or nowhere if the contract says so.",
-        client: "Kept on this computer only — never published to your site. Their name goes where yours would be; your credit is a line on the last page, or nowhere if the contract says so.",
-        talent: "Kept on this computer only — never published to your site."
+        brand: "Kept on this computer — never published to your site. Their name goes where yours would be; your credit is a line on the last page, or nowhere if the contract says so.",
+        client: "Kept on this computer — never published to your site. Their name goes where yours would be; your credit is a line on the last page, or nowhere if the contract says so.",
+        talent: "Kept on this computer — never published to your site."
       };
       // Every model, with how many photographs are cleared for their card; a
       // model with none can't have a book yet, and the list says why.
@@ -10368,6 +10765,81 @@
         if (!writeState({ versions: cur.versions.filter((x) => x.id !== v.id), deleted: [...cur.deleted, v.id] })) { API.toast("Not deleted — this device's storage is full or blocked."); return; }
         showList(); API.toast(`Deleted “${v.name}”. Publish to remove it everywhere.`);
       }));
+      /* The private copy of books on the site (v618): the bar at the top, the switch on each book. */
+      {
+        const bar = $("#sbPrivBar"), shelfBooks = state.versions.filter(isForOthers);
+        const when = (ms) => new Date(ms).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+        const say = (m) => API.toast(m);
+        // Tell what a round did. Returns whether it changed the books on this computer (so the list is drawn again).
+        const afterSync = (r, loud) => {
+          if (!r) return false;
+          if (r.error) { say(r.error); return false; }
+          if (r.skipped === "token") { if (loud) say("No GitHub token was given, so nothing was sent. Your books are safe on this computer."); return false; }
+          if (r.skipped) return false;
+          const bits = [r.sent ? `${r.sent} file${r.sent === 1 ? "" : "s"} saved to your site` : "", r.got ? `${r.got} book${r.got === 1 ? "" : "s"} opened here` : "", r.updated ? `${r.updated} updated from your site` : "", r.removed ? `${r.removed} removed (deleted on another computer)` : "", r.conflicts ? `${r.conflicts} changed on two computers: both kept` : "", r.dropped ? `${r.dropped} no longer kept on your site (switched off on another computer)` : ""].filter(Boolean);
+          if (loud) say(bits.length ? `Private copy: ${bits.join(" · ")}.` : "Private copy is up to date.");
+          return !!(r.got || r.updated || r.removed || r.conflicts || r.dropped);
+        };
+        const runSync = async () => {
+          say("Syncing your private books…");
+          try { afterSync(await PRIV.sync({ ask: askPassphrase }), true); } catch (e) { say(`Not synced: ${e && e.message ? e.message : "something went wrong"}.`); }
+          showList();
+        };
+        const paintBar = (c) => {
+          if (!bar || book || !bar.isConnected) return;
+          const kept = shelfBooks.filter((v) => PRIV.bookState(v).state !== "off").length, last = PRIV.readSync().at;
+          let html = "", btns = "";
+          if (c.state === "locked") { html = `<b>Your site holds a private copy of your books.</b> It is locked on this computer: type your passphrase to open it here.`; btns = `<button type="button" class="sb-btn dark" id="sbPrivUnlock">Unlock…</button><button type="button" class="sb-btn quiet" id="sbPrivReset" title="Remove the private copy from your site and start again with a new passphrase">Forgot it…</button>`; }
+          else if (c.state === "ready" && kept) { html = `<b>Private copy:</b> ${kept} book${kept === 1 ? "" : "s"} kept on your site${last ? ` · last synced ${esc(when(last))}` : ""}.`; btns = `<button type="button" class="sb-btn dark" id="sbPrivSync">Sync now</button><button type="button" class="sb-btn quiet" id="sbPrivLock" title="Forget the passphrase on this computer">Lock this computer</button>`; }
+          else if (c.state === "ready") { html = `<b>Private copy is set up.</b> Switch on “Keep on my site” on a book to save it there.`; btns = `<button type="button" class="sb-btn quiet" id="sbPrivLock" title="Forget the passphrase on this computer">Lock this computer</button>`; }
+          else if (c.state === "offline" && kept) { html = `<b>Private copy:</b> your site couldn't be reached just now, so nothing was synced.`; btns = `<button type="button" class="sb-btn dark" id="sbPrivSync">Try again</button>`; }
+          else if (c.state === "off" && kept) { html = `<b>Private copy:</b> ${kept} book${kept === 1 ? " is" : "s are"} waiting to be saved to your site.`; btns = `<button type="button" class="sb-btn dark" id="sbPrivSync">Sync now</button>`; }
+          else if (c.state === "off" && shelfBooks.length) { html = `<b>Want these books on your other computers?</b> Switch on “Keep on my site” on a book: it is saved encrypted with a passphrase only you know, and opens when you sign in as admin.`; }
+          bar.hidden = !html;
+          bar.innerHTML = html ? `<span class="sb-privtext">${html}</span>${btns}` : "";
+          $("#sbPrivSync")?.addEventListener("click", runSync);
+          $("#sbPrivLock")?.addEventListener("click", async () => { await PRIV.forget(); say("This computer forgot the passphrase. Your books are untouched; type it again to sync."); showList(); });
+          $("#sbPrivReset")?.addEventListener("click", async () => {
+            if (!(await askYesNo("Start the private copy again?", "This removes the private copy from your site, because without the passphrase it can never be opened. <b>Your books on every computer stay exactly as they are.</b> You then choose a new passphrase, and the books you keep on your site are saved again.", "Remove it and start again", "Keep it"))) return;
+            const G = window.WPS_ADMIN && window.WPS_ADMIN.github; const pat = G ? await G.token("It removes the old private copy from your site.", "Remove") : null;
+            if (!pat) { say("Nothing was removed: no GitHub token was given."); return; }
+            try { const n = await PRIV.reset(pat); say(n ? "The private copy was removed from your site. Switch on “Keep on my site” to start a new one." : "There was nothing on your site to remove. Switch on “Keep on my site” to start a new copy."); } catch (e) { say(`Not removed: ${e && e.message ? e.message : "something went wrong"}.`); }
+            showList();
+          });
+          $("#sbPrivUnlock")?.addEventListener("click", async () => {
+            for (;;) {
+              const pass = await askPassphrase("unlock"); if (!pass) return;
+              try { await PRIV.unlock(pass, c.manifest); break; } catch (e) { if (e && e.wrong) { say("That isn't the passphrase."); continue; } say(`Not unlocked: ${e && e.message ? e.message : "something went wrong"}.`); return; }
+            }
+            await runSync();
+          });
+        };
+        $$("[data-keep]").forEach((el) => el.addEventListener("change", async () => {
+          const id = el.dataset.keep, on = el.checked;
+          PRIV.setKeep(id, on);
+          if (on) {
+            say("Saving to your site…");
+            let r = null; try { r = await PRIV.sync({ ask: askPassphrase }); } catch (e) { say(`Not saved to your site yet: ${e && e.message ? e.message : "something went wrong"}.`); }
+            if (r && r.skipped === "cancelled") PRIV.setKeep(id, false);   // no passphrase, no copy
+            else afterSync(r, true);
+          } else {
+            say("It comes off your site the next time you sync.");
+            try { afterSync(await PRIV.sync({ quiet: true }), false); } catch (e) { /* next time */ }
+          }
+          showList();
+        }));
+        (async () => {
+          const c = await PRIV.check().catch(() => ({ state: "offline" }));
+          if (book) return;
+          paintBar(c);
+          if (c.state !== "ready" || (!PRIV.anyKept() && !c.manifest)) return;
+          const dirty = shelfBooks.some((v) => ["waiting", "changed"].includes(PRIV.bookState(v).state));
+          const news = !!(c.manifest && (c.manifest.at || 0) > PRIV.readSync().remoteAt);   // another computer saved since this one last looked
+          if (!dirty && !news && Date.now() - PRIV.readSync().at < 120000) return;   // looked a moment ago
+          let r = null; try { r = await PRIV.sync({ quiet: true }); } catch (e) { return; }
+          if (!book && (afterSync(r, false) || (r && r.sent))) showList();
+        })();
+      }
       // Small covers, one at a time, so a long list never stalls the page.
       const token = ++listToken;
       (async () => {
@@ -10594,7 +11066,7 @@
       $("#sbSave").addEventListener("click", () => {
         if (!flush()) return;   // persist() has already said why it could not
         setStatus(`Saved on this device · ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}${longNote()}`);
-        API.toast(isForOthers(book) ? "Saved on this computer. It is never published: Save a copy to keep it safe or take it to another computer." : "Saved on this device. Publish puts it into the site's own files, on any device.");
+        API.toast(isForOthers(book) ? (PRIV.isKept(book.id) ? "Saved on this computer. Going back to your books sends it to your site's private copy. It is never published: Save a copy for a file of your own." : "Saved on this computer. It is never published: Save a copy to keep it safe or take it to another computer.") : "Saved on this device. Publish puts it into the site's own files, on any device.");
       });
       $("#sbPublish").addEventListener("click", publish);
       $("#sbLight").addEventListener("click", () => { const t = $("#sbDlToggle"); if (t && $("#sbDlPop").hidden) t.click(); });
@@ -14077,7 +14549,7 @@
           ${(() => {
             const rec = b.k === "photo" && b.p && /^out_/.test(String(b.p.id)) ? (outsideCache || []).find((r) => r.id === b.p.id && r.pasted) : null;
             return rec ? `<div class="sb-field"><label for="sbCredit">Whose picture it is</label><input type="text" id="sbCredit" maxlength="80" value="${esc(rec.credit || "")}" placeholder="The photographer, or where it's from" autocomplete="off">
-              <p class="sb-hint">Pasted${rec.source ? ` from ${esc(sourceName(rec.source))}` : ""}, kept on this computer only. Credit the photographer when you know them, not just the site it was on.</p>
+              <p class="sb-hint">Pasted${rec.source ? ` from ${esc(sourceName(rec.source))}` : ""}, kept on this computer. Credit the photographer when you know them, not just the site it was on.</p>
               <div class="sb-adds"><button type="button" data-creditunder>${uiIc("type")}Credit it under the picture</button></div></div>` : "";
           })()}
           ${b.k === "photo" ? `<p class="sb-hint">Choose the photograph, and how it sits in its box, below.</p>` : ""}
@@ -14668,7 +15140,7 @@
           <div class="sb-outside">
             <button type="button" class="sb-btn" id="sbOutsideAdd">Add from this computer…</button>
             <input type="file" id="sbOutsideFile" multiple accept="image/*" hidden>
-            <span class="sb-hint" id="sbOutsideNote">Or copy a picture anywhere (right-click → Copy image) and press ${MOD}V: it goes on the page, kept on this computer only.</span>
+            <span class="sb-hint" id="sbOutsideNote">Or copy a picture anywhere (right-click → Copy image) and press ${MOD}V: it goes on the page, kept on this computer.</span>
           </div>
           <div class="sb-grid">${shown.map(([id, hit]) => {
             const pos = list.findIndex((s) => s.id === id);
@@ -15157,11 +15629,11 @@
     function madeForHtml() {
       const m = forOf(book), LM = (window.STUDIO_BOOK_LIMITS || {}).madeFor || {};
       if (!m) return `<div class="sb-sec" id="sbMadeFor"><h3>Made for</h3>
-          <p class="sb-hint">${book.plan ? `Your studio's own ${esc((PLAN_NAME[book.plan] || "moodboard").toLowerCase())}: kept on this computer only and never published. Save a copy (top right) to keep it safe or to open it on another computer.` : "Your studio's own book: your name, mark and details are on it, and Publish puts it in your site's files."}</p>
+          <p class="sb-hint">${book.plan ? `Your studio's own ${esc((PLAN_NAME[book.plan] || "moodboard").toLowerCase())}: kept on this computer and never published. Save a copy (top right) to keep it safe or to open it on another computer.` : "Your studio's own book: your name, mark and details are on it, and Publish puts it in your site's files."}</p>
           <details class="sb-moveshelf"><summary>Make a copy of it for a brand or a client…</summary>
             <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Who it is for">${[["brand", "A brand"], ["client", "A client"]].map(([k, n], i) => `<button type="button" role="radio" data-movekind="${k}" aria-checked="${i === 0}">${n}</button>`).join("")}</div>
             <div class="sb-field"><label for="sbMoveName">Their name</label><input type="text" id="sbMoveName" maxlength="${LM.name || 60}" placeholder="e.g. Acme Studio" autocomplete="off"></div>
-            <p class="sb-hint">A copy for them, kept on this computer only and never published, with their name where yours is. This book stays exactly as it is — delete it afterwards if it shouldn't be yours${(((window.WPS_DATA || {}).STUDIO_PORTFOLIOS || {}).versions || []).some((v) => v.id === book.id) ? " (it is published: deleting it takes it off your site's file at your next publish, though what was published stays in the site's history)" : ""}. For a talent, start a new book and pick the model.</p>
+            <p class="sb-hint">A copy for them, kept on this computer and never published, with their name where yours is. This book stays exactly as it is — delete it afterwards if it shouldn't be yours${(((window.WPS_DATA || {}).STUDIO_PORTFOLIOS || {}).versions || []).some((v) => v.id === book.id) ? " (it is published: deleting it takes it off your site's file at your next publish, though what was published stays in the site's history)" : ""}. For a talent, start a new book and pick the model.</p>
             <button type="button" class="sb-btn dark" id="sbMoveGo">Make the copy</button>
           </details>
         </div>`;
@@ -15169,7 +15641,7 @@
       const logoRec = m.logo ? (outsideCache || []).find((r) => r.id === m.logo) : null;
       return `<div class="sb-sec" id="sbMadeFor"><h3>Made for</h3>
           ${m.kind === "talent" && !m.modelKey ? ownMadeForHtml(m, LM)
-          : m.kind === "talent" ? `<p class="sb-hint"><b>${esc(m.name)}</b> — a talent's book. Kept on this computer only; never published.</p>`
+          : m.kind === "talent" ? `<p class="sb-hint"><b>${esc(m.name)}</b> — a talent's book. Kept on this computer; never published.</p>`
           : `<div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Who it is for">${["brand", "client"].map((k) => `<button type="button" role="radio" data-forkind="${k}" aria-checked="${m.kind === k}">${KIND[k]}</button>`).join("")}</div>
           <div class="sb-field"><label for="sbForNameE">Their name</label><input type="text" id="sbForNameE" maxlength="${LM.name || 60}" value="${esc(m.name || "")}" autocomplete="off"></div>`}
           ${m.kind === "talent" ? "" : `<div class="sb-field"><label for="sbForEmail">Their email</label><input type="email" id="sbForEmail" maxlength="${LM.email || 120}" value="${esc(m.email || "")}" placeholder="Empty: left off" autocomplete="off"></div>
@@ -15227,7 +15699,7 @@
           const cur = readState();
           if (!writeState({ versions: [nb, ...cur.versions.filter((v) => v.id !== nb.id)], deleted: cur.deleted })) { API.toast("No copy made: this computer's storage for the site is full."); return; }
           const queued = (JSON.stringify(nb).match(/\bout_[a-z0-9_]+/g) || []).filter((id, i, a) => a.indexOf(id) === i).filter((id) => { const r = (outsideCache || []).find((x) => x.id === id); return r && r.forSite; }).length;
-          API.toast(`A copy for ${name} is made, kept on this computer only. Your own book is unchanged.${queued ? ` ${queued} photo${queued === 1 ? "" : "s"} in it ${queued === 1 ? "was" : "were"} set to go to your site from your own book, and still will.` : ""}`);
+          API.toast(`A copy for ${name} is made, kept on this computer. Your own book is unchanged.${queued ? ` ${queued} photo${queued === 1 ? "" : "s"} in it ${queued === 1 ? "was" : "were"} set to go to your site from your own book, and still will.` : ""}`);
           openBook(nb, false, { sel, tab: "design", status: "A copy for them, on this computer only" });
         });
         return;
@@ -15896,7 +16368,7 @@
     }
 
     /* ---- books made for someone else: a copy file instead of Publish ----
-       Kept on this computer only (never published: the owner's decision,
+       Kept on this computer (never published: the owner's decision,
        Sep 26 2026), so a copy file is how such a book moves to another
        computer, or survives a browser clearing its data. It holds the book
        and the photographs and logo it uses from this computer — nothing
@@ -16304,5 +16776,5 @@
     if (again) openBook(JSON.parse(JSON.stringify(again)), false, reopen); else showList();
   }
 
-  window.StudioBook = { calendar: { monthGrid, monthDays, dayOfWeek, calOf, calMonth, isLeap, weekNumber, roman }, mount, renderPages, subjectOf, cutoutCanvas, planWriting, planFree, FREE_STARTS, COLOURWAYS, STYLES, newBook, geometry, PAPERS, WAYS_COPY, PROCESS_COPY, bookletSides, SHEETS, fingerprint, fpScore, fpColour, imageHeader, originalsStore, originalLoader };
+  window.StudioBook = { priv: PRIV, calendar: { monthGrid, monthDays, dayOfWeek, calOf, calMonth, isLeap, weekNumber, roman }, mount, renderPages, subjectOf, cutoutCanvas, planWriting, planFree, FREE_STARTS, COLOURWAYS, STYLES, newBook, geometry, PAPERS, WAYS_COPY, PROCESS_COPY, bookletSides, SHEETS, fingerprint, fpScore, fpColour, imageHeader, originalsStore, originalLoader };
 })();
