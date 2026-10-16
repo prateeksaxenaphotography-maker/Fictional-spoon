@@ -1300,6 +1300,7 @@ function cleanStudioPortfolios(o) {
           const o = { h: strU(c && c.h, 40), w: Math.round(num(c && c.w, 0.2, 20, 1) * 100) / 100 };
           if (c && c.a === "r") o.a = "r";
           if (c && c.f === "qr") o.f = "qr";
+          if (c && ["name", "role", "what", "version", "date", "number"].includes(c.v)) o.v = c.v;   // what the Vault fills this column with
           return o;
         });
         one.cols = cols.length ? cols : [{ h: "", w: 1 }];
@@ -1392,7 +1393,12 @@ function cleanStudioPortfolios(o) {
       // Any page can have its own colour behind everything; absent means the
       // book's, and failing that the style's.
       if (STUDIO_BOOK_LIMITS.fills.includes(pg.bg) || /^#[0-9a-f]{6}$/i.test(String(pg.bg || ""))) out.bg = String(pg.bg).toLowerCase();
-      if (pg.type === "free") out.blocks = cleanBlocks(pg.blocks);
+      if (pg.type === "free") {
+        out.blocks = cleanBlocks(pg.blocks);
+        // The template's name, shown in the page list (v611). Named here or it vanishes on save.
+        const nm = strU(pg.name, 40).trim();
+        if (nm) out.name = nm;
+      }
       if (pg.type === "look") {
         out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 2);
         const lines = (Array.isArray(pg.lines) ? pg.lines : []).slice(0, STUDIO_BOOK_LIMITS.lookLines).map((x) => str(x, STUDIO_BOOK_LIMITS.lookLine));
@@ -3960,12 +3966,12 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           </div>
           <div class="admin-title-actions">
             <button type="button" class="admin-cal-btn" id="adminCalNewBookingBtn">Add booking</button>
-            <!-- Until this existed, calendar edits were saved to this device
-                 only: syncToGitHub had no caller anywhere in the calendar UI,
-                 so bookings never reached data.js and every visitor kept
-                 seeing the studio as fully open. -->
+            <!-- Publishing is the "Publish now" bar at the bottom of every studio
+                 screen, which appears whenever something has not gone live. The
+                 calendar's own "Publish to live site" button did the same job
+                 and was removed (the owner, Oct 2026: "if it's not required then
+                 remove it"). -->
             <button type="button" class="admin-cal-btn" id="adminCalExportBtn" title="Save every booking's client details to a spreadsheet file">Export bookings (CSV)</button>
-            <button type="button" class="admin-cal-btn primary" id="adminCalPublishBtn" title="Push this calendar to the live site so visitors see booked dates">Publish to live site</button>
           </div>
         </div>
         ${bookingBackupNote()}
@@ -4081,7 +4087,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <div id="tsLimitOverview" style="margin-top: 8px; font-size: var(--font-xs); line-height: 1.7;"></div>
           </div>
           <p id="tsLimitStatus" role="status" aria-live="polite" style="min-height: 1.4em; margin: 12px 0 0; font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);"></p>
-          <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 4px 0 0;">Press Update to save a change on this computer. Then publish the calendar to put it on the site — and add each test shoot you accept to the calendar, because a client's request only counts once it is there and published.</p>
+          <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 4px 0 0;">Press Update to save a change on this computer. Then press <strong>Publish now</strong> at the bottom of the screen to put it on the site — and add each test shoot you accept to the calendar, because a client's request only counts once it is there and published.</p>
         </div>
         <div class="admin-panel">
           <div class="admin-panel-head" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminPkgBody');const a=document.getElementById('adminPkgArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
@@ -5784,7 +5790,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       const ver = b.contractVersion && b.contractVersion !== "Pending Agreement" && !noContract ? b.contractVersion : "";
       if (!confirm(`Accept ${b.name} for ${dKey}?\n\nThe hold becomes a confirmed shoot${ver ? `, agreed on ${ver}` : noContract ? " (no contract needed)" : ""}.`)) return;
       updateCalBooking(dKey, bId, { status: "confirmed", isTentative: false, agreedToTerms: !noContract });
-      toast(`\u2713 ${b.name} confirmed for ${dKey}. Publish the calendar to show it live.`);
+      toast(`\u2713 ${b.name} confirmed for ${dKey}. Press Publish now (bottom of the screen) to show it live.`);
       closeDayModal();
       window.refreshAdminCalendarViews();
     };
@@ -5793,9 +5799,9 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     window.holdPenciled = (dKey, bId) => {
       const b = findBooking(dKey, bId);
       if (!b) return;
-      if (!confirm(`Hold ${dKey} for ${b.name}?\n\nThe day will look taken to visitors once you publish the calendar, until the contract is signed.`)) return;
+      if (!confirm(`Hold ${dKey} for ${b.name}?\n\nThe day will look taken to visitors once you press Publish now, until the contract is signed.`)) return;
       updateCalBooking(dKey, bId, { status: "tentative", isTentative: true, contractVersion: "Pending Agreement", agreedToTerms: false });
-      toast(`${dKey} is now held for ${b.name}. Publish the calendar to show it as taken.`);
+      toast(`${dKey} is now held for ${b.name}. Press Publish now (bottom of the screen) to show it as taken.`);
       closeDayModal();
       window.refreshAdminCalendarViews();
     };
@@ -5805,7 +5811,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       if (!b) return;
       if (!confirm(`Reject the hold for ${b.name} on ${dKey}?\n\nThe hold is removed and ${dKey} goes back to being open for anyone to book. The contract PDF you already sent is not affected.`)) return;
       removeCalBooking(dKey, bId);
-      toast(`Hold for ${b.name} on ${dKey} rejected \u2014 the date is open again. Publish the calendar to release it live.`);
+      toast(`Hold for ${b.name} on ${dKey} rejected \u2014 the date is open again. Press Publish now (bottom of the screen) to release it live.`);
       closeDayModal();
       window.refreshAdminCalendarViews();
     };
@@ -6329,21 +6335,6 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     // Publishing the calendar is the only way a booking taken on this device
     // becomes visible to visitors: data.js is what every browser reads, and
     // saveCalendarSettings() only writes this device's localStorage.
-    $("#adminCalPublishBtn")?.addEventListener("click", async (e) => {
-      const btnEl = e.currentTarget;
-      const dates = Object.keys(window.WPS_DATA?.CALENDAR_SETTINGS?.bookedDates || {}).length;
-      if (!confirm(`Publish this device's calendar (${dates} booked date${dates === 1 ? "" : "s"}) to the live site so visitors see them?\n\nPublish only from the device whose calendar is correct.`)) return;
-      const orig = btnEl.textContent;
-      btnEl.disabled = true;
-      btnEl.textContent = "Publishing…";
-      try {
-        await syncToGitHub(shootsNow());
-      } finally {
-        btnEl.disabled = false;
-        btnEl.textContent = orig;
-      }
-    });
-
     // One button per schedule in PACKAGE_SCHEDULES; the choice is saved with
     // the calendar settings and published with them.
     const payBtns = [[$("#adminPay5050Btn"), "5050"], [$("#adminPay503020Btn"), "503020"], [$("#adminPay50301010Btn"), "50301010"]];
@@ -6408,9 +6399,9 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         window.WPS_DATA.CALENDAR_SETTINGS.testShootLimits = { default: next.default, months: next.months, at: Date.now() };
         markUnpublished("calendar");
         const kept = saveCalendarSettings();
-        if (kept && said) toast(said + " Publish the calendar to show it on the site.");
+        if (kept && said) toast(said + " Press Publish now (bottom of the screen) to show it on the site.");
         paint();
-        if (kept && said) say(`✓ ${said} Saved on this computer — publish the calendar to show it on the site.`, true);
+        if (kept && said) say(`✓ ${said} Saved on this computer — press Publish now (bottom of the screen) to show it on the site.`, true);
       };
       const paint = () => {
         const cur = read();

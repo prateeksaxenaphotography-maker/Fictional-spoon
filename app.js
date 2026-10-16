@@ -2998,6 +2998,26 @@ window.resolveContractArchive = function(version) {
        the comp card and the portfolio PDF draw from — so all three agree on
        which photographs are cleared, which contacts show and whether the
        measurements print (an under-18's are already blanked on the card). */
+    /* The Vault's signed records, for a production pack's "Talent releases"
+       page (v611): who signed which release, when, and the contract's number.
+       Names, versions and numbers only — never an email or a phone number. Read
+       from this computer's own calendar, so only the studio's device has them. */
+    contracts: () => {
+      const out = [];
+      try {
+        const booked = (window.WPS_DATA && window.WPS_DATA.CALENDAR_SETTINGS && window.WPS_DATA.CALENDAR_SETTINGS.bookedDates) || {};
+        Object.entries(booked).forEach(([dateKey, list]) => (Array.isArray(list) ? list : []).forEach((b) => {
+          if (!b) return;
+          const signed = b.agreedContract || b.sigDataUrl || b.agreedToTerms || (b.contractVersion && b.contractVersion !== "Pending Agreement" && b.contractVersion !== "Not Required");
+          if (!signed) return;
+          const version = String(b.contractVersion || b.agreedContract || "").slice(0, 40);
+          const arch = (window.WPS_CONTRACT_ARCHIVE && window.WPS_CONTRACT_ARCHIVE[version] && window.WPS_CONTRACT_ARCHIVE[version].title) || "";
+          const what = arch ? arch.replace(/\s*\(.*$/, "").replace(/\s+V\d+(\.\d+)*.*$/, "").slice(0, 60) : (/TFP/i.test(version) ? "Test shoot release" : "Booking contract and release");
+          out.push({ name: String(b.name || "").slice(0, 60), role: String(b.requesterRole || "").slice(0, 30), what, version, number: String(b.contractNumber || "").slice(0, 30), dateKey, at: Number(b.createdAt) || 0 });
+        }));
+      } catch (e) { /* none */ }
+      return out.sort((a, b) => (b.dateKey || "").localeCompare(a.dateKey || "")).slice(0, 200);
+    },
     talentList: () => {
       try {
         return buildCompCardDisplayList(cardShoots().filter((s) => qualifiesAsCompCard(s)), "type", "Comp Cards", compCardContext())
@@ -5562,7 +5582,7 @@ window.resolveContractArchive = function(version) {
       contractSentAt: Date.now()
     });
     if (typeof window.refreshAdminCalendarViews === "function") window.refreshAdminCalendarViews();
-    toast(`\u{1F4C5} ${dKey} held for ${name}. Accept or Reject the hold once they reply, then Publish the calendar.`);
+    toast(`\u{1F4C5} ${dKey} held for ${name}. Accept or Reject the hold once they reply, then press Publish now (bottom of the screen).`);
     return booking;
   }
   function catCard(label, kind, val, count, sample, cover) {

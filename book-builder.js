@@ -7249,6 +7249,11 @@
   /* Money and paperwork start as the team's alone, left out of the client copy
      (the owner, Oct 2026: "it should be option A but I can edit it as well"):
      any of them can be put back with the page's own menu. */
+  /* A page made from a plan, production or board template is called by its
+     template in the page list ("Production budget", "16:9 · six frames") rather
+     than "Anything page · 7"; any page can still be changed after, the name goes
+     when its layout is changed to one without a name. */
+  const NAMED_START = /^(pr|sb|sp|tm|pt|mb)_/;
   const PRODUCTION_TEAM = new Set(["pr_budget", "pr_permits", "pr_insurance", "pr_location", "pr_scan", "pr_release", "pr_travel"]);
   const OWN_GROUPS = {
     magazine: ["Cover", "Magazine", "Comp cards", "For brands", "Studio pages", "Book pages", "How we work"],
@@ -8512,7 +8517,7 @@
       pr_release: [
         ...DOC("TALENT RELEASES", "Monsoon linen"),
         ...rows(0.07, 0.14, 0.036, 0.2, 0.66, [["Project", "", "Monsoon linen for Acme"]]),
-        TB(0.07, 0.195, 0.86, 0.72, [Cc("Name", 2.2), Cc("Role", 1.5), Cc("Which release", 2.6), Cc("Version", 1.1), Cc("Signed", 1.2), Cc("Contract no.", 1.7)], 18,
+        TB(0.07, 0.195, 0.86, 0.72, [{ ...Cc("Name", 2), v: "name" }, { ...Cc("Role", 1.1), v: "role" }, { ...Cc("Which release", 2.4), v: "what" }, { ...Cc("Version", 1.2), v: "version" }, { ...Cc("Signed", 1.3), v: "date" }, { ...Cc("Contract no.", 2.5), v: "number" }], 18,
           [["The model", "Model", "Test shoot release", "V4.2-TFP", "10 Oct", "WPS-2026-0412"], ["The stylist", "Stylist", "Studio release", "V4.2", "10 Oct", "WPS-2026-0413"]]),
         T("body", 0.07, 0.93, 0.86, 0.03, { sample: "Each signed release is kept with its contract in the Vault.", style: { size: 0.85 } })
       ],
@@ -9643,7 +9648,7 @@
         nb.pages = PLAN_PAGES[pack].map((key) => {
           const blocks = startBlocks(key, nb, "add");
           if (key === "sp_look") { look++; const lab = blocks.find((b) => b.k === "text" && b.t === "LOOK 1"); if (lab) lab.t = `LOOK ${look}`; }
-          return { type: "free", blocks, ...(nb.plan === "shoot" && (TEAM_PAGES.has(key) || PRODUCTION_TEAM.has(key)) ? { teamOnly: true } : {}) };
+          return { type: "free", blocks, ...(LAYOUT_NAME[key] && NAMED_START.test(key) ? { name: LAYOUT_NAME[key] } : {}), ...(nb.plan === "shoot" && (TEAM_PAGES.has(key) || PRODUCTION_TEAM.has(key)) ? { teamOnly: true } : {}) };
         });
         nb.pages.push({ type: "end", layout: "back" });
         return nb;
@@ -12182,6 +12187,7 @@
       if (card) entry.blocks = card.blocks;
       else if (type === "free") entry.blocks = startBlocks(start, book, "add");
       if (type === "free" && PRODUCTION_TEAM.has(start)) entry.teamOnly = true;
+      if (type === "free" && NAMED_START.test(start) && LAYOUT_NAME[start]) entry.name = LAYOUT_NAME[start];
       if (["photos", "spread", "story", "note", "quote", "feature", "article", "look"].includes(type)) entry.photos = [];
       if (type === "divider") { entry.heading = "Selected work"; entry.line = ""; }
       // Writing pages start empty: nothing is ever written for the studio.
@@ -12267,6 +12273,7 @@
       if (pg.type === "divider") return pg.heading ? `Chapter · ${pg.heading}` : "Chapter page";
       // A calendar page by its month (v580); a year page as the year.
       if (pg.type === "free") {
+        if (pg.name) return pg.name;
         const months = (pg.blocks || []).filter((x) => x && x.k === "cal");
         const big = months.find((x) => x.look !== "mini");
         if (big) { const at = calMonth(book, big.m || 0); return `${MONTHS[at.m]} ${at.y}`; }
@@ -13674,9 +13681,11 @@
         return nb;
       });
       for (const nb of out) if (nb.k === "text" && !nb.t) { const any = texts.find((x) => !usedT.has(x)); if (any) { usedT.add(any); nb.t = any.t; if (any.style) nb.style = { ...(nb.style || {}), ...any.style }; } }
-      for (const b of old) if ((b.k === "photo" && b.p && b.p.id && !usedP.has(b)) || (b.k === "text" && String(b.t || "").trim() && !usedT.has(b))) out.push(b);
+      // A table that holds anything stays on the page: changing the layout must not lose a budget.
+      for (const b of old) if ((b.k === "photo" && b.p && b.p.id && !usedP.has(b)) || (b.k === "text" && String(b.t || "").trim() && !usedT.has(b)) || (b.k === "tbl" && tblRows(b).some((r) => r.some((c) => String(c || "").trim())))) out.push(b);
       mark();
       entry.blocks = out.slice(0, FREE_MAX);
+      if (NAMED_START.test(key) && LAYOUT_NAME[key]) entry.name = LAYOUT_NAME[key]; else delete entry.name;
       blockSel = -1;
       change({ rail: true, photos: true });
       drawInspector();
@@ -13743,6 +13752,15 @@
             <div class="sb-adds">${cols.map((c, i) => `<label class="sb-check-row"><input type="checkbox" data-tblright="${i}" ${c.a === "r" ? "checked" : ""}> ${esc(c.h || `Column ${i + 1}`)}</label>`).join("")}</div></div>
           <div class="sb-field"><span class="sb-label">Lines</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Lines">${[["", "A rule under each row"], ["grid", "A full grid"], ["plain", "None"]].map(([k, n]) => `<button type="button" role="radio" data-tbllook="${k}" aria-checked="${(b.look || "") === k}">${n}</button>`).join("")}</div></div>
           <div class="sb-field"><span class="sb-label">Text size</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Text size">${[[0.85, "Smaller"], [1, "Normal"], [1.2, "Larger"]].map(([k, n]) => `<button type="button" role="radio" data-tblsize="${k}" aria-checked="${Math.abs((+b.size || 1) - k) < 0.05}">${n}</button>`).join("")}</div></div>
+          ${cols.some((c) => c.v) ? (() => {
+            const recs = typeof API.contracts === "function" ? API.contracts() : [];
+            const when = (r) => { const d = r.at ? new Date(r.at) : new Date(`${r.dateKey}T00:00:00`); return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }); };
+            return `<div class="sb-field"><label class="sb-label" for="sbTblVault">From the Vault</label>
+              ${recs.length ? `<select id="sbTblVault" data-tblvault>${recs.map((r, i) => `<option value="${i}">${esc([r.name || "—", r.version, r.number].filter(Boolean).join(" · "))}</option>`).join("")}</select>
+              <div class="sb-adds"><button type="button" data-tblvaultadd>Add this person</button><button type="button" data-tblvaultall>Add all ${recs.length}</button></div>`
+              : `<p class="sb-hint">No signed contracts on this computer yet. Type each row below instead.</p>`}
+              <p class="sb-hint">Fills the name, role, which release, its version, the date and the contract number — never an email or a phone number. Anyone not in the Vault you type in below.</p></div>`;
+          })() : ""}
           <label class="sb-check-row"><input type="checkbox" data-tbltotals ${sum ? "checked" : ""}> Add a column up (a total at the foot)</label>
           ${sum ? `<div class="sb-field"><label class="sb-label" for="sbTblSc">Column to add up</label>
               <select id="sbTblSc" data-tblsc>${cols.map((c, i) => `<option value="${i}" ${i === sc ? "selected" : ""}>${esc(c.h || `Column ${i + 1}`)}</option>`).join("")}</select>
@@ -13874,6 +13892,14 @@
           else { const n = tblCols(b).length; b.rows = [...tblRows(b), ...Array.from({ length: +x.dataset.tbladd }, () => Array.from({ length: n }, () => ""))].slice(0, TBL.rows); }
           redraw();
         }));
+        {
+          const recs = typeof API.contracts === "function" ? API.contracts() : [];
+          const fmtDate = (r) => { const d = r.at ? new Date(r.at) : new Date(`${r.dateKey}T00:00:00`); return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }); };
+          const rowOf = (r) => tblCols(b).map((c) => (c.v === "name" ? r.name : c.v === "role" ? r.role : c.v === "what" ? r.what : c.v === "version" ? r.version : c.v === "date" ? fmtDate(r) : c.v === "number" ? r.number : ""));
+          const addRecs = (list) => { mark(); b.rows = [...tblRows(b).filter((r) => r.some((c) => String(c || "").trim())), ...list.map(rowOf)].slice(0, TBL.rows); redraw(); };
+          { const one = box.querySelector("[data-tblvaultadd]"); if (one) one.addEventListener("click", () => { const sel = box.querySelector("[data-tblvault]"); const r = recs[+sel.value]; if (r) addRecs([r]); }); }
+          { const all = box.querySelector("[data-tblvaultall]"); if (all) all.addEventListener("click", () => addRecs(recs)); }
+        }
         box.querySelectorAll("[data-tblright]").forEach((x) => x.addEventListener("change", () => { mark(); const c = tblCols(b)[+x.dataset.tblright]; if (!c) return; if (x.checked) c.a = "r"; else delete c.a; b.cols = tblCols(b); redraw(); }));
         box.querySelectorAll("[data-tbllook]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.tbllook) b.look = x.dataset.tbllook; else delete b.look; redraw(); }));
         box.querySelectorAll("[data-tblsize]").forEach((x) => x.addEventListener("click", () => { mark(); const v = +x.dataset.tblsize; if (Math.abs(v - 1) < 0.05) delete b.size; else b.size = v; redraw(); }));

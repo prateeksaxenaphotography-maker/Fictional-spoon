@@ -580,7 +580,7 @@ if (books !== undefined && books !== null) {
       ways: ["type", "items", "style", ...Object.keys(FIELD_MAX.ways)],
       process: ["type", "way", "steps", "style", ...Object.keys(FIELD_MAX.process)],
       contents: ["type", "style", ...Object.keys(FIELD_MAX.contents)], more: ["type"],
-      free: ["type", "bg", "blocks", "nums"],
+      free: ["type", "bg", "blocks", "nums", "name"],
       end: ["type", "layout", "photos", "text", "note", "lines", "noLines", "style"],
       look: ["type", "photos", "label", "title", "lines", "credit", "style"]
     };
@@ -655,7 +655,8 @@ if (books !== undefined && books !== null) {
           else for (const [ci, c] of x.cols.entries()) {
             if (!c || typeof c !== "object" || typeof c.h !== "string" || c.h.length > 40) fail(`${at} column ${ci + 1} has no name of up to 40 characters`);
             else {
-              for (const k of Object.keys(c)) if (!["h", "w", "a", "f"].includes(k)) fail(`${at} column ${ci + 1} has ${JSON.stringify(k)}, which the app drops`);
+              for (const k of Object.keys(c)) if (!["h", "w", "a", "f", "v"].includes(k)) fail(`${at} column ${ci + 1} has ${JSON.stringify(k)}, which the app drops`);
+              if (c.v !== undefined && !["name", "role", "what", "version", "date", "number"].includes(c.v)) fail(`${at} column ${ci + 1} is filled from the Vault with ${JSON.stringify(c.v)}; the app knows name, role, what, version, date and number`);
               if (typeof c.w !== "number" || !(c.w >= 0.2 && c.w <= 20)) fail(`${at} column ${ci + 1} has width ${JSON.stringify(c.w)}; it must be a number from 0.2 to 20`);
               if (c.a !== undefined && c.a !== "r") fail(`${at} column ${ci + 1} aligns ${JSON.stringify(c.a)}; the app writes "r", and nothing for left`);
               if (c.f !== undefined && c.f !== "qr") fail(`${at} column ${ci + 1} works out ${JSON.stringify(c.f)}; the app knows "qr"`);
@@ -737,6 +738,7 @@ if (books !== undefined && books !== null) {
         const where = `studio portfolio book ${name} page entry ${i + 1}`;
         if (!pg || !PAGE_TYPES.has(pg.type)) { fail(`${where} has an unknown type ${JSON.stringify(pg && pg.type)}`); return; }
         const extra = Object.keys(pg).filter((k) => !KNOWN_KEYS[pg.type].includes(k));
+        if (pg.name !== undefined && (typeof pg.name !== "string" || !pg.name.trim() || pg.name.length > 40)) fail(`${where} has a page name ${JSON.stringify(pg.name)}; the app writes up to 40 characters, and nothing for none`);
         if (pg.teamOnly !== undefined && pg.teamOnly !== true) fail(`${where} has teamOnly ${JSON.stringify(pg.teamOnly)}; the app writes true, and nothing otherwise`);
         if (extra.length) fail(`${where} (${pg.type}) has ${extra.map((k) => JSON.stringify(k)).join(", ")}, which the app drops when the book loads`);
         for (const [k, max] of Object.entries(FIELD_MAX[pg.type] || {})) {
