@@ -5065,7 +5065,21 @@
     roundedPoly(ctx, v, r);
   }
   // How far in from the box the words sit, so they stay inside the shape.
-  const shapeInset = (shape, w, h, k = 0.18) => (shape === "ellipse" ? { x: w * 0.15, y: h * 0.15 } : shape === "diamond" ? { x: w * 0.25, y: h * 0.25 } : shape === "triangle" ? { x: w * 0.22, y: h * 0.38 } : shape === "star" ? { x: w * 0.28, y: h * 0.3 } : shape === "parallelogram" ? { x: w * 0.22, y: Math.min(4, h * 0.2) } : (shape === "round" || shape === "chamfer") ? { x: Math.max(Math.min(4, w * 0.08), Math.min(w, h) * k * 0.6), y: Math.max(Math.min(4, h * 0.2), Math.min(w, h) * k * 0.6) } : { x: Math.min(4, w * 0.08), y: Math.min(4, h * 0.2) });
+  /* Where words may sit inside a drawing (v617, the owner: "shouldn't text come inside the shape"): the largest
+     plain area of each, as [across, from the top, from the bottom], each a share of the box. Words in a drawing
+     are also centred, across and down, unless the studio chose an alignment. */
+  const GRAPHIC_TEXT = {
+    heart: [0.2, 0.2, 0.36], sparkle: [0.32, 0.32, 0.32], burst: [0.25, 0.25, 0.25], badge: [0.2, 0.2, 0.2], ring: [0.3, 0.3, 0.3], flower: [0.3, 0.3, 0.3], sun: [0.34, 0.34, 0.34],
+    moon: [0.3, 0.3, 0.3], leaf: [0.25, 0.28, 0.25], arrow: [0.1, 0.36, 0.36], curve: [0.3, 0.3, 0.3], speech: [0.1, 0.14, 0.34], quotes: [0.25, 0.3, 0.3], camera: [0.12, 0.32, 0.2], film: [0.3, 0.18, 0.18],
+    frame: [0.2, 0.2, 0.2], focus: [0.28, 0.28, 0.28], pin: [0.3, 0.12, 0.46], mail: [0.1, 0.28, 0.28], phone: [0.3, 0.3, 0.3], check: [0.3, 0.3, 0.3], plus: [0.38, 0.38, 0.38], stroke: [0.1, 0.4, 0.4],
+    woman: [0.36, 0.3, 0.4], man: [0.36, 0.3, 0.4], shapedwoman: [0.36, 0.3, 0.4], shapedman: [0.36, 0.3, 0.4]
+  };
+  const IN_SHAPES = ["ellipse", "diamond", "triangle", "star", "parallelogram"];
+  const wordsInShape = (b) => !!b.fill && (isGraphic(shapeOf(b)) || IN_SHAPES.includes(shapeOf(b)));
+  const shapeInset = (shape, w, h, k = 0.18) => {
+    if (isGraphic(shape)) { const g = GRAPHIC_TEXT[shape.slice(2)] || [0.2, 0.2, 0.2]; return { x: w * g[0], y: (h * (g[1] + g[2])) / 2, t: h * g[1], b: h * g[2] }; }
+    return ((shape === "ellipse" ? { x: w * 0.15, y: h * 0.15 } : shape === "diamond" ? { x: w * 0.25, y: h * 0.25 } : shape === "triangle" ? { x: w * 0.22, y: h * 0.38 } : shape === "star" ? { x: w * 0.28, y: h * 0.3 } : shape === "parallelogram" ? { x: w * 0.22, y: Math.min(4, h * 0.2) } : (shape === "round" || shape === "chamfer") ? { x: Math.max(Math.min(4, w * 0.08), Math.min(w, h) * k * 0.6), y: Math.max(Math.min(4, h * 0.2), Math.min(w, h) * k * 0.6) } : { x: Math.min(4, w * 0.08), y: Math.min(4, h * 0.2) }));
+  };
   const FREE_ROLES = ["head", "intro", "body", "kicker", "quote"];
   // A magazine page can be as full as the studio wants (Sep 2026: 12/6/600 before).
   const FREE_MAX = 60, FREE_PHOTO_MAX = 30, FREE_TEXT_MAX = 2000;
@@ -5620,7 +5634,9 @@
       const R = roleType(T, b.role);
       const base = styledSpec(R.spec, f);
       const sc = sizeScale(f);
-      const align = ALIGNS.includes(f.align) ? f.align : "left";
+      // Words in a drawing or a shape sit in its middle unless the studio chose a side (v617).
+      const inShape = wordsInShape(b), chosenAlign = !!(b.style && typeof b.style === "object" && ALIGNS.includes(b.style.align));
+      const align = ALIGNS.includes(f.align) && (chosenAlign || !inShape) ? f.align : (inShape ? "center" : "left");
       const color = tintOf(f.color, P, colour(R.color));
       const words = R.caps ? String(b.t || "").toUpperCase() : String(b.t || "");
       const start = R.start * sc, floor = b.fit === "cut" ? start : Math.max(1.6, (R.min || R.start) * sc);
@@ -5631,11 +5647,17 @@
         lead = leadAt(size);
         const spec = { ...base, size, lead };
         const specFor = (pi) => { const pf = paraFmt(f, pi); const st2 = styledSpec(R.spec, pf); const sc2 = sizeScale(pf) / sc; return { spec: { ...st2, size: size * sc2, lead: lead * sc2 }, lead: lead * sc2, color: tintOf(pf.color, P, colour(R.color)), align: ALIGNS.includes(pf.align) ? pf.align : align, list: pf.list, columns: pf.columns }; };
-        r = flowBody(page, words, [{ x: box.x + ins.x, w: box.w - 2 * ins.x, top: box.y + ins.y + size * 0.84, bottom: box.y + box.h - ins.y - size * 0.2 }], spec, null, perPara ? specFor : null);
+        r = flowBody(page, words, [{ x: box.x + ins.x, w: box.w - 2 * ins.x, top: box.y + (ins.t ?? ins.y) + size * 0.84, bottom: box.y + box.h - (ins.b ?? ins.y) - size * 0.2 }], spec, null, perPara ? specFor : null);
         r.specFor = perPara ? specFor : null;
         r.spec = spec;
         if (!r.cut || size <= floor + 1e-6) break;
         size = Math.max(floor, Math.round((size - 0.25) * 100) / 100);
+      }
+      // …and in the middle of it, top to bottom, when it fits (a column of words that fills the box has no room to move).
+      if (inShape && !f.columns && r.lines && r.lines.length && !r.cut) {
+        const a = r.lines[0], z = r.lines[r.lines.length - 1], sz = r.spec.size;
+        const dy = (box.y + (ins.t ?? ins.y) + box.y + box.h - (ins.b ?? ins.y)) / 2 - (a.y - sz * 0.84 + z.y + sz * 0.2) / 2;
+        if (Math.abs(dy) > 0.01) { r.lines.forEach((l) => { l.y += dy; }); (r.marks || []).forEach((m) => { m.y += dy; }); }
       }
       plan.fields[field] = { kind: "flow", empty: !r.total, ...r, lines: undefined, box: { ...box }, type: { spec: r.spec, size: r.spec.size, lead: r.spec.lead, color, align } };
       if (r.cut) plan.cuts.push({ field, label: "words on this page" });
