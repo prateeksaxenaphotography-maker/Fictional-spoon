@@ -3070,14 +3070,14 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1792137305778,
-    "syncedAt": 1792137305778,
+    "updatedAt": 1792138159915,
+    "syncedAt": 1792138159915,
     "testShootLimits": {
       "default": 2,
       "months": {
-        "2026-11": 3
+        "2026-11": 2
       },
-      "at": 1792137298622
+      "at": 1792138119276
     }
   },
   "INVITE_CODES": [
@@ -3102,6 +3102,7 @@ window.WPS_DATA = {
         "type": "free"
       },
       "endDate": "2026-10-31",
+      "shootTo": "2026-11-30",
       "deliverables": "Full Proof Gallery + 3 clicks per look Retouched"
     },
     {
@@ -3295,7 +3296,7 @@ window.WPS_DATA = {
   },
   "HOME_STUDIO_RATE_TFP": 4000,
   "SETTINGS_AT": {
-    "INVITE_CODES": 1792137268298,
+    "INVITE_CODES": 1792138153452,
     "PROMO_CODES": 1791378727482,
     "PACKAGES": 1791618731794,
     "TFP_PACKAGE": 1791618731795,
