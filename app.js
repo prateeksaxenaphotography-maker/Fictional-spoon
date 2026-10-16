@@ -1109,7 +1109,7 @@ window.bookingDeliverables = function ({ tfp = false, invite = null, promo = nul
    opening the Calendar view. Defined inside a view function, the archive
    simply did not exist on those paths.
    ============================================================ */
-window.ACTIVE_CONTRACTS = { commercial: "V4.2-COMMERCIAL", tfp: "V4.2-TFP" };
+window.ACTIVE_CONTRACTS = { commercial: "V4.3-COMMERCIAL", tfp: "V4.3-TFP" };
 
 /* ============================================================
    § CALL TIME, GRACE PERIOD & NO-SHOW
@@ -7247,7 +7247,7 @@ window.resolveContractArchive = function(version) {
                     </div>
                   </div>
                  <label class="field" id="b_date_field">
-                    <span>Preferred Date / Timeline * <span id="b_date_availability_badge" style="display: none; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 2.5px 7px; border-radius: 4px; margin-left: 8px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.05em;"></span></span>
+                    <span><span id="b_date_label_text">Preferred Date / Timeline *</span> <span id="b_date_availability_badge" style="display: none; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 2.5px 7px; border-radius: 4px; margin-left: 8px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.05em;"></span></span>
                     <div class="date-picker-wrap">
                       <input id="b_date" type="text" required placeholder="e.g. 24 Oct 2026, or use the calendar →" autocomplete="off" />
                       <button type="button" class="date-picker-toggle" id="datePickerToggle" aria-label="Open date picker" title="Pick dates from calendar">
@@ -7257,8 +7257,9 @@ window.resolveContractArchive = function(version) {
                     </div>
                     <div id="b_date_booked_note" style="display: none; font-size: var(--font-xs); color: #dc2626; margin-top: 6px; line-height: 1.4;">This date already has a booking — you're welcome to send a request anyway. I'll confirm it or suggest an alternative date.</div>
                     <div id="b_date_limit_note" role="alert" style="display: none; font-size: var(--font-xs); color: #dc2626; margin-top: 6px; line-height: 1.45; font-weight: 600;"></div>
-                    <button type="button" id="b_date_request_btn" class="link-arrow" hidden style="margin-top: 6px; padding: 0; font-size: var(--font-xs); text-align: left;">No month suits? Send the studio a request instead →</button>
+                    <button type="button" id="b_date_request_btn" class="link-arrow" hidden style="margin-top: 6px; padding: 0; font-size: var(--font-xs); text-align: left;">No month suits? Book it now with the date to be agreed →</button>
                   </label>
+                  <div id="b_date_later" hidden role="status" style="margin-top: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);"><strong style="color: var(--ink);">The date is to be agreed by email.</strong> Everything else is booked as usual: the costs and the terms are below for you to read and sign, and the studio will reply to fix a date with you. Put any dates you would like in the box above, or leave it empty for whenever the studio is free. <button type="button" id="b_date_later_undo" class="link-arrow" style="padding: 0; font-size: var(--font-xs);">Choose a date instead</button></div>
                </div>
                 <div class="production-brief" id="productionBrief" hidden>
                   <div class="field-row">
@@ -7798,9 +7799,15 @@ window.resolveContractArchive = function(version) {
        it. The rules themselves (testShootSpots and friends) sit with the
        calendar; this only asks them about THIS form. */
     const bookingIsTestShoot = () => ($("#b_type")?.value || "") === "Selective Collaboration (TFP)";
+    /* "Book with the date to be agreed" (v615, the owner: "the date is not confirmed, rest
+       everything else the client should see and approve"). When a test shoot's month is
+       full the client can book anyway: the costs and the terms are read and signed as
+       usual and the booking says the shoot date is "to be agreed", which contract V4.3
+       explains. No day is asked for, so no month or code window is checked. */
+    let dateToBeAgreed = false;
     const requestedDays = () => {
       const el = $("#b_date");
-      if (!el) return [];
+      if (!el || dateToBeAgreed) return [];
       return Array.isArray(el._wpsPickedDates) && el._wpsPickedDates.length ? el._wpsPickedDates.slice() : parseTypedDates(el.value);
     };
     /* A place agreed by email (v613): the invite code typed in lets THIS date through
@@ -7826,19 +7833,35 @@ window.resolveContractArchive = function(version) {
       return bad ? window.shootWindowMessage(bad) : "";
     }
     // The one answer for the date box: a code's window first, then a full test-shoot month.
-    const dateRuleProblem = () => codeWindowProblem() || testLimitProblem();
+    const dateRuleProblem = () => (dateToBeAgreed ? "" : codeWindowProblem() || testLimitProblem());
+    const preferredDates = () => ($("#b_date")?.value || "").trim();
+    // What the booking says the date is: the words contract V4.3 names, then any dates they would like.
+    const dateAgreedWords = () => { const p = preferredDates(); return p ? `To be agreed (preferred: ${p})` : "To be agreed"; };
     // The way out of a full month (v608): a request instead of a booking.
     // Offered only for the full-month case, never for a code's date window.
     const canAskInstead = () => !isAdmin() && !codeWindowProblem() && !!testLimitProblem();
     let askForDatesHandler = null;
+    function setDateLater(on) {
+      dateToBeAgreed = !!on;
+      const box = $("#b_date_later"), text = $("#b_date_label_text"), inp = $("#b_date"), tog = $("#datePickerToggle");
+      if (box) box.hidden = !on;
+      if (text) text.textContent = on ? "Dates you would like (optional)" : "Preferred Date / Timeline *";
+      if (inp) { inp.placeholder = on ? "e.g. any Saturday in January — or leave empty" : "e.g. 24 Oct 2026, or use the calendar →"; if (on) { inp._wpsPickedDates = []; inp.value = ""; } }
+      if (tog) tog.hidden = !!on;
+      clearError("b_date");
+      paintTestLimitNote();
+    }
+    $("#b_date_later_undo")?.addEventListener("click", () => { setDateLater(false); $("#b_date")?.focus(); });
     function paintTestLimitNote() {
       const note = $("#b_date_limit_note");
       if (!note) return;
+      // It only ever belongs to a test shoot the client is making, and the studio is never held to a month.
+      if (dateToBeAgreed && (!bookingIsTestShoot() || isAdmin())) { setDateLater(false); return; }
       const msg = dateRuleProblem();
       note.textContent = msg;
       note.style.display = msg ? "block" : "none";
       const ask = $("#b_date_request_btn");
-      if (ask) ask.hidden = !canAskInstead();
+      if (ask) ask.hidden = dateToBeAgreed || !canAskInstead();
     }
     $("#b_date_request_btn")?.addEventListener("click", () => askForDatesHandler && askForDatesHandler());
     ["change", "input", "click"].forEach((ev) => $("#bookingForm")?.addEventListener(ev, () => setTimeout(paintTestLimitNote, 0)));
@@ -8067,6 +8090,8 @@ window.resolveContractArchive = function(version) {
         const badge = $("#b_date_availability_badge");
         const bookedNote = $("#b_date_booked_note");
         if (!badge) return;
+        // The date is to be agreed (v615): what they typed are dates they would like, not a day being booked.
+        if (dateToBeAgreed) { badge.style.display = "none"; if (bookedNote) bookedNote.style.display = "none"; return; }
         const valStr = dateInput.value.trim();
         if (!valStr) {
           badge.style.display = "none";
@@ -8193,7 +8218,7 @@ window.resolveContractArchive = function(version) {
             const monthNow = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}`;
             let line = bookingIsTestShoot() ? testShootSpotsLine(monthNow) : null;
             if (line && monthKeyAgreed(monthNow) && (testShootSpots(monthNow) || {}).full) line = "This month is full, but the studio has agreed your date with you.";
-            return `${wins.length ? note("dp-window", wins.join(" ")) : ""}${line ? note("dp-spots", line) : ""}${limitMsg ? `<p class="dp-limit-msg" role="alert" style="margin: 0 0 8px; padding: 8px 10px; border-radius: 8px; background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.3); color: #b91c1c; font-size: var(--font-xs); line-height: 1.45; font-weight: 600;">${esc(limitMsg)}${limitMsgAsk ? ` <button type="button" class="dp-request-btn link-arrow" style="padding: 0; margin-left: 4px; font-size: var(--font-xs);">Send the studio a request instead →</button>` : ""}</p>` : ""}`;
+            return `${wins.length ? note("dp-window", wins.join(" ")) : ""}${line ? note("dp-spots", line) : ""}${limitMsg ? `<p class="dp-limit-msg" role="alert" style="margin: 0 0 8px; padding: 8px 10px; border-radius: 8px; background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.3); color: #b91c1c; font-size: var(--font-xs); line-height: 1.45; font-weight: 600;">${esc(limitMsg)}${limitMsgAsk ? ` <button type="button" class="dp-request-btn link-arrow" style="padding: 0; margin-left: 4px; font-size: var(--font-xs);">Book with the date to be agreed →</button>` : ""}</p>` : ""}`;
           })()}
           <div class="dp-grid">
             ${DAYS.map(d => `<span class="dp-day-label">${d}</span>`).join("")}
@@ -10024,7 +10049,7 @@ window.resolveContractArchive = function(version) {
         else clearError(id);
       };
       require("b_name", "Please add your name or brand.");
-      require("b_date", "Let us know a rough date or timeline.");
+      if (dateToBeAgreed && bookingIsTestShoot()) clearError("b_date"); else require("b_date", "Let us know a rough date or timeline.");
       require("b_location", "Please let us know your preferred location.");
 
       // Only asked (and therefore only enforced) once a dedicated commercial
@@ -10042,7 +10067,7 @@ window.resolveContractArchive = function(version) {
         }
       }
 
-      const rawDateStr = val("b_date");
+      const rawDateStr = dateToBeAgreed ? "" : val("b_date");
       if (rawDateStr) {
         const parsedD = parseTypedDates(rawDateStr)[0];
         if (parsedD) {
@@ -10297,30 +10322,15 @@ window.resolveContractArchive = function(version) {
     $("#talkSubmitBtn")?.addEventListener("click", () => {
       withTalkFirst(() => window.WPS_TALK_FIRST({ $, esc, setError, clearError, form, panel: successPanel }));
     });
-    /* A test shoot in a month that is full: the way out is a request, not a dead
-       end (the owner, Oct 2026). It goes the way Talk first does — nothing is
-       booked, no calendar is touched — carrying the dates the client would like,
-       or "whenever the studio is free", and asks the studio to reply by email with
-       dates that suit them both. Once a date is agreed the studio adds it to the
-       calendar and it counts toward that month. */
+    /* A test shoot in a month that is full: the way out is not a dead end, nor a bare
+       request (the owner, Oct 2026): the client books with the date still to be agreed.
+       The costs and the terms are read and signed as for any booking; the studio
+       replies by email to fix a date and then adds it to the calendar as a Test shoot. */
     askForDatesHandler = () => {
-      const days = requestedDays();
-      const fullNames = [...new Set(days.filter(testMonthIsFull).map((d) => testShootMonthName(testShootMonthKey(d))))];
-      const preferred = ($("#b_date")?.value || "").trim();
-      withTalkFirst(() => window.WPS_TALK_FIRST({
-        $, esc, setError, clearError, form, panel: successPanel,
-        ask: {
-          intro: "I'd like to do a test shoot, but the month I looked at is full. Please let me know when you are free — my preferred dates are below, and I'm happy to go with whenever suits the studio.",
-          enquiry: "Test shoot request — no place free in the month asked; wants the studio's next free dates",
-          extra: [
-            ["Preferred dates", preferred || "Whenever the studio is free"],
-            ["Month asked for", fullNames.length ? `${fullNames.join(", ")} (full)` : "—"],
-            ["Availability", "To be agreed by email — each of us confirms our own calendar"]
-          ],
-          nextStep: "Reply by email with the dates the studio can do; the client confirms theirs. Once one is agreed, make them an invite code for that date (Invite codes: only that shoot date, “Agreed by email” switched on), press Publish now and send them the code — they book it on the booking page and sign the contract as usual, even though the month is full. Then add the booking to the calendar as a Test shoot.",
-          done: "Your request has reached the studio. I'll reply by email with dates that work for both of us — you're welcome to send more preferred dates in your reply."
-        }
-      }));
+      const typed = preferredDates();
+      setDateLater(true);
+      if (typed) { const inp = $("#b_date"); if (inp) inp.value = typed; }
+      $("#b_date_later")?.scrollIntoView({ block: "center", behavior: prefersReduced ? "auto" : "smooth" });
     };
 
     const handleBookingSubmit = (e) => {
@@ -10357,7 +10367,8 @@ window.resolveContractArchive = function(version) {
       const bookerAuthorised = !!$("#b_authorised")?.checked;
       // The person the contract's Participant clauses describe.
       const participantName = subjectName || name;
-      const date = val("b_date"), locationVal = val("b_location"), budget = (type === "Selective Collaboration (TFP)" ? "Collab / TFP (No Budget)" : val("b_budget"));
+      const laterMode = dateToBeAgreed && bookingIsTestShoot();
+      const date = laterMode ? dateAgreedWords() : val("b_date"), locationVal = val("b_location"), budget = (type === "Selective Collaboration (TFP)" ? "Collab / TFP (No Budget)" : val("b_budget"));
       const moodboard = getFormLinks().join(", "), concept = val("b_concept");
       // Flag an already-booked date for the studio's attention rather than
       // blocking submission — the client may still want to send the request
@@ -10365,7 +10376,7 @@ window.resolveContractArchive = function(version) {
       // Every day this booking covers, from the picker where it was used and
       // from the text otherwise (same parsing as the calendar save below).
       const dateEl0 = $("#b_date");
-      const requestedDates = (dateEl0 && Array.isArray(dateEl0._wpsPickedDates) && dateEl0._wpsPickedDates.length)
+      const requestedDates = laterMode ? [] : (dateEl0 && Array.isArray(dateEl0._wpsPickedDates) && dateEl0._wpsPickedDates.length)
         ? dateEl0._wpsPickedDates.slice()
         : parseTypedDates(date);
       const dateStatusTarget = requestedDates[0] || null;
@@ -10784,6 +10795,7 @@ window.resolveContractArchive = function(version) {
           `Instagram / Website: ${instagram || '—'}\n` +
           `Shoot Type: ${type}\n` +
           `Proposed Date: ${date}\n` +
+          (laterMode ? `⚠️ Date Status: TO BE AGREED — the client has seen the costs, accepted the terms and signed. Agree a date with them by email, then add it to the calendar as a Test shoot.\n` : "") +
           (dateAlreadyBooked ? `⚠️ Date Status: This date already has a booking on the calendar — decide whether to confirm anyway or suggest an alternative.\n` : "") +
           `Session Duration: ${sessionDuration || '—'}\n` +
           `Location Pref: ${locationVal}\n` +
@@ -10841,6 +10853,7 @@ window.resolveContractArchive = function(version) {
           `Instagram / Website: ${instagram || '—'}\n` +
           `Shoot Type: ${type}\n` +
           `Proposed Date: ${date}\n` +
+          (laterMode ? `⚠️ Date Status: TO BE AGREED — the client has seen the costs, accepted the terms and signed. Agree a date with them by email, then add it to the calendar as a Test shoot.\n` : "") +
           (dateAlreadyBooked ? `⚠️ Date Status: This date already has a booking on the calendar — decide whether to confirm anyway or suggest an alternative.\n` : "") +
           `Session Duration: ${sessionDuration || '—'}\n` +
           `Location Pref: ${locationVal}\n` +
@@ -10925,7 +10938,7 @@ window.resolveContractArchive = function(version) {
           });
 
           // Auto-save booking into Studio Calendar DB immediately
-          if (date) {
+          if (date && !laterMode) {
             // The days the picker recorded, when it was used. Falling back to
             // the text, a range or list is split on the en-dash or on commas
             // that separate whole dates ("Oct 10, 2026, Oct 11, 2026"), never
@@ -11022,7 +11035,7 @@ window.resolveContractArchive = function(version) {
           // The booking itself was already written to the calendar store by
           // the instant-save block above — recording it again here doubled
           // every agreed booking on the device (two slots per date).
-          if (date) window.WPS_ADMIN?.updateReminders?.();
+          if (date && !laterMode) window.WPS_ADMIN?.updateReminders?.();
 
           if (successPanel) {
             form.hidden = true;
@@ -11112,6 +11125,7 @@ window.resolveContractArchive = function(version) {
           } : { "Confirms 18 or over": $("#b_adult")?.checked ? "Yes" : "No" }),
           "Shoot Type": type,
           "Proposed Date": date,
+          ...(laterMode ? { "Date Status": "⚠️ TO BE AGREED — the client has seen the costs, accepted the terms and signed. Agree a date with them by email, then add it to the calendar as a Test shoot." } : {}),
           "Session Duration": sessionDuration || "—",
           "Location Pref": locationVal,
           "Studio Space": (studioSpaceVal || "—").replace(/ \(Billed at Actuals\)/g, ""),

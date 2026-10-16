@@ -742,3 +742,50 @@ window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"].status = "Archived — superseded by V3.
       : "Archived - superseded by V4.2 (no change to the paid-shoot wording)";
   }
 })();
+
+/* ── V4.3 (16 Oct 2026) ──────────────────────────────────────────────────────
+   The owner: when a month's test shoots are full, the client should still see
+   and approve everything except the date — the costs, the deliverables and the
+   terms — and sign, with the date to be agreed by email afterwards ("the date
+   is not confirmed, rest everything else the client should see and approve").
+   The contract has to say what "the shoot date" is when the booking says the
+   date is still to be agreed, since several terms count from it (a guardian for
+   a young Participant, call time, deliverables). In the wording the owner
+   approved on 16 Oct 2026 — written with "the Participant", which is what the
+   test shoot contract calls the person, where the approved text said "the
+   Client" — a new section, DATE TO BE AGREED, now follows clause 6 of the test
+   shoot contract. Nothing else changes.
+   The paid-shoot contract has no change in wording: V4.3-COMMERCIAL is
+   V4.2-COMMERCIAL word for word, so the two kinds share one version number as
+   V4.0, V4.1 and V4.2 did. V4.2 is archived unchanged for everyone who agreed
+   to it. Composed with an exact swap; one that fails to match is recorded in
+   WPS_CONTRACT_COMPOSE_MISSES. */
+(() => {
+  const A = window.WPS_CONTRACT_ARCHIVE;
+  const misses = (window.WPS_CONTRACT_COMPOSE_MISSES = window.WPS_CONTRACT_COMPOSE_MISSES || []);
+  const BEFORE = "\n\nSTYLING, WARDROBE, HAIR & MAKE-UP\n";
+  const SECTION = "\n\nDATE TO BE AGREED\nIf this booking says the shoot date is “to be agreed”, the Studio and the Participant will fix it by email. The shoot date is the date both confirm in writing, and every period in these terms that is counted from the shoot date is counted from that date.";
+  for (const [kind, label] of [["COMMERCIAL", "Paid Commercial"], ["TFP", "Test Shoot / TFP"]]) {
+    const from = A[`V4.2-${kind}`];
+    if (!from) { misses.push(`V4.3-${kind}: no V4.2 to compose from`); continue; }
+    let text = from.fullText;
+    if (kind === "TFP") {
+      if (text.split(BEFORE).length !== 2) misses.push("V4.3-TFP: STYLING, WARDROBE, HAIR & MAKE-UP");
+      else text = text.replace(BEFORE, () => `${SECTION}${BEFORE}`);
+    }
+    A[`V4.3-${kind}`] = {
+      version: `V4.3-${kind}`,
+      title: from.title.replace("V4.2", "V4.3"),
+      effectiveDate: "16 October 2026 - Present",
+      status: `Active / Current (${label})`,
+      summary: kind === "TFP"
+        ? from.summary + " Where the booking says the shoot date is still to be agreed, the Studio and the Participant fix it by email, and every period counted from the shoot date runs from the date both confirm."
+        : from.summary,
+      fullText: text
+    };
+    from.effectiveDate = "9 - 16 October 2026 (superseded by V4.3)";
+    from.status = kind === "TFP"
+      ? "Archived - superseded by V4.3 (a shoot date that is still to be agreed)"
+      : "Archived - superseded by V4.3 (no change to the paid-shoot wording)";
+  }
+})();
