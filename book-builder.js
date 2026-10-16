@@ -7347,6 +7347,17 @@
       ["bl_campaign", "Campaign", "One photograph to the edges, the brand's mark, and the line across a dark band."]] }
   ];
   const LAYOUT_NAME = Object.fromEntries(LAYOUT_GROUPS.flatMap((g) => g.items.map(([k, n]) => [k, n])));
+  /* Other words someone types to find a page (v614, the owner: "for finding model measurement I don't see it"): the
+     measurement sheets answer to fitting, sizes, dress size, body, silhouette; the production documents to what they
+     are called on a set. Find matches words in the name, the line under it, the group and these. */
+  const FIND_MORE = {
+    pr_release: "consent model release contract signed", pr_location: "venue place rental agreement contract", pr_budget: "cost costs money quote estimate invoice",
+    pr_deliverables: "handover delivery files final", pr_permits: "permission licence", pr_insurance: "cover policy", pr_equipment: "gear kit camera lights",
+    pr_wardrobe: "clothes costume outfits styling", pr_props: "objects items", pr_shotlist: "shots scenes film", pr_schedule: "timetable days timeline",
+    pr_travel: "hotel flights accommodation stay", pr_breakdown: "script scene", sp_call: "call time callsheet", mb_palette: "colours colors swatches"
+  };
+  const FIT_WORDS = "fitting fit sizes size dress size body silhouette figure model measurements measurement measure waist bust chest hips inseam outseam height arms legs brand";
+  const findMore = (want) => { const k = String(want).replace(/^free:/, ""); return /^fs_/.test(k) ? FIT_WORDS : /^sb_/.test(k) ? "storyboard frames panels film" : FIND_MORE[k] || ""; };
   /* The Add menu for the book being edited. A book made for someone else is
      not offered the studio's own pages — its ways of working, how a shoot
      runs, what it shoots and its prices — and the rest are worded for them. */
@@ -9712,8 +9723,8 @@
             <p class="sb-hint">To win a shoot from a brand or a client: the idea, references, the team, what they get and your past work. Kept on this computer only and never published.</p>
             <div class="sb-cards">${pitches.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="pitch" ${atLimit ? "disabled" : ""}>New pitch<small>The idea, the references, the team and what they get</small></button></div></section>
           <section class="sb-plans" aria-labelledby="sbPlansHead"><h2 class="sb-plansh" id="sbPlansHead">Moodboards &amp; shoot plans</h2>
-            <p class="sb-hint">Plan the shoot and get the team on the same page: a board of your photographs and pictures pasted from anywhere, or the whole plan — looks, shot list, call sheet. Kept on this computer only and never published, whoever they're for.</p>
-            <div class="sb-cards">${plans.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="moodboard" ${atLimit ? "disabled" : ""}>New moodboard or shoot plan<small>Plug in your photographs, or paste pictures from anywhere</small></button></div></section>
+            <p class="sb-hint">Plan the shoot and get the team on the same page: a board of your photographs and pictures pasted from anywhere, or the whole plan — looks, shot list, call sheet — with the production documents and a model measurements sheet. Kept on this computer only and never published, whoever they're for.</p>
+            <div class="sb-cards">${plans.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="moodboard" ${atLimit ? "disabled" : ""}>New moodboard or shoot plan<small>Plug in your photographs, or paste pictures from anywhere</small></button><button type="button" class="sb-card sb-newcard" data-newkind="measure" ${atLimit ? "disabled" : ""}>New model measurements sheet<small>A figure with numbered marks and blanks, for a brand that asks for a model's sizes</small></button></div></section>
           <section class="sb-plans" aria-labelledby="sbCalHead"><h2 class="sb-plansh" id="sbCalHead">Calendars</h2>
             <p class="sb-hint">Wall, desk and poster calendars for any year — a hundred ahead if you like — in the standard sizes. Kept on this computer only: save a copy for the print shop.</p>
             <div class="sb-cards">${cals.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="calendar" ${atLimit ? "disabled" : ""}>New calendar<small>A cover, twelve months and the year on the back</small></button></div></section>
@@ -9751,6 +9762,7 @@
         pitch: "Eleven pages to fill: a cover, the idea and its mood words, references, colours, the model, styling, hair & make-up, location, light, what they get and your past work.",
         misc: "Pick one, or type a size of your own for a blank page. Kept on this computer only.",
         calendar: "Any year, a hundred ahead if you like. Pick the year, the month it starts in and the first day of the week, then its shape. Kept on this computer only.",
+        measure: "Two pages for a brand that asks for a model's sizes: a figure with numbered marks and blanks for height, bust or chest, waist, hips, legs and arms, the sizes they wear and their agreement to share them; then the back view and a box for notes. Not every blank has to be filled. Pick the figure below.",
         shootplan: "Everything for the day, eleven pages: the brief, the moodboard in six parts, three looks, hair & make-up, this-not-that, the shot list, the call sheet and the credits.",
         production: "Every document for a shoot, twenty-two pages: the schedule, call sheet, script breakdown, shot lists and a storyboard, the colours, wardrobe, props and equipment, travel, permits, the location agreement, insurance, releases, the budget and the final deliverables. Take out what you do not need; money and paperwork start as team-only.",
         moodboard: `A cover, the board you pick and a back cover. Your photographs, or any picture copied from Pinterest, Google or anywhere and pasted with ${MOD}V; more boards are in Add page → Moodboard.`, lookbook: "A cover, a page about the collection, six looks and a back cover. Each look is one or two photographs with its number, its name and its lines.",
@@ -9770,6 +9782,13 @@
           nb.id = uid(true);
           nb.name = nb.name.replace(/^Book /, "Calendar ");
           return calendarBook(nb, calPick.fmt, calPick);
+        }
+        if (k === "measure") {
+          nb.id = uid(true); nb.plan = KIND_PLAN[k]; nb.pack = "measure";   // read once by planPages: the front sheet is the cover, the back is page 2
+          nb.name = nb.name.replace(/^Book /, "Measurements ");
+          nb.title = "Model measurements"; nb.subtitle = "";
+          nb.coverLayout = "custom"; nb.coverPage = { blocks: [] }; nb.pages = [];
+          return nb;
         }
         if (k === "pitch" || k === "shootplan" || k === "production") {
           nb.id = uid(true); nb.plan = KIND_PLAN[k];
@@ -9806,11 +9825,20 @@
       let forWho = "studio", forName = "", forModel = "", kindByBrand = false;
       const OWN_MODEL = "__own";   // "Someone not on your list…"
       // A kind of book that is a plan, and the plan it makes.
-      const KIND_PLAN = { moodboard: "moodboard", pitch: "pitch", shootplan: "shoot", production: "shoot", calendar: "calendar", misc: "misc" };
+      const KIND_PLAN = { moodboard: "moodboard", pitch: "pitch", shootplan: "shoot", production: "shoot", measure: "shoot", calendar: "calendar", misc: "misc" };
       let miscPick = { fmt: "postcard", w: 200, h: 200 };
+      // The measurements sheet's figure (v614): whose, and drawn plain or shaped (a clear woman's or man's outline).
+      let measurePick = { who: "woman", look: "shaped" };
+      const measureKeys = () => { const base = `${measurePick.look === "shaped" ? "fs_s" : "fs_"}${measurePick.who}`; return [base, `${base}_back`]; };
       // What the calendar's chooser said, read before it closes (as the model typed in is).
       let calPick = { fmt: "wall", year: calOf(null).year, start: 0, week: 0, weekNo: "" };
       const planPages = (nb) => {
+        if (nb.pack === "measure") {
+          const keys = measureKeys(); delete nb.pack;
+          nb.coverPage = { blocks: startBlocks(keys[0], nb, "add") };
+          nb.pages = [{ type: "free", blocks: startBlocks(keys[1], nb, "add"), name: LAYOUT_NAME[keys[1]] }];
+          return nb;
+        }
         if (!PLAN_COVER[nb.plan]) return nb;
         nb.coverPage = { blocks: startBlocks(PLAN_COVER[nb.plan], nb, "add") };
         let look = 0;
@@ -9825,7 +9853,7 @@
         return nb;
       };
       const TEAM_PAGES = new Set(["sp_shots", "sp_call", "tm_hairmakeup"]);
-      const forNoteNow = () => (forWho === "studio" && KIND_PLAN[kind] ? (kind === "calendar" || kind === "misc" ? `Your own ${kind === "calendar" ? "calendar" : "one-off"}: kept on this computer only and never published — save a copy to take it to a print shop.` : `Your own ${PLAN_NAME[KIND_PLAN[kind]].toLowerCase()}: kept on this computer only and never published — it is planning work, often with pictures that aren't yours.`) : FOR_NOTE[forWho]);
+      const forNoteNow = () => (forWho === "studio" && KIND_PLAN[kind] ? (kind === "calendar" || kind === "misc" ? `Your own ${kind === "calendar" ? "calendar" : "one-off"}: kept on this computer only and never published — save a copy to take it to a print shop.` : (kind === "measure" ? "Your own measurements sheet: kept on this computer only and never published — it holds a model's body measurements." : `Your own ${PLAN_NAME[KIND_PLAN[kind]].toLowerCase()}: kept on this computer only and never published — it is planning work, often with pictures that aren't yours.`)) : FOR_NOTE[forWho]);
       const FOR_NOTE = {
         studio: "Your own book. Publishing puts it in your site's files, so it opens on any device.",
         brand: "Kept on this computer only — never published to your site. Their name goes where yours would be; your credit is a line on the last page, or nowhere if the contract says so.",
@@ -9951,14 +9979,15 @@
          the family's own (a magazine or — for a talent — a comp card; a
          moodboard or a shoot plan), and none when there is one. Calendars and
          one-offs are the studio's own, so they don't ask who for. */
-      const FAMILY_OF = { magazine: ["magazine", "compcard"], lookbook: ["lookbook"], pitch: ["pitch"], moodboard: ["moodboard", "shootplan", "production"], calendar: ["calendar"], misc: ["misc"] };
-      const KIND_TITLE = { magazine: "New magazine", compcard: "New comp card", lookbook: "New lookbook", pitch: "New pitch", moodboard: "New moodboard", shootplan: "New shoot plan", production: "New production pack", calendar: "New calendar", misc: "Make something" };
+      const FAMILY_OF = { magazine: ["magazine", "compcard"], lookbook: ["lookbook"], pitch: ["pitch"], moodboard: ["moodboard", "shootplan", "production", "measure"], calendar: ["calendar"], misc: ["misc"] };
+      const KIND_TITLE = { magazine: "New magazine", compcard: "New comp card", lookbook: "New lookbook", pitch: "New pitch", moodboard: "New moodboard", shootplan: "New shoot plan", production: "New production pack", measure: "New measurements sheet", calendar: "New calendar", misc: "Make something" };
       const FAMILY_TITLE = { magazine: "New magazine", lookbook: "New lookbook", pitch: "New pitch", moodboard: "New moodboard or shoot plan", calendar: "New calendar", misc: "Make something" };
       const KIND_TILES = [
         ["magazine", "Magazine", "Your book of work, or one for a brand, a client or a talent.", "mg_cover"],
         ["lookbook", "Lookbook", "A collection, look by look.", "lb_cover"],
         ["pitch", "Pitch", "To win a shoot: the idea, references, the team, what they get.", "pt_cover"],
         ["moodboard", "Moodboard or shoot plan", "Plan the shoot: the board, the looks, the shot list, the call sheet.", "mb_grid"],
+        ["measure", "Model measurements", "A figure with numbered marks and blanks for a model's sizes, for a brand that asks for them.", "fs_swoman"],
         ["calendar", "Calendar", "Wall, desk or poster, for any year.", "cal_wall"],
         ["misc", "Miscellaneous", "Postcards, posters, vouchers, cards — or any size.", "ms_post_front"],
         ["compcard", "Comp card", "One page for a model, filled from their card.", "cc_actor"]
@@ -10002,8 +10031,13 @@
             <p class="sb-warn" id="sbForNeed" hidden></p>
           </div>
           <p class="sb-hint" id="sbForNote">${esc(forNoteNow())}</p>
-          <div class="sb-cpbase" id="sbKindRow"><span>Start with</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of book">${[["magazine", "A magazine"], ["lookbook", "A lookbook"], ["moodboard", "A moodboard"], ["pitch", "A pitch"], ["shootplan", "A shoot plan"], ["production", "A production pack"], ["calendar", "A calendar"], ["misc", "Miscellaneous"], ["compcard", "A comp card"]].map(([k, nm]) => `<button type="button" role="radio" data-kind="${k}" aria-checked="${kind === k}" ${k === "compcard" && forWho !== "talent" ? "hidden" : ""}>${nm}</button>`).join("")}</div></div>
+          <div class="sb-cpbase" id="sbKindRow"><span>Start with</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of book">${[["magazine", "A magazine"], ["lookbook", "A lookbook"], ["moodboard", "A moodboard"], ["pitch", "A pitch"], ["shootplan", "A shoot plan"], ["production", "A production pack"], ["measure", "A measurements sheet"], ["calendar", "A calendar"], ["misc", "Miscellaneous"], ["compcard", "A comp card"]].map(([k, nm]) => `<button type="button" role="radio" data-kind="${k}" aria-checked="${kind === k}" ${k === "compcard" && forWho !== "talent" ? "hidden" : ""}>${nm}</button>`).join("")}</div></div>
           <p class="sb-hint" id="sbKindNote">${esc(KIND_NOTE[kind])}</p>
+          <div class="sb-calrow" id="sbStartMeasure" hidden>
+            <div class="sb-field"><span class="sb-label">The figure</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Whose figure">${[["woman", "A woman"], ["man", "A man"]].map(([k, nm]) => `<button type="button" role="radio" data-mwho="${k}" aria-checked="${measurePick.who === k}">${nm}</button>`).join("")}</div></div>
+            <div class="sb-field"><span class="sb-label">Drawn</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How the figure is drawn">${[["shaped", "Shaped"], ["plain", "Plain"]].map(([k, nm]) => `<button type="button" role="radio" data-mlook="${k}" aria-checked="${measurePick.look === k}">${nm}</button>`).join("")}</div></div>
+            <p class="sb-hint">Shaped reads clearly as a woman or a man (hair, shoulders, waist, hips); Plain is the simpler figure. Either can be swapped later in Add page → Production.</p>
+          </div>
           <div class="sb-startcc" id="sbStartCC" hidden><button type="button" class="sb-btn" data-start="custom" data-compcard="1">Make the comp card →</button><button type="button" class="sb-btn dark" data-start="custom" data-makeplan="1" hidden>Make it →</button></div>
           <div class="sb-startcal" id="sbStartMisc" ${kind === "misc" ? "" : "hidden"}>
             <div class="sb-starts">${Object.entries(MISC_FORMATS).map(([k, f]) => `<button type="button" class="sb-startitem" data-miscfmt="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(f.name)}</b><span>${esc(f.note)}</span></button>`).join("")}</div>
@@ -10034,6 +10068,11 @@
         box.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); } });
         box.querySelector("#sbStartClose").addEventListener("click", () => { closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); });
         box.querySelectorAll("[data-start]").forEach((b) => b.addEventListener("click", () => startBook(b.dataset.start, null, b.dataset.covertpl)));
+        box.querySelectorAll("[data-mwho],[data-mlook]").forEach((b) => b.addEventListener("click", () => {
+          if (b.dataset.mwho) measurePick.who = b.dataset.mwho; else measurePick.look = b.dataset.mlook;
+          box.querySelectorAll("[data-mwho]").forEach((x) => x.setAttribute("aria-checked", String(x.dataset.mwho === measurePick.who)));
+          box.querySelectorAll("[data-mlook]").forEach((x) => x.setAttribute("aria-checked", String(x.dataset.mlook === measurePick.look)));
+        }));
         box.querySelectorAll("[data-board]").forEach((b) => b.addEventListener("click", () => startBook("classic", b.dataset.board)));
         // A one-off: its shape now, or the size typed (30 to 1500 mm each way).
         box.querySelectorAll("[data-miscfmt]").forEach((b) => b.addEventListener("click", () => { miscPick.fmt = b.dataset.miscfmt; startBook("custom"); }));
@@ -10105,12 +10144,13 @@
           // A comp card is one page with no cover to choose: one button instead.
           // A moodboard starts on a board: its layouts stand where the covers would.
           // A pitch or a shoot plan has its own cover: one button too.
-          const cc = kind === "compcard", mb = kind === "moodboard", pl = kind === "pitch" || kind === "shootplan" || kind === "production", cal = kind === "calendar" || kind === "misc";
+          const cc = kind === "compcard", mb = kind === "moodboard", pl = kind === "pitch" || kind === "shootplan" || kind === "production" || kind === "measure", cal = kind === "calendar" || kind === "misc";
           box.querySelector("#sbStartCal").hidden = kind !== "calendar";
           box.querySelector("#sbStartMisc").hidden = kind !== "misc";
           box.querySelector("#sbStartCC").hidden = !cc && !pl;
           box.querySelector('[data-compcard="1"]').hidden = !cc;
-          { const mk = box.querySelector("[data-makeplan]"); mk.hidden = !pl; mk.textContent = kind === "pitch" ? "Make the pitch →" : kind === "production" ? "Make the production pack →" : "Make the shoot plan →"; }
+          { const mk = box.querySelector("[data-makeplan]"); mk.hidden = !pl; mk.textContent = kind === "pitch" ? "Make the pitch →" : kind === "production" ? "Make the production pack →" : kind === "measure" ? "Make the measurements sheet →" : "Make the shoot plan →"; }
+          box.querySelector("#sbStartMeasure").hidden = kind !== "measure";
           box.querySelector("#sbCoverHint").hidden = cc || mb || pl || cal;
           box.querySelector("#sbStartCovers").hidden = cc || mb || pl || cal;
           box.querySelector("#sbStartBoards").hidden = !mb;
@@ -10229,6 +10269,7 @@
           const go = box.querySelector("#sbStartRest .sb-startitem:not([hidden]), #sbStartRest [data-start]:not([hidden])"); if (go && go.offsetParent) go.focus();
         };
         const pickTile = (f) => {
+          if (f === "measure") { pickFamily("moodboard", "measure"); return; }
           if (f !== "compcard") { pickFamily(f); return; }
           pickFamily("magazine"); setWho("talent");
           const cc = box.querySelector('[data-kind="compcard"]'); if (cc) cc.click();
@@ -12142,7 +12183,7 @@
       const count = renderedCount(book);
       const full = (type) => count + pageSpan({ type }) > MAX_PAGES;
       const pageTpls = tplCache.filter((t) => t.kind === "page");
-      const tile = (want, name, note, find, disabled, extra = "") => `<button type="button" class="sb-additem" data-add="${esc(want)}" data-find="${esc(`${name} ${note} ${find}`.toLowerCase())}" ${disabled ? "disabled" : ""}${extra}><span class="sb-addpic">${addIcon(want.startsWith("tpl:") ? "free:blank" : want)}</span><b>${esc(name)}</b><span>${esc(note)}</span></button>`;
+      const tile = (want, name, note, find, disabled, extra = "") => `<button type="button" class="sb-additem" data-add="${esc(want)}" data-find="${esc(`${name} ${note} ${find} ${findMore(want)}`.toLowerCase())}" ${disabled ? "disabled" : ""}${extra}><span class="sb-addpic">${addIcon(want.startsWith("tpl:") ? "free:blank" : want)}</span><b>${esc(name)}</b><span>${esc(note)}</span></button>`;
       const groups = [];
       groups.push({ id: "auto", name: "From an album", html: `<div class="sb-addauto">
           <div class="sb-autorow"><label class="sb-vh" for="sbAutoAlbum">Album</label><select id="sbAutoAlbum">${autoAlbums().map((a) => `<option value="${esc(a.id)}">${esc(a.name)} (${a.count})</option>`).join("")}</select>
