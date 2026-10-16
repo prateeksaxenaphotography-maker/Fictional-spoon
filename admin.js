@@ -1140,7 +1140,7 @@ const STUDIO_BOOK_LIMITS = {
   lineEnds: ["end", "start", "both"],
   lineTips: ["pencil", "brush", "marker", "nib", "taper", "sumi", "bristle"],
   linePoints: 200,
-  shapes: ["round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram", "g:heart", "g:sparkle", "g:burst", "g:badge", "g:ring", "g:flower", "g:sun", "g:moon", "g:leaf", "g:arrow", "g:curve", "g:speech", "g:quotes", "g:camera", "g:film", "g:frame", "g:focus", "g:pin", "g:mail", "g:phone", "g:check", "g:plus", "g:stroke"],   // a plain box writes nothing; g: = a drawing (v565)
+  shapes: ["round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram", "g:heart", "g:sparkle", "g:burst", "g:badge", "g:ring", "g:flower", "g:sun", "g:moon", "g:leaf", "g:arrow", "g:curve", "g:speech", "g:quotes", "g:camera", "g:film", "g:frame", "g:focus", "g:pin", "g:mail", "g:phone", "g:check", "g:plus", "g:stroke", "g:woman", "g:man", "g:shapedwoman", "g:shapedman"],   // a plain box writes nothing; g: = a drawing (v565)
   cornerMax: 0.5,   // corners: a share of the shorter side, 0 to this; the old words small/medium/large still read
   fills: ["ink", "soft", "accent", "paper", "white", "deep", "rule"],
   /* How new the shapes in a book are. A book is marked with the highest one

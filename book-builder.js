@@ -4890,6 +4890,107 @@
   const burstD = (n, r1, r2) => { const pts = []; for (let i = 0; i < n * 2; i++) { const a = (i * Math.PI) / n - Math.PI / 2, r = i % 2 ? r2 : r1; pts.push(`${(12 + r * Math.cos(a)).toFixed(2)} ${(12 + r * Math.sin(a)).toFixed(2)}`); } return `M${pts.join("L")}Z`; };
   const scallopD = (n, r, bump) => { const st = (2 * Math.PI) / n; let d = `M${(12 + r).toFixed(2)} 12`; for (let i = 0; i < n; i++) { const am = (i + 0.5) * st, a1 = (i + 1) * st; d += `Q${(12 + bump * Math.cos(am)).toFixed(2)} ${(12 + bump * Math.sin(am)).toFixed(2)} ${(12 + r * Math.cos(a1)).toFixed(2)} ${(12 + r * Math.sin(a1)).toFixed(2)}`; } return `${d}Z`; };
   const CORNERS_D = "M2 2h8v2.2H4.2V10H2zM22 2v8h-2.2V4.2H14V2zM2 22v-8h2.2v5.8H10V22zM22 22h-8v-2.2h5.8V14H22z";
+  /* Figures for the model measurements sheet (v612). Each is one drawing on the 24-unit square, the
+     figure the full height of it and centred, so the drawing picker shows it whole and a SQUARE box
+     draws it true. Two pairs: a plain woman and man (the first the owner saw), and a SHAPED pair that
+     reads as a woman or a man at a glance — hers a bob, softer shoulders, a narrow waist and wider
+     hips; his a squarer head, a thicker neck, broad shoulders, a V of chest to waist and heavier arms
+     and legs; both with the arms a little away from the body so the waist shows. The marks on a
+     sheet are placed in FIGURE units: u across from the middle line, v down from the top of the
+     head; FIGURE_FRAME says where that is in the drawing (`s` drawing units to a figure unit, `top`
+     the figure unit at the top of the drawing). */
+  const FIGURE_FRAME = { woman: { s: 23.2 / 253.5, top: 3.5 }, man: { s: 23.2 / 253.5, top: 3.5 }, shapedwoman: { s: 23.2 / 257, top: 0 }, shapedman: { s: 23.2 / 257, top: 0 } };
+  const FIGURE_SIDES = {
+    woman: {
+      head: [15, 9.2, 11.3],
+      outer: [[5.4, 27], [5.6, 34], [11, 37], [19, 40], [24, 43], [22, 50], [18.5, 58], [17, 66], [16, 74], [14.5, 86], [12.8, 97], [13.5, 108], [16.5, 120], [20, 131], [21, 141], [20.3, 152], [18.8, 166], [16.2, 181], [14.6, 192], [13, 203], [11.5, 216], [10.8, 224], [9.2, 238], [8.6, 246]],
+      foot: [[9.6, 253], [8.4, 257], [3.4, 257]],
+      inner: [[3.8, 249], [4.2, 238], [4.6, 222], [4.2, 205], [3.6, 192], [2.8, 176], [1.6, 160], [0.4, 151]],
+      arm: [[24, 43], [28.5, 52], [31.5, 72], [33, 92], [34.5, 100], [36, 120], [37.5, 140], [38.6, 150], [40.2, 160], [40, 170], [38.5, 175], [36, 172], [35.5, 160], [35, 150], [33.6, 138], [31.2, 118], [29, 100], [26.5, 84], [23.8, 66], [21.5, 54], [20.5, 50]]
+    },
+    man: {
+      head: [15.5, 10, 12],
+      outer: [[6.5, 27], [6.8, 34], [14, 37], [23, 40.5], [29.5, 44], [27, 50], [23, 58], [21.2, 68], [20, 80], [18.5, 95], [17.8, 106], [18.5, 118], [19.6, 130], [20.2, 141], [19.6, 152], [18.6, 166], [16.5, 181], [14.8, 192], [13.2, 203], [12.2, 216], [11.5, 224], [9.8, 238], [9.2, 246]],
+      foot: [[10, 253], [9, 257], [3.6, 257]],
+      inner: [[3.9, 249], [4.3, 238], [4.8, 222], [4.5, 205], [3.9, 192], [3.1, 176], [1.9, 160], [0.5, 151]],
+      arm: [[29, 43], [34, 52], [37, 72], [39, 92], [40.5, 100], [42, 120], [43.5, 140], [44.5, 150], [46, 160], [46, 171], [44, 176], [41.5, 172], [41, 160], [40, 150], [38.3, 138], [35.5, 118], [33, 100], [31, 84], [27.5, 66], [25.5, 55], [24, 52]]
+    }
+  };
+  // The shaped pair is ONE outline each, down the right-hand side and mirrored: each run is smooth through its points, or straight when `line`; runs meet at corners (the neck, the armpit, the crotch).
+  const SHAPED_SIDES = {
+    shapedwoman: [
+      { p: [[0, 0], [7.5, 0.9], [13.2, 5.5], [15.4, 13.5], [15.5, 23], [14.6, 31], [14.2, 34.2]] },
+      { p: [[6.8, 35.2], [6.5, 39.5], [9.5, 42.5], [16, 44.3], [23, 46.2], [28.8, 49.5], [30.9, 56], [32.4, 66], [34, 76], [37.1, 96], [40.7, 112], [43.7, 134], [46.3, 142], [48.6, 152], [49.7, 162], [49.5, 168], [47.5, 170.5], [45, 168.5], [43.3, 162], [40.2, 152], [38.3, 142], [37.4, 134], [31, 112], [27.9, 96], [22.4, 76], [19.9, 68]] },
+      { p: [[19.8, 68], [20.9, 73], [21.4, 78], [19.8, 86], [17, 93], [15.8, 100], [17, 110], [21, 121], [24.4, 129], [25.4, 134], [25, 143], [23.8, 153], [22.3, 163], [20.4, 174], [18.2, 184], [17.4, 192], [17.8, 203], [16.9, 216], [14.6, 230], [12, 243], [11.4, 249]] },
+      { line: true, p: [[11.6, 254], [12.6, 257], [3.6, 257]] },
+      { p: [[3.8, 250], [4, 242], [4.5, 228], [4.8, 214], [4.4, 200], [3.5, 186], [3, 172], [2.2, 158], [1.2, 146], [0.5, 139]] }
+    ],
+    shapedman: [
+      { p: [[0, 0.3], [6.6, 0.9], [10.6, 4.8], [11.5, 12], [11.2, 21], [10.2, 28], [8.2, 33]] },
+      { p: [[8.6, 35], [8.4, 40], [11.5, 42.6], [18, 44.2], [26, 46], [32, 48.5], [35.8, 54], [37.7, 66], [39.7, 76], [42.7, 96], [45.9, 112], [48.6, 134], [51.3, 142], [53.6, 152], [54.3, 162], [53.4, 169], [50.6, 172], [48.2, 168.5], [47.4, 162], [44.2, 152], [42.3, 142], [41.2, 134], [34.7, 112], [31.1, 96], [25.7, 76], [25, 74]] },
+      { p: [[25, 74], [24.8, 82], [23.6, 92], [21.6, 100], [20.8, 106], [21.6, 116], [23, 126], [23.8, 134], [24, 143], [23.4, 154], [22.4, 164], [20.8, 174], [19.2, 183], [17.8, 191], [18, 201], [17.4, 213], [15.2, 228], [12.6, 242], [11.9, 249]] },
+      { line: true, p: [[12.2, 254], [13.2, 257], [3.8, 257]] },
+      { p: [[4, 250], [4.3, 242], [4.8, 228], [5.2, 214], [4.8, 200], [4, 186], [3.5, 172], [2.6, 158], [1.4, 146], [0.6, 139]] }
+    ]
+  };
+  function figureD(kind) {
+    const { s: S, top } = FIGURE_FRAME[kind], n = (v) => (+v).toFixed(2), X = (sx) => (q) => [12 + sx * q[0] * S, 0.4 + (q[1] - top) * S];
+    // A smooth run through the points (Catmull-Rom as cubic curves), the pen already at the first.
+    const run = (p) => p.slice(0, -1).map((_, i) => { const a = p[Math.max(i - 1, 0)], b = p[i], c = p[i + 1], e = p[Math.min(i + 2, p.length - 1)]; return `C${n(b[0] + (c[0] - a[0]) / 6)} ${n(b[1] + (c[1] - a[1]) / 6)} ${n(c[0] - (e[0] - b[0]) / 6)} ${n(c[1] - (e[1] - b[1]) / 6)} ${n(c[0])} ${n(c[1])}`; }).join("");
+    const go = (q) => `${n(q[0])} ${n(q[1])}`;
+    if (SHAPED_SIDES[kind]) {
+      const right = SHAPED_SIDES[kind].map((r) => ({ line: !!r.line, p: r.p.map(X(1)) }));
+      const left = SHAPED_SIDES[kind].slice().reverse().map((r) => ({ line: !!r.line, p: r.p.slice().reverse().map(X(-1)) }));
+      return `M${go(right[0].p[0])}` + right.concat(left).map((r, i) => (i ? `L${go(r.p[0])}` : "") + (r.line ? r.p.slice(1).map((q) => `L${go(q)}`).join("") : run(r.p))).join("") + "Z";
+    }
+    const f = FIGURE_SIDES[kind];
+    // Every part runs the same way round, so where the arms meet the body they join rather than cancel.
+    const clockwise = (p) => (p.reduce((a, q, i) => { const r = p[(i + 1) % p.length]; return a + q[0] * r[1] - r[0] * q[1]; }, 0) > 0 ? p : p.slice().reverse());
+    const R = X(1), M = X(-1), rOut = f.outer.map(R), rFoot = f.foot.map(R), rIn = f.inner.map(R);
+    const lOut = f.outer.map(M).reverse(), lFoot = f.foot.map(M).reverse(), lIn = f.inner.map(M).reverse();
+    const body = `M${go(rOut[0])}${run(rOut)}${rFoot.map((p) => `L${go(p)}`).join("")}L${go(rIn[0])}${run(rIn)}L${go(lIn[0])}${run(lIn)}${lFoot.map((p) => `L${go(p)}`).join("")}L${go(lOut[0])}${run(lOut)}Z`;
+    const arm = (sx) => { const p = clockwise(f.arm.map(X(sx))); return `M${go(p[0])}${run(p)}Z`; };
+    const [cy, rx, ry] = f.head, hx = rx * S, hy = ry * S, y = 0.4 + (cy - top) * S;
+    const head = `M${n(12 - hx)} ${n(y)}a${n(hx)} ${n(hy)} 0 1 1 ${n(2 * hx)} 0a${n(hx)} ${n(hy)} 0 1 1 ${n(-2 * hx)} 0z`;
+    return head + body + arm(1) + arm(-1);
+  }
+  /* The points of a measurement sheet, in figure units: where each is taken and how it is drawn — a
+     bar across the body, the whole height, or a run of points down it. Inseam and outseam are
+     the two a model seldom knows, so a sheet says none is required. */
+  const bar = (u1, u2, v) => ({ bar: [u1, u2, v] });
+  const FIT_POINTS = {
+    woman: [
+      ["Height", { height: [-47, 4, 257] }], ["Neck", bar(-5.6, 5.6, 31)], ["Shoulders", bar(-24, 24, 42)], ["Bust", bar(-17.3, 17.3, 66)], ["Under-bust", bar(-15.2, 15.2, 80)], ["Waist", bar(-12.8, 12.8, 97)],
+      ["Hips", bar(-20.8, 20.8, 136)], ["Thigh", bar(3, 18.9, 165)], ["Knee", bar(3.6, 14.6, 192)], ["Calf", bar(4.6, 10.9, 222)], ["Ankle", bar(4, 8.8, 245)],
+      ["Arm length", { run: [[27, 44], [31, 70], [35.5, 105], [41.5, 150]] }], ["Bicep", bar(24.5, 31.8, 76)], ["Wrist", bar(35, 38.6, 150)],
+      ["Inseam", { run: [[-5.2, 154], [-5.8, 200], [-6.2, 248]] }], ["Outseam", { run: [[-16.4, 104], [-23, 138], [-21.5, 170], [-16.8, 192], [-14.5, 224], [-11, 248]] }]
+    ],
+    man: [
+      ["Height", { height: [-47, 4, 257] }], ["Neck", bar(-6.7, 6.7, 31)], ["Shoulders", bar(-29, 29, 43)], ["Chest", bar(-21.4, 21.4, 68)], ["Waist", bar(-18, 18, 100)],
+      ["Hips", bar(-20.2, 20.2, 137)], ["Thigh", bar(3.2, 19.4, 165)], ["Knee", bar(3.8, 14.8, 192)], ["Calf", bar(4.8, 11.6, 222)], ["Ankle", bar(4.2, 9.2, 245)],
+      ["Arm length", { run: [[33, 44], [38, 70], [42.5, 105], [47.2, 150]] }], ["Bicep", bar(27.6, 37.2, 76)], ["Wrist", bar(40, 44.4, 150)],
+      ["Inseam", { run: [[-5.6, 154], [-6, 200], [-6.4, 248]] }], ["Outseam", { run: [[-18, 106], [-23.6, 138], [-21.4, 170], [-18, 192], [-15, 224], [-11.6, 248]] }]
+    ],
+    shapedwoman: [
+      ["Height", { height: [-55, 0, 257] }], ["Neck", bar(-6.5, 6.5, 40)], ["Shoulders", bar(-26.5, 26.5, 47)], ["Bust", bar(-21.3, 21.3, 76)], ["Under-bust", bar(-19.8, 19.8, 86)], ["Waist", bar(-15.8, 15.8, 100)],
+      ["Hips", bar(-25.4, 25.4, 134)], ["Thigh", bar(2.2, 23.2, 158)], ["Knee", bar(3.4, 17.8, 186)], ["Calf", bar(4.4, 17.6, 205)], ["Ankle", bar(3.9, 11.8, 246)],
+      ["Arm length", { run: [[22.9, 52], [28, 76], [33.1, 100], [40.4, 134]] }], ["Bicep", bar(22.4, 34, 76)], ["Wrist", bar(37.1, 43.7, 134)],
+      ["Inseam", { run: [[-5, 142], [-5.6, 190], [-6.4, 246]] }], ["Outseam", { run: [[-16, 102], [-22, 124], [-23, 136], [-21.5, 160], [-17, 182], [-15.8, 200], [-13.2, 230], [-10.4, 246]] }]
+    ],
+    shapedman: [
+      ["Height", { height: [-58, 0, 257] }], ["Neck", bar(-8.4, 8.4, 40)], ["Shoulders", bar(-29, 29, 47)], ["Chest", bar(-25, 25, 80)], ["Waist", bar(-20.8, 20.8, 106)],
+      ["Hips", bar(-23.8, 23.8, 134)], ["Thigh", bar(2.6, 23.2, 158)], ["Knee", bar(3.8, 18.4, 186)], ["Calf", bar(4.8, 17.6, 205)], ["Ankle", bar(4.1, 12.1, 246)],
+      ["Arm length", { run: [[27.3, 52], [32.5, 76], [37.6, 100], [44.8, 134]] }], ["Bicep", bar(25.8, 39.6, 76)], ["Wrist", bar(41, 48.6, 134)],
+      ["Inseam", { run: [[-6, 142], [-6.6, 190], [-7, 246]] }], ["Outseam", { run: [[-17.5, 106], [-22, 124], [-22.5, 136], [-21, 160], [-17, 182], [-16.2, 200], [-14, 230], [-11, 246]] }]
+    ]
+  };
+  // The back view takes two more, drawn on the back of the same figure.
+  const FIT_BACK = {
+    woman: [["Back length (nape to waist)", { run: [[0, 32], [0, 97]] }], ["Across the back", bar(-14.5, 14.5, 55)]],
+    man: [["Back length (nape to waist)", { run: [[0, 32], [0, 100]] }], ["Across the back", bar(-18, 18, 56)]],
+    shapedwoman: [["Back length (nape to waist)", { run: [[0, 40], [0, 100]] }], ["Across the back", bar(-17, 17, 62)]],
+    shapedman: [["Back length (nape to waist)", { run: [[0, 40], [0, 106]] }], ["Across the back", bar(-21, 21, 62)]]
+  };
   const GRAPHICS = [
     ["heart", "Heart", "M12 21.4 10.6 20.1C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.6 11.6z"],
     ["sparkle", "Sparkle", "M12 1C12.8 7.5 16.5 11.2 23 12 16.5 12.8 12.8 16.5 12 23 11.2 16.5 7.5 12.8 1 12 7.5 11.2 11.2 7.5 12 1Z"],
@@ -4913,7 +5014,11 @@
     ["phone", "Phone", "M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"],
     ["check", "Tick", "M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"],
     ["plus", "Plus", "M10.5 3h3v7.5H21v3h-7.5V21h-3v-7.5H3v-3h7.5z"],
-    ["stroke", "Brush stroke", "M2 14c3-2.5 6.5-3.3 10-2.6 3.5.7 6.8.2 10-1.4v3.2c-3.3 1.8-6.8 2.3-10.4 1.6-3.4-.6-6.6.2-9.6 2.4z"]
+    ["stroke", "Brush stroke", "M2 14c3-2.5 6.5-3.3 10-2.6 3.5.7 6.8.2 10-1.4v3.2c-3.3 1.8-6.8 2.3-10.4 1.6-3.4-.6-6.6.2-9.6 2.4z"],
+    ["woman", "Woman, standing", figureD("woman")],
+    ["man", "Man, standing", figureD("man")],
+    ["shapedwoman", "Woman, shaped", figureD("shapedwoman")],
+    ["shapedman", "Man, shaped", figureD("shapedman")]
   ];
   const GRAPHIC_PATHS = new Map(GRAPHICS.map(([k, , d, rule]) => [k, { d, rule: rule || "nonzero" }]));
   const isGraphic = (shape) => typeof shape === "string" && shape.startsWith("g:") && GRAPHIC_PATHS.has(shape.slice(2));
@@ -7200,6 +7305,14 @@
       ["pr_equipment", "Equipment list", "What is brought, whose it is, and boxes to tick going out and coming back."],
       ["pr_props", "Props list", "Each prop, where it is used, where it comes from, what it costs and when it goes back."],
       ["pr_wardrobe", "Wardrobe list", "The model's sizes, then every garment by look, where it is from and when it returns."],
+      ["fs_woman", "Measurements · woman", "A woman's figure with numbered marks and blanks for height, bust, waist, hips, legs and arms, the sizes she wears, and her agreement to share them."],
+      ["fs_woman_back", "Measurements · woman, back", "The back of the figure: back length and across the back, and a box for notes. The second page of the sheet."],
+      ["fs_man", "Measurements · man", "A man's figure with numbered marks and blanks for height, chest, waist, hips, legs and arms, the sizes he wears, and his agreement to share them."],
+      ["fs_man_back", "Measurements · man, back", "The back of the figure: back length and across the back, and a box for notes. The second page of the sheet."],
+      ["fs_swoman", "Measurements · shaped woman", "The same sheet with a more feminine figure: a bob, softer shoulders, a narrow waist and wider hips."],
+      ["fs_swoman_back", "Measurements · shaped woman, back", "The back of the shaped woman: back length and across the back, and a box for notes."],
+      ["fs_sman", "Measurements · shaped man", "The same sheet with a more masculine figure: a squarer head, a thick neck, broad shoulders and a V from chest to waist."],
+      ["fs_sman_back", "Measurements · shaped man, back", "The back of the shaped man: back length and across the back, and a box for notes."],
       ["pr_travel", "Travel and stay", "Who travels how and when, who stays where, and who meets them."],
       ["pr_budget", "Production budget", "A line for each cost: quantity times rate adds itself up, with contingency and GST."],
       ["pr_permits", "Filming permits", "Each permit, who gave it, when it is valid and what it cost, with room for the scans."],
@@ -7253,7 +7366,7 @@
      template in the page list ("Production budget", "16:9 · six frames") rather
      than "Anything page · 7"; any page can still be changed after, the name goes
      when its layout is changed to one without a name. */
-  const NAMED_START = /^(pr|sb|sp|tm|pt|mb)_/;
+  const NAMED_START = /^(pr|sb|sp|tm|pt|mb|fs)_/;
   const PRODUCTION_TEAM = new Set(["pr_budget", "pr_permits", "pr_insurance", "pr_location", "pr_scan", "pr_release", "pr_travel"]);
   const OWN_GROUPS = {
     magazine: ["Cover", "Magazine", "Comp cards", "For brands", "Studio pages", "Book pages", "How we work"],
@@ -8530,6 +8643,64 @@
         T("body", 0.07, 0.868, 0.38, 0.04, { keep: "Received by the client: name, date", style: { size: 0.8 } }),
         T("body", 0.55, 0.868, 0.38, 0.04, { keep: "Delivered by the studio: name, date", style: { size: 0.8 } })
       ]
+    });
+    /* The model measurements sheet (v612). The owner, Oct 16 2026: "a document which has a silhouette of
+       man or woman and then has blanks for dress sizing like arms / legs / waist — if a brand comes to me
+       and asks me to get fitting details from the model". Kept as "measurements for the model" with the
+       model's name to type; a back view; a line that the model agrees the measurements may be shared with
+       the brand; and it goes in the client copy. Not every point is needed (a model seldom knows an inseam
+       or outseam), and the sheet says so. A front page and a back page for each figure; the marks are
+       placed from the figure's own points (FIT_POINTS), the blanks are tables the studio can rename. */
+    const A4_SHAPE = 297 / 210;
+    const FIT_SAMPLE = ["172", "33", "38", "86", "72", "66", "92", "54", "36", "34", "22", "58", "27", "15", "78", "104"];
+    const FIT_NOTE = "You do not need every measurement. Fill in what you know and leave the rest blank: many models do not know their inseam or outseam, and that is fine.";
+    const fitSheet = (kind, view) => {
+      const front = view === "front", pts = FIT_POINTS[kind], list = front ? pts : FIT_BACK[kind], first = front ? 1 : pts.length + 1, FR = FIGURE_FRAME[kind], woman = /woman/.test(kind);
+      const bh = front ? 0.575 : 0.5, bw = r3(bh * A4_SHAPE), bx = r3(0.5 - bw / 2), by = front ? 0.222 : 0.215;
+      const fx = (u) => bx + ((12 + u * FR.s) / 24) * bw, fy = (v) => by + ((0.4 + (v - FR.top) * FR.s) / 24) * bh;
+      const BR = 0.0124, BRY = 0.00875;   // half the badge, across and down
+      const badge = (n, cx, cy) => T("body", r3(cx - BR), r3(cy - BRY), r3(BR * 2), r3(BRY * 2), { keep: String(n), fill: "accent", shape: "ellipse", style: { size: 0.6, align: "center", weight: "bold", color: "#ffffff" } });
+      const mark = ([, g], i) => {
+        const n = first + i;
+        if (g.bar) {
+          const [u1, u2, v] = g.bar, left = u1 < 0 && u2 < 0;
+          return [L(r3(fx(u1)), r3(fy(v) - 0.0004), r3(fx(u2) - fx(u1)), { color: "accent", width: 0.5 }), badge(n, left ? fx(u1) - 0.0179 : fx(u2) + 0.0179, fy(v))];
+        }
+        if (g.height) { const [hu, h0, h1] = g.height; return [{ k: "line", path: "v", x: r3(fx(hu)), y: r3(fy(h0)), w: 0.002, h: r3(fy(h1) - fy(h0)), color: "accent", width: 0.4, ends: "both" }, badge(n, fx(hu) + 0.001, fy((h0 + h1) / 2))]; }
+        const xy = g.run.map(([u, v]) => [fx(u), fy(v)]);
+        const x0 = Math.min(...xy.map((q) => q[0])), x1 = Math.max(...xy.map((q) => q[0])), y0 = Math.min(...xy.map((q) => q[1])), y1 = Math.max(...xy.map((q) => q[1]));
+        // The badge sits at the middle of the run, along its length, on the side the run leans to.
+        const len = xy.slice(1).map((q, j) => Math.hypot((q[0] - xy[j][0]) * 210, (q[1] - xy[j][1]) * 297));
+        let at = len.reduce((a, b) => a + b, 0) / 2, j = 0; while (j < len.length - 1 && at > len[j]) { at -= len[j]; j++; }
+        const t = len[j] ? at / len[j] : 0, mx = xy[j][0] + (xy[j + 1][0] - xy[j][0]) * t, my = xy[j][1] + (xy[j + 1][1] - xy[j][1]) * t;
+        const line = x1 - x0 < 0.003 ? { k: "line", path: "v", x: r3(x0 - 0.001), y: r3(y0), w: 0.002, h: r3(y1 - y0), color: "accent", width: 0.5 }
+          : { k: "line", path: "free", x: r3(x0), y: r3(y0), w: r3(x1 - x0), h: r3(y1 - y0), pts: xy.map(([x, y]) => [r3((x - x0) / (x1 - x0)), r3((y - y0) / (y1 - y0))]), color: "accent", width: 0.5 };
+        return [line, badge(n, mx + (mx >= fx(0) ? 0.0202 : -0.0202), my)];
+      };
+      const blanks = (a, b) => ({ cols: [Cc("No.", 0.75), Cc("Point", 2.35), Cc("Size", 1.5)], rows: list.slice(a, b).map(([nm], i) => [String(first + a + i), nm, ""]), sample: list.slice(a, b).map(([nm], i) => [String(first + a + i), nm, FIT_SAMPLE[(a + i) % FIT_SAMPLE.length]]) });
+      const table = (x, y, w, a, b, more = {}) => { const t = blanks(a, b); return { k: "tbl", x, y, w, h: more.h || 0.47, cols: t.cols, rows: t.rows, sample: t.sample, size: 1, look: "grid" }; };
+      const head = [label(0.07, 0.05, 0.86, front ? "MODEL MEASUREMENTS" : "MODEL MEASUREMENTS · BACK VIEW"), T("head", 0.07, 0.077, 0.86, 0.05, { bind: "name", keep: "Name of the model" })];
+      const fig = S(r3(bx), r3(by), bw, bh, "rule", { shape: `g:${kind}`, outline: { w: 0.6, c: "ink" } });
+      const marks = list.flatMap(mark);
+      if (!front) {
+        return [...head, T("body", 0.07, 0.132, 0.86, 0.034, { keep: "The numbers carry on from the front page. Leave a blank empty if you do not know it.", style: { size: 0.85, color: "soft" } }),
+          fig, ...marks, table(0.7, 0.3, 0.23, 0, list.length, { h: 0.12 }),
+          label(0.07, 0.72, 0.86, "NOTES: ALTERATIONS, ALLERGIES, ANYTHING THE BRAND SHOULD KNOW"),
+          S(0.07, 0.748, 0.86, 0.19, "paper", { outline: { w: 0.3, c: "soft" } }), T("body", 0.08, 0.755, 0.84, 0.175, {})];
+      }
+      const half = Math.ceil(pts.length / 2), names = woman ? ["Top", "Dress", "Trousers", "Jacket", "Shoes", "Bra"] : ["Shirt", "Jacket", "Trousers", "Waist", "Shoes", "Collar"];
+      return [...head, T("body", 0.07, 0.128, 0.86, 0.034, { keep: FIT_NOTE, style: { size: 0.85, color: "soft" } }),
+        TB(0.07, 0.162, 0.86, 0.05, [Cc("Brand", 2), Cc("Shoot date", 1.3), Cc("Fitting date", 1.3), Cc("Measured by", 1.7), Cc("Units", 1)], 1, [["Acme Linen", "18 Oct", "12 Oct", "Studio", "cm"]], { size: 0.9 }),
+        fig, ...marks, table(0.07, 0.262, 0.23, 0, half), table(0.7, 0.262, 0.23, half, pts.length),
+        label(0.07, 0.805, 0.86, "SIZES THEY WEAR"),
+        TB(0.07, 0.83, 0.86, 0.05, names.map((nm) => Cc(nm, 1)), 1, [names.map((_, i) => ["S", "M", "30", "M", "6", "34"][i])], { size: 0.9 }),
+        T("body", 0.07, 0.895, 0.86, 0.024, { keep: "The model agrees that these measurements may be shared with the brand named above.", style: { weight: "bold", size: 0.9 } }),
+        L(0.07, 0.94, 0.38), L(0.55, 0.94, 0.38),
+        T("body", 0.07, 0.945, 0.38, 0.02, { keep: "Model: signature, date", style: { size: 0.8 } }), T("body", 0.55, 0.945, 0.38, 0.02, { keep: "Measured by: signature, date", style: { size: 0.8 } })];
+    };
+    Object.assign(FREE_STARTS, {
+      fs_woman: fitSheet("woman", "front"), fs_woman_back: fitSheet("woman", "back"), fs_man: fitSheet("man", "front"), fs_man_back: fitSheet("man", "back"),
+      fs_swoman: fitSheet("shapedwoman", "front"), fs_swoman_back: fitSheet("shapedwoman", "back"), fs_sman: fitSheet("shapedman", "front"), fs_sman_back: fitSheet("shapedman", "back")
     });
   })();
   // A layout's small picture, worked out from the layout itself.
