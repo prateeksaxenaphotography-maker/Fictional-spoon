@@ -1201,6 +1201,22 @@ try {
       if (removedB.has(key)) fail(`the booking ${key} is on the calendar AND listed as removed`);
     }
   }
+  // The monthly test-shoot limits (v607). A malformed number reads as "no
+  // limit" in the app, so a typo here would quietly open a month the studio
+  // meant to close; fail it instead.
+  if (cal.testShootLimits !== undefined) {
+    const lim = cal.testShootLimits;
+    const okNum = (n) => Number.isInteger(n) && n >= 0 && n <= 99;
+    if (!lim || typeof lim !== "object" || Array.isArray(lim)) fail("CALENDAR_SETTINGS.testShootLimits must be an object");
+    else {
+      if (lim.default !== null && lim.default !== undefined && !okNum(lim.default)) fail(`testShootLimits.default must be a whole number 0-99 or empty, not ${JSON.stringify(lim.default)}`);
+      for (const [k, n] of Object.entries(lim.months || {})) {
+        if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(k)) fail(`testShootLimits.months has a key that is not a month (YYYY-MM): ${JSON.stringify(k)}`);
+        if (!okNum(n)) fail(`testShootLimits.months["${k}"] must be a whole number 0-99, not ${JSON.stringify(n)}`);
+      }
+      if (lim.at !== undefined && !(Number(lim.at) > 0)) fail("testShootLimits.at must be a timestamp");
+    }
+  }
   // Every photo a saved book or model portfolio names still exists (by the
   // first part of its id, the way the builders now look them up).
   const photoBases = new Set();

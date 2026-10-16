@@ -4753,6 +4753,17 @@ window.resolveContractArchive = function(version) {
        notes were gone from the studio's own calendar at the next save. The
        copy changed last decides its status; this device's private details
        are always kept. */
+    /* The monthly test-shoot limits (v607): whichever side was set last wins,
+       by the stamp inside the object, so clearing every limit is a newer
+       answer rather than a missing one. A visitor never sets them, so the
+       published word is always theirs. */
+    {
+      const asObj = (x) => (x && typeof x === "object" && !Array.isArray(x) ? x : null);
+      const pl = asObj(pub.testShootLimits), ll = isAdmin() ? asObj(loc.testShootLimits) : null;
+      const pick = pl && ll ? ((Number(ll.at) || 0) > (Number(pl.at) || 0) ? ll : pl) : (ll || pl);
+      if (pick) merged.testShootLimits = pick;
+    }
+
     const byKey = new Map();
     const absorb = (bookedDates, fromDevice) => {
       // A visitor's own request is not a confirmed booking, so it must not
@@ -5052,6 +5063,108 @@ window.resolveContractArchive = function(version) {
     return `${yr}-${mo}-${da}`;
   }
 
+  /* What kind of day a calendar entry is. Hoisted out of getCalDateStatus so the
+     monthly test-shoot count (below) asks exactly the same questions the date
+     picker does. They only read fields the published calendar keeps (type,
+     contractVersion, status, isTentative), so the studio's device and a client's
+     browser reach the same answer. */
+  const isTentativeBooking = (b) => {
+    if (b.isTentative || b.status === "tentative") return true;
+    if (b.name && /anticipated|tentative|hold/i.test(b.name)) return true;
+    if (b.type && /anticipated|tentative|hold/i.test(b.type)) return true;
+    return false;
+  };
+  const isWorkshopBooking = (b) => b.status === "workshop";
+  const isAssistingBooking = (b) => b.status === "assisting";
+  const isTestShootBooking = (b) => /TFP|Selective Collaboration/i.test(`${b.type || ""} ${b.contractVersion || ""} ${b.budget || ""}`);
+  // A meeting or studio visit (v592). The studio's own copy says "meeting";
+  // the published one says only "busy", which is all a client is told.
+  const isBusyBooking = (b) => b.status === "meeting" || b.status === "busy";
+
+  /* ---- Test shoots per month (v607) -------------------------------------
+     The studio says how many test shoots it will do in a month; a client who
+     asks for one in a month that is full is told so. CALENDAR_SETTINGS carries
+       testShootLimits: { default: n | null, months: { "2026-11": n }, at: ms }
+     A month's own number wins over the default; neither means no limit (what
+     every month had before). 0 is a limit too: no test shoots that month.
+
+     What uses up a month: the CONFIRMED test shoots on the calendar the studio
+     has published (the owner's choice, Oct 2026). A hold, a penciled-in day, a
+     workshop, assisting day or meeting does not. There is no server, so a
+     client's request is not counted until the studio puts it on the calendar
+     and publishes — two clients can ask for the last place before that.
+     The studio itself is never held to it: only the booking form asks. */
+  const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const testShootMonthKey = (dateKeyOrDate) => String(typeof dateKeyOrDate === "string" ? dateKeyOrDate : getCalDateKey(dateKeyOrDate)).slice(0, 7);
+  const testShootMonthName = (monthKey) => { const m = /^(\d{4})-(\d{2})$/.exec(monthKey || ""); return m ? `${MONTH_NAMES[+m[2] - 1]}${+m[1] !== new Date().getFullYear() ? " " + m[1] : ""}` : String(monthKey || ""); };
+  const testShootMonthAfter = (monthKey, n = 1) => { const m = /^(\d{4})-(\d{2})$/.exec(monthKey); const d = new Date(+m[1], +m[2] - 1 + n, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
+  const isConfirmedTestShoot = (b) => !!b && b.status !== "pencil" && !isTentativeBooking(b) && !isWorkshopBooking(b) && !isAssistingBooking(b) && !isBusyBooking(b)
+    && /TFP|Selective Collaboration|test shoot/i.test(`${b.type || ""} ${b.contractVersion || ""}`);
+  const cleanLimit = (v) => { const n = typeof v === "string" && v.trim() === "" ? NaN : Number(v); return Number.isInteger(n) && n >= 0 && n <= 99 ? n : null; };
+  function testShootLimitFor(monthKey, settings) {
+    const lim = (settings || window.WPS_DATA.CALENDAR_SETTINGS || {}).testShootLimits;
+    if (!lim || typeof lim !== "object") return null;
+    const own = lim.months && Object.prototype.hasOwnProperty.call(lim.months, monthKey) ? cleanLimit(lim.months[monthKey]) : null;
+    return own !== null ? own : cleanLimit(lim.default);
+  }
+  function confirmedTestShootsIn(monthKey, settings) {
+    const booked = (settings || window.WPS_DATA.CALENDAR_SETTINGS || {}).bookedDates || {};
+    let n = 0;
+    Object.keys(booked).forEach((dKey) => {
+      if (dKey.slice(0, 7) !== monthKey) return;
+      (Array.isArray(booked[dKey]) ? booked[dKey] : [booked[dKey]]).forEach((b) => { if (isConfirmedTestShoot(b)) n++; });
+    });
+    return n;
+  }
+  // { limit, used, left, full } for a month, or null when it has no limit.
+  function testShootSpots(monthKey, settings) {
+    const limit = testShootLimitFor(monthKey, settings);
+    if (limit === null) return null;
+    const used = confirmedTestShootsIn(monthKey, settings);
+    return { monthKey, limit, used, left: Math.max(0, limit - used), full: used >= limit };
+  }
+  // The first month after this one that can take a test shoot, within a year.
+  function nextTestShootMonth(monthKey, settings) {
+    const now = getCalDateKey(new Date()).slice(0, 7);
+    for (let i = 1; i <= 12; i++) {
+      const k = testShootMonthAfter(monthKey, i);
+      if (k < now) continue;
+      const sp = testShootSpots(k, settings);
+      if (!sp || !sp.full) return { monthKey: k, name: testShootMonthName(k), left: sp ? sp.left : null };
+    }
+    return null;
+  }
+  // "November: 1 of 2 test-shoot places left" — null when the month has no limit.
+  function testShootSpotsLine(monthKey, settings) {
+    const sp = testShootSpots(monthKey, settings);
+    if (!sp) return null;
+    const name = testShootMonthName(monthKey);
+    if (sp.limit === 0) return `${name}: no test shoots planned`;
+    if (sp.full) return `${name}: test shoots are full`;
+    return `${name}: ${sp.left} of ${sp.limit} test-shoot place${sp.limit === 1 ? "" : "s"} left`;
+  }
+  // What a client is told when they ask for a test shoot in a month that is full.
+  function testShootFullMessage(monthKey, settings) {
+    const sp = testShootSpots(monthKey, settings);
+    if (!sp || !sp.full) return "";
+    const name = testShootMonthName(monthKey);
+    const nxt = nextTestShootMonth(monthKey, settings);
+    const tail = nxt
+      ? ` You can try ${nxt.name}${nxt.left !== null ? ` — ${nxt.left} place${nxt.left === 1 ? "" : "s"} left` : ""}.`
+      : " Please check back later, or write to the studio.";
+    return sp.limit === 0
+      ? `The studio is not planning any test shoots in ${name}.${tail}`
+      : `The studio has planned ${sp.limit} test shoot${sp.limit === 1 ? "" : "s"} in ${name} and ${sp.limit === 1 ? "it is" : "they are all"} taken.${tail}`;
+  }
+  window.testShootLimitFor = testShootLimitFor;
+  window.confirmedTestShootsIn = confirmedTestShootsIn;
+  window.testShootSpots = testShootSpots;
+  window.testShootSpotsLine = testShootSpotsLine;
+  window.testShootFullMessage = testShootFullMessage;
+  window.testShootMonthName = testShootMonthName;
+  window.testShootMonthKey = testShootMonthKey;
+  window.isConfirmedTestShoot = isConfirmedTestShoot;
+
   function getCalDateStatus(d) {
     const key = getCalDateKey(d);
     const settings = window.WPS_DATA.CALENDAR_SETTINGS || {};
@@ -5071,19 +5184,6 @@ window.resolveContractArchive = function(version) {
     const penciled = bookings.filter(isPencil);
     const firm = bookings.filter((b) => !isPencil(b));
     const isBooked = firm.length > 0;
-
-    const isTentativeBooking = (b) => {
-      if (b.isTentative || b.status === "tentative") return true;
-      if (b.name && /anticipated|tentative|hold/i.test(b.name)) return true;
-      if (b.type && /anticipated|tentative|hold/i.test(b.type)) return true;
-      return false;
-    };
-    const isWorkshopBooking = (b) => b.status === "workshop";
-    const isAssistingBooking = (b) => b.status === "assisting";
-    const isTestShootBooking = (b) => /TFP|Selective Collaboration/i.test(`${b.type || ""} ${b.contractVersion || ""} ${b.budget || ""}`);
-    // A meeting or studio visit (v592). The studio's own copy says "meeting";
-    // the published one says only "busy", which is all a client is told.
-    const isBusyBooking = (b) => b.status === "meeting" || b.status === "busy";
 
     const hasConfirmedBooking = firm.some(b => !isTentativeBooking(b) && !isWorkshopBooking(b) && !isAssistingBooking(b));
     const isTentativeOnly = isBooked && !hasConfirmedBooking && firm.some(b => isTentativeBooking(b));
@@ -7089,6 +7189,7 @@ window.resolveContractArchive = function(version) {
                       <div class="date-picker-popup" id="datePickerPopup"></div>
                     </div>
                     <div id="b_date_booked_note" style="display: none; font-size: var(--font-xs); color: #dc2626; margin-top: 6px; line-height: 1.4;">This date already has a booking — you're welcome to send a request anyway. I'll confirm it or suggest an alternative date.</div>
+                    <div id="b_date_limit_note" role="alert" style="display: none; font-size: var(--font-xs); color: #dc2626; margin-top: 6px; line-height: 1.45; font-weight: 600;"></div>
                   </label>
                </div>
                 <div class="production-brief" id="productionBrief" hidden>
@@ -7622,6 +7723,33 @@ window.resolveContractArchive = function(version) {
       .map(parseOneTypedDate)
       .filter(Boolean);
 
+    /* Test shoots per month (v607). A client asking for a test shoot in a month
+       the studio has filled is told so — in the picker when they click a day,
+       under the date when the date or the kind of booking changes afterwards,
+       and again when they press Send. The studio, signed in, is never held to
+       it. The rules themselves (testShootSpots and friends) sit with the
+       calendar; this only asks them about THIS form. */
+    const bookingIsTestShoot = () => ($("#b_type")?.value || "") === "Selective Collaboration (TFP)";
+    const requestedDays = () => {
+      const el = $("#b_date");
+      if (!el) return [];
+      return Array.isArray(el._wpsPickedDates) && el._wpsPickedDates.length ? el._wpsPickedDates.slice() : parseTypedDates(el.value);
+    };
+    const testMonthIsFull = (d) => { const sp = testShootSpots(testShootMonthKey(d)); return !!(sp && sp.full); };
+    function testLimitProblem() {
+      if (isAdmin() || !bookingIsTestShoot()) return "";
+      const hit = requestedDays().find(testMonthIsFull);
+      return hit ? testShootFullMessage(testShootMonthKey(hit)) : "";
+    }
+    function paintTestLimitNote() {
+      const note = $("#b_date_limit_note");
+      if (!note) return;
+      const msg = testLimitProblem();
+      note.textContent = msg;
+      note.style.display = msg ? "block" : "none";
+    }
+    ["change", "input", "click"].forEach((ev) => $("#bookingForm")?.addEventListener(ev, () => setTimeout(paintTestLimitNote, 0)));
+
     // ── Multi-Link & Multi-File Attachments Handling ──
     window.attachedFiles = window.attachedFiles || [];
     const attachedFiles = window.attachedFiles;
@@ -7783,6 +7911,7 @@ window.resolveContractArchive = function(version) {
 
       let pickerMode = "range"; // "range" or "multi"
       let pickerIsWriting = false;   // true only while updateInput fills the field
+      let limitMsg = "";             // why the last-clicked day was refused (test-shoot month full)
       let viewYear, viewMonth; // currently displayed month
 
       const today = indiaToday();
@@ -7963,6 +8092,11 @@ window.resolveContractArchive = function(version) {
             <span class="dp-month-year">${MONTHS[viewMonth]} ${viewYear}</span>
             <button type="button" class="dp-nav-btn dp-next" aria-label="Next month">›</button>
           </div>
+          ${(() => {
+            if (isUserAdmin || !bookingIsTestShoot()) return "";
+            const line = testShootSpotsLine(`${viewYear}-${String(viewMonth + 1).padStart(2, "0")}`);
+            return `${line ? `<p class="dp-spots" style="margin: 2px 0 6px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); text-align: center;">${esc(line)}</p>` : ""}${limitMsg ? `<p class="dp-limit-msg" role="alert" style="margin: 0 0 8px; padding: 8px 10px; border-radius: 8px; background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.3); color: #b91c1c; font-size: var(--font-xs); line-height: 1.45; font-weight: 600;">${esc(limitMsg)}</p>` : ""}`;
+          })()}
           <div class="dp-grid">
             ${DAYS.map(d => `<span class="dp-day-label">${d}</span>`).join("")}
         `;
@@ -8065,6 +8199,15 @@ window.resolveContractArchive = function(version) {
         wireCalendarEvents();
       }
 
+      // A test-shoot client clicking a day in a month that is full: the day is
+      // not taken, and the reason is said in the picker itself.
+      function refuseFullTestMonth(clicked) {
+        if (isAdmin() || !bookingIsTestShoot() || !testMonthIsFull(clicked)) { limitMsg = ""; return false; }
+        limitMsg = testShootFullMessage(testShootMonthKey(clicked));
+        renderCalendar();
+        return true;
+      }
+
       function selectDate(clicked) {
         if (pickerMode === "range") {
           if (!rangeStart || (rangeStart && rangeEnd)) {
@@ -8104,12 +8247,14 @@ window.resolveContractArchive = function(version) {
           e.stopPropagation();
           viewMonth--;
           if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+          limitMsg = "";
           renderCalendar();
         });
         popup.querySelector(".dp-next")?.addEventListener("click", (e) => {
           e.stopPropagation();
           viewMonth++;
           if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+          limitMsg = "";
           renderCalendar();
         });
 
@@ -8155,6 +8300,7 @@ window.resolveContractArchive = function(version) {
               e.stopPropagation();
               const day = parseInt(cell.dataset.day);
               const clicked = new Date(viewYear, viewMonth, day);
+              if (refuseFullTestMonth(clicked)) return;
               selectDate(clicked);
               toast(`Heads up — ${MONTHS[viewMonth]} ${day} already has a booking. You're welcome to send a request anyway; I'll confirm or suggest another date.`);
             });
@@ -8171,7 +8317,9 @@ window.resolveContractArchive = function(version) {
             cell.addEventListener("click", (e) => {
               e.stopPropagation();
               const day = parseInt(cell.dataset.day);
-              selectDate(new Date(viewYear, viewMonth, day));
+              const clicked = new Date(viewYear, viewMonth, day);
+              if (refuseFullTestMonth(clicked)) return;
+              selectDate(clicked);
             });
           });
         }
@@ -9777,6 +9925,10 @@ window.resolveContractArchive = function(version) {
           }
         }
       }
+      // A test shoot in a month the studio has filled (the date may have been
+      // picked before the kind of booking was chosen, or typed).
+      const fullMonthProblem = testLimitProblem();
+      if (fullMonthProblem) { setError("b_date", fullMonthProblem); firstBad = firstBad || "b_date"; }
 
       const email = val("b_email");
       if (!email) { setError("b_email", "We need an email to reply to."); firstBad = firstBad || "b_email"; }

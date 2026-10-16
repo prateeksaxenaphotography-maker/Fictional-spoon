@@ -3978,6 +3978,32 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           </div>
         </div>`;
         })()}
+        <!-- Test shoots per month (v607). A month's confirmed test shoots on the
+             published calendar use up its places; a client asking for one in a
+             full month is told, and pointed at the next month with room. The
+             studio is never held to it. -->
+        <div class="admin-panel" id="test-shoot-limits">
+          <div class="admin-panel-head">Test shoots per month</div>
+          <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 8px 0 12px;">How many test shoots you will do in a month. Once a month is full, a client asking for a test shoot in it is told so and pointed to the next month with room. Only <strong>confirmed</strong> test shoots on your published calendar use up a place — a hold doesn't. You can always add one more yourself; the limit is only for clients.</p>
+          <div style="display: flex; gap: 10px 16px; align-items: end; flex-wrap: wrap;">
+            <label class="field" style="margin: 0; max-width: 220px;"><span>Most months</span><input type="number" id="tsLimitDefault" min="0" max="99" step="1" placeholder="No limit" /></label>
+            <span style="font-size: var(--font-xs); color: var(--ink-soft); padding-bottom: 10px;">Leave empty for no limit. 0 means none.</span>
+          </div>
+          <div style="margin-top: 16px;">
+            <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft);">Months that are different</span>
+            <div id="tsLimitMonths" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;"></div>
+            <div style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap; margin-top: 10px;">
+              <label class="field" style="margin: 0;"><span>Month</span><input type="month" id="tsLimitMonthNew" /></label>
+              <label class="field" style="margin: 0; max-width: 130px;"><span>Test shoots</span><input type="number" id="tsLimitMonthNewN" min="0" max="99" step="1" /></label>
+              <button type="button" class="admin-cal-btn" id="tsLimitAddBtn" style="font-weight: 800;">Set this month</button>
+            </div>
+          </div>
+          <div style="margin-top: 16px;">
+            <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft);">Where you stand</span>
+            <div id="tsLimitOverview" style="margin-top: 8px; font-size: var(--font-xs); line-height: 1.7;"></div>
+          </div>
+          <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 12px 0 0;">Saved on this computer as you type. Publish the calendar to put it on the site — and add each test shoot you accept to the calendar, because a client's request only counts once it is there and published.</p>
+        </div>
         <div class="admin-panel">
           <div class="admin-panel-head" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminPkgBody');const a=document.getElementById('adminPkgArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
             <span style="display: flex; align-items: center; gap: 8px;">Package rates &amp; deliverables</span>
@@ -5405,6 +5431,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
     function renderAdminGrid() {
+      // The monthly test-shoot figures follow whatever was just added or removed.
+      if (typeof window.paintTestShootLimits === "function") window.paintTestShootLimits();
       syncCalendarWithAudits();
       const container = $("#adminCalGridContainer");
       const title = $("#adminCalMonthTitle");
@@ -5963,6 +5991,13 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             </section>
 
             <section class="dam-section">
+              ${(() => {
+                // The monthly test-shoot limit (v607) is for clients only; here it is a fact worth knowing, never a stop.
+                const sp = window.testShootSpots(String(dKey).slice(0, 7));
+                if (!sp) return "";
+                const name = window.testShootMonthName(sp.monthKey);
+                return `<p class="dam-limit" style="margin: 0 0 12px; padding: 8px 12px; border-radius: 8px; background: ${sp.full ? "rgba(220,38,38,0.08)" : "var(--bone)"}; border: 1px solid ${sp.full ? "rgba(220,38,38,0.3)" : "var(--line)"}; font-size: var(--font-xs); line-height: 1.5;">Test shoots in ${esc(name)}: <strong>${sp.used} of ${sp.limit}</strong> confirmed${sp.full ? " — full for clients. You can still add one here; the limit is only for them." : ` — ${sp.left} place${sp.left === 1 ? "" : "s"} left.`}</p>`;
+              })()}
               <div class="dam-section-head"><h3>Mark this day</h3><span class="dam-hint">One tap. Workshop, Assisting and Meeting then open their details; Hold and Test shoot use the name and notes below if typed.</span></div>
               <div class="dam-chips">
                 <button type="button" class="dam-chip chip-block" id="toggleBlockBtn">${blockLabel}</button>
@@ -6277,6 +6312,76 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         toast(`Campaign / production payment terms set to ${PRODUCTION_SCHEDULES[key].label}. Publish to show it on the site.`);
       });
     });
+
+    // Test shoots per month (v607): the panel in Settings. Every change is
+    // stamped (at) so the newer side wins when two devices disagree, kept on this
+    // computer, and goes live with the next calendar publish.
+    {
+      const longMonth = (k) => { const m = /^(\d{4})-(\d{2})$/.exec(k || ""); return m ? new Date(+m[1], +m[2] - 1, 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" }) : k; };
+      const num = (v) => { const n = Number(v); return String(v).trim() !== "" && Number.isInteger(n) && n >= 0 && n <= 99 ? n : null; };
+      const read = () => {
+        const l = window.WPS_DATA.CALENDAR_SETTINGS.testShootLimits;
+        return { default: l && Number.isInteger(l.default) ? l.default : null, months: Object.fromEntries(Object.entries((l && l.months) || {}).filter(([k, v]) => /^\d{4}-\d{2}$/.test(k) && Number.isInteger(v))) };
+      };
+      const write = (next, said) => {
+        window.WPS_DATA.CALENDAR_SETTINGS.testShootLimits = { default: next.default, months: next.months, at: Date.now() };
+        markUnpublished("calendar");
+        if (saveCalendarSettings() && said) toast(said + " Publish the calendar to show it on the site.");
+        paint();
+      };
+      const paint = () => {
+        const cur = read();
+        const def = $("#tsLimitDefault");
+        if (def && document.activeElement !== def) def.value = cur.default === null ? "" : String(cur.default);
+        const list = $("#tsLimitMonths");
+        if (list) {
+          const keys = Object.keys(cur.months).sort();
+          list.innerHTML = keys.length ? keys.map((k) => `<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <span style="min-width: 150px; font-weight: 700;">${esc(longMonth(k))}</span>
+              <input type="number" class="ts-month-n" data-month="${esc(k)}" min="0" max="99" step="1" value="${cur.months[k]}" style="width: 90px; padding: 6px 8px;" aria-label="Test shoots in ${esc(longMonth(k))}" />
+              <button type="button" class="admin-cal-btn ts-month-x" data-month="${esc(k)}" aria-label="Use the usual number for ${esc(longMonth(k))}">Remove</button>
+            </div>`).join("") : `<span style="font-size: var(--font-xs); color: var(--ink-soft);">None — every month uses the number above.</span>`;
+          list.querySelectorAll(".ts-month-n").forEach((inp) => inp.addEventListener("change", () => {
+            const n = num(inp.value); const now = read();
+            if (n === null) { paint(); return; }
+            now.months[inp.dataset.month] = n; write(now, `${longMonth(inp.dataset.month)} set to ${n}.`);
+          }));
+          list.querySelectorAll(".ts-month-x").forEach((b) => b.addEventListener("click", () => {
+            const now = read(); delete now.months[b.dataset.month]; write(now, `${longMonth(b.dataset.month)} goes back to the usual number.`);
+          }));
+        }
+        const ov = $("#tsLimitOverview");
+        if (ov) {
+          const base = new Date(); base.setDate(1);
+          const rows = [];
+          for (let i = 0; i < 6; i++) {
+            const d = new Date(base.getFullYear(), base.getMonth() + i, 1);
+            const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+            const used = window.confirmedTestShootsIn(k), sp = window.testShootSpots(k);
+            const what = !sp ? `${used} confirmed · no limit`
+              : sp.limit === 0 ? `none planned${used ? ` · ${used} added by you` : ""}`
+              : sp.full ? `<strong style="color: #b91c1c;">${used} of ${sp.limit} — full</strong>${used > sp.limit ? ` (${used - sp.limit} over, added by you)` : ""}`
+              : `${used} of ${sp.limit} · ${sp.left} place${sp.left === 1 ? "" : "s"} left`;
+            rows.push(`<div><span style="display: inline-block; min-width: 150px; font-weight: 700;">${esc(longMonth(k))}</span>${what}</div>`);
+          }
+          ov.innerHTML = rows.join("");
+        }
+      };
+      $("#tsLimitDefault")?.addEventListener("change", (e) => {
+        const raw = e.target.value.trim(); const n = num(raw); const now = read();
+        if (raw !== "" && n === null) { paint(); toast("Use a whole number from 0 to 99, or leave it empty for no limit."); return; }
+        now.default = n; write(now, n === null ? "No limit on most months." : `Most months: ${n} test shoot${n === 1 ? "" : "s"}.`);
+      });
+      $("#tsLimitAddBtn")?.addEventListener("click", () => {
+        const k = ($("#tsLimitMonthNew")?.value || "").trim(); const n = num($("#tsLimitMonthNewN")?.value ?? "");
+        if (!/^\d{4}-\d{2}$/.test(k)) { toast("Pick the month first."); return; }
+        if (n === null) { toast("Type how many test shoots that month — a whole number from 0 to 99."); return; }
+        const now = read(); now.months[k] = n; write(now, `${longMonth(k)} set to ${n}.`);
+        $("#tsLimitMonthNew").value = ""; $("#tsLimitMonthNewN").value = "";
+      });
+      paint();
+      window.paintTestShootLimits = paint;
+    }
 
     renderAdminPackagesEditor();
     renderAdminGrid();
