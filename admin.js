@@ -1126,7 +1126,9 @@ const STUDIO_BOOK_LIMITS = {
      size is a fraction of the A4 design frame, so the page prints the same on
      any paper and in either shape. A little outside 0-1 is allowed, so a
      photograph can run off the edge. */
-  blockKinds: ["text", "photo", "shape", "line", "cal"],
+  blockKinds: ["text", "photo", "shape", "line", "cal", "tbl"],
+  // A table (v609): up to this many rows and columns, a cell this long.
+  tblRows: 80, tblCols: 8, tblCell: 160,
   blockRoles: ["head", "intro", "body", "kicker", "quote"],
   // Sep 2026: an Anything page holds as much as a magazine page (was 12 / 6 / 600).
   blockMax: 60, blockPhotoMax: 30, blockText: 2000,
@@ -1291,6 +1293,25 @@ function cleanStudioPortfolios(o) {
         if (x.look === "mini" || x.look === "habits") one.look = x.look;
         if (x.title === false) one.title = false;
         if (colourOk(x.color)) one.color = String(x.color).toLowerCase();
+      }
+      // A table (v609): columns (name, relative width, right-aligned, "qr"), rows of cells, how it looks, and what it adds up.
+      if (x.k === "tbl") {
+        const cols = (Array.isArray(x.cols) ? x.cols : []).slice(0, L2.tblCols).map((c) => {
+          const o = { h: strU(c && c.h, 40), w: Math.round(num(c && c.w, 0.2, 20, 1) * 100) / 100 };
+          if (c && c.a === "r") o.a = "r";
+          if (c && c.f === "qr") o.f = "qr";
+          return o;
+        });
+        one.cols = cols.length ? cols : [{ h: "", w: 1 }];
+        one.rows = (Array.isArray(x.rows) ? x.rows : []).slice(0, L2.tblRows).map((r) => (Array.isArray(r) ? r : []).slice(0, L2.tblCols).map((v) => strU(v, L2.tblCell)));
+        if (x.look === "grid" || x.look === "plain") one.look = x.look;
+        if (typeof x.size === "number" && isFinite(x.size) && Math.abs(x.size - 1) > 0.04) one.size = Math.round(num(x.size, 0.7, 1.5, 1) * 100) / 100;
+        if (colourOk(x.color)) one.color = String(x.color).toLowerCase();
+        if (x.sum && typeof x.sum === "object" && !Array.isArray(x.sum)) {
+          const sm = { col: Math.round(num(x.sum.col, 0, one.cols.length - 1, 0)), cur: strU(x.sum.cur, 3) };
+          for (const k of ["contingency", "gst"]) { const v = Math.round(num(x.sum[k], 0, 100, 0)); if (v > 0) sm[k] = v; }
+          one.sum = sm;
+        }
       }
       if (x.k === "text") {
         one.t = strU(x.t, L2.blockText);

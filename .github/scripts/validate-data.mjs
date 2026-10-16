@@ -588,14 +588,14 @@ if (books !== undefined && books !== null) {
     // Any page can be the team's alone, left out of the client copy (v577).
     const KNOWN_KEYS = Object.fromEntries(Object.entries(KNOWN_KEYS_BASE).map(([k, v]) => [k, [...(v.includes("bg") ? v : [...v, "bg"]), "teamOnly"]]));
     // An Anything page: what the studio placed, as fractions of the A4 frame.
-    const BLOCK_KINDS = new Set(["text", "photo", "shape", "line", "cal"]);
+    const BLOCK_KINDS = new Set(["text", "photo", "shape", "line", "cal", "tbl"]);
     const BLOCK_ROLES = new Set(["head", "intro", "body", "kicker", "quote"]);
     const THICKS = new Set(["hair", "narrow", "medium", "broad", "heavy"]);
     const LINE_PATHS = new Set(["v", "d", "u", "curve", "wave", "free"]);
     const LINE_ENDS = new Set(["end", "start", "both"]);
     const LINE_TIPS = new Set(["pencil", "brush", "marker", "nib", "taper", "sumi", "bristle"]);
     const FILLS = new Set(["ink", "soft", "accent", "paper", "white", "deep", "rule"]);
-    const BLOCK_KEYS = { cal: ["k", "x", "y", "w", "h", "r", "m", "look", "title", "color"], text: ["k", "x", "y", "w", "h", "r", "t", "role", "fit", "style", "fill", "o", "shape", "corner"], photo: ["k", "x", "y", "w", "h", "r", "p", "edge", "edgeWidth", "shape", "corner"], shape: ["k", "x", "y", "w", "h", "r", "fill", "o", "shape", "corner"], line: ["k", "x", "y", "w", "h", "r", "color", "o", "thick", "width", "path", "bend", "waves", "soft", "pts", "ends", "tip"] };
+    const BLOCK_KEYS = { tbl: ["k", "x", "y", "w", "h", "r", "cols", "rows", "look", "size", "color", "sum"], cal: ["k", "x", "y", "w", "h", "r", "m", "look", "title", "color"], text: ["k", "x", "y", "w", "h", "r", "t", "role", "fit", "style", "fill", "o", "shape", "corner"], photo: ["k", "x", "y", "w", "h", "r", "p", "edge", "edgeWidth", "shape", "corner"], shape: ["k", "x", "y", "w", "h", "r", "fill", "o", "shape", "corner"], line: ["k", "x", "y", "w", "h", "r", "color", "o", "thick", "width", "path", "bend", "waves", "soft", "pts", "ends", "tip"] };
     const SHAPE_KINDS = new Set(["round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram", "g:heart", "g:sparkle", "g:burst", "g:badge", "g:ring", "g:flower", "g:sun", "g:moon", "g:leaf", "g:arrow", "g:curve", "g:speech", "g:quotes", "g:camera", "g:film", "g:frame", "g:focus", "g:pin", "g:mail", "g:phone", "g:check", "g:plus", "g:stroke"]);
     const isFill = (v) => FILLS.has(v) || /^#[0-9a-f]{6}$/.test(String(v));
     // A photograph's adjustments (v561): whole numbers, -100…100 (vignette 0…100), none written as 0; bw is true or absent.
@@ -649,6 +649,33 @@ if (books !== undefined && books !== null) {
         for (const k of ["x", "y"]) if (typeof x[k] !== "number" || !(x[k] >= -0.3 && x[k] <= 1.3)) fail(`${at} has ${k} of ${JSON.stringify(x[k])}; it must be a number from -0.3 to 1.3`);
         for (const k of x.k === "line" && !(x.path && x.path !== "h") ? ["w"] : ["w", "h"]) if (typeof x[k] !== "number" || !(x[k] >= 0.01 && x[k] <= 1.6)) fail(`${at} has ${k} of ${JSON.stringify(x[k])}; it must be a number from 0.01 to 1.6`);
         if (x.r !== undefined && (typeof x.r !== "number" || !(x.r >= -180 && x.r <= 180) || x.r === 0)) fail(`${at} is turned ${JSON.stringify(x.r)}; it must be a number from -180 to 180, and 0 is not written`);
+        // A table (v609): the app writes whole lists of short text, and drops what it cannot hold.
+        if (x.k === "tbl") {
+          if (!Array.isArray(x.cols) || !x.cols.length || x.cols.length > 8) fail(`${at} has ${Array.isArray(x.cols) ? x.cols.length : "no"} columns; a table has 1 to 8`);
+          else for (const [ci, c] of x.cols.entries()) {
+            if (!c || typeof c !== "object" || typeof c.h !== "string" || c.h.length > 40) fail(`${at} column ${ci + 1} has no name of up to 40 characters`);
+            else {
+              for (const k of Object.keys(c)) if (!["h", "w", "a", "f"].includes(k)) fail(`${at} column ${ci + 1} has ${JSON.stringify(k)}, which the app drops`);
+              if (typeof c.w !== "number" || !(c.w >= 0.2 && c.w <= 20)) fail(`${at} column ${ci + 1} has width ${JSON.stringify(c.w)}; it must be a number from 0.2 to 20`);
+              if (c.a !== undefined && c.a !== "r") fail(`${at} column ${ci + 1} aligns ${JSON.stringify(c.a)}; the app writes "r", and nothing for left`);
+              if (c.f !== undefined && c.f !== "qr") fail(`${at} column ${ci + 1} works out ${JSON.stringify(c.f)}; the app knows "qr"`);
+            }
+          }
+          if (!Array.isArray(x.rows) || x.rows.length > 80) fail(`${at} has ${Array.isArray(x.rows) ? x.rows.length : "no list of"} rows; a table holds at most 80`);
+          else x.rows.forEach((r, ri) => { if (!Array.isArray(r) || r.length > 8 || r.some((v) => typeof v !== "string" || v.length > 160)) fail(`${at} row ${ri + 1} is not a list of up to 8 short pieces of text`); });
+          if (x.look !== undefined && x.look !== "grid" && x.look !== "plain") fail(`${at} has lines ${JSON.stringify(x.look)}; the app writes "grid" or "plain", and nothing for a rule under each row`);
+          if (x.size !== undefined && (typeof x.size !== "number" || !(x.size >= 0.7 && x.size <= 1.5))) fail(`${at} has text size ${JSON.stringify(x.size)}; it must be from 0.7 to 1.5`);
+          if (x.color !== undefined && !isFill(x.color)) fail(`${at} has text in ${JSON.stringify(x.color)}`);
+          if (x.sum !== undefined) {
+            const sm = x.sum;
+            if (!sm || typeof sm !== "object" || Array.isArray(sm)) fail(`${at} adds up with something that is not an object`);
+            else {
+              for (const k of Object.keys(sm)) if (!["col", "cur", "contingency", "gst"].includes(k)) fail(`${at} adds up with ${JSON.stringify(k)}, which the app drops`);
+              if (!Number.isInteger(sm.col) || sm.col < 0 || (Array.isArray(x.cols) && sm.col >= x.cols.length)) fail(`${at} adds up column ${JSON.stringify(sm.col)}, which is not one of its columns`);
+              for (const k of ["contingency", "gst"]) if (sm[k] !== undefined && (!Number.isInteger(sm[k]) || sm[k] < 1 || sm[k] > 100)) fail(`${at} has ${k} ${JSON.stringify(sm[k])}; the app writes a whole number from 1 to 100, and nothing for none`);
+            }
+          }
+        }
         if (x.k === "cal") {
           if (!Number.isInteger(x.m) || x.m < 0 || x.m > 12) fail(`${at} shows month ${JSON.stringify(x.m)}; the app writes 0 to 12 after the calendar's first`);
           if (x.look !== undefined && x.look !== "mini" && x.look !== "habits") fail(`${at} looks ${JSON.stringify(x.look)}; the app writes "mini" or "habits", and nothing for a month to write in`);

@@ -4877,7 +4877,7 @@
      every other page — so the preview, the little page in the rail and the PDF
      can never disagree. Nothing flows from one box to the next: a box holds
      what it holds, and says so when the words don't fit. */
-  const FREE_KINDS = ["text", "photo", "shape", "line", "cal"];
+  const FREE_KINDS = ["text", "photo", "shape", "line", "cal", "tbl"];
   // What a colour block (or the colour behind a box of words) is shaped like.
   const SHAPES = ["rect", "round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram"];
   /* Drawings (phase 8, Sep 30 2026): a small library for an Anything page,
@@ -5346,6 +5346,122 @@
     }
   }
 
+
+  /* ---- A table (v609) -----------------------------------------------------
+     Production documents are mostly lists — a schedule, a breakdown, a budget,
+     what to pack — and a list needs rows that can be added, so it is a block of
+     its own, like a month: it draws as ordinary rules and words, which is why
+     the page, the little page in the rail, the PDF, the PNG and the Word or
+     PowerPoint copy cannot disagree about it.
+       { k: "tbl", x, y, w, h,
+         cols: [{ h: "ITEM", w: 3 }, { h: "QTY", w: 1, a: "r" }, { h: "AMOUNT", w: 2, a: "r", f: "qr" }],
+         rows: [["Photographer", "1", "25000", ""], …],
+         sum: { col: 3, cur: "₹", contingency: 10, gst: 18 },     // optional
+         look: "grid" | "plain" (default: a rule under each row), size: 0.7–1.5 }
+     Widths are relative. An "r" column is right-aligned (figures). "qr" on a
+     column means its blank cells are the two columns before it multiplied; a
+     figure typed there wins. `sum` adds that column up and works out the extra
+     lines, each on the total above it (the contingency, then GST on that). */
+  const TBL = { rows: 80, cols: 8, cell: 160 };
+  const tblCols = (b) => { const l = Array.isArray(b && b.cols) ? b.cols.slice(0, TBL.cols) : []; return l.length ? l : [{ h: "", w: 1 }]; };
+  const tblRows = (b) => (Array.isArray(b && b.rows) ? b.rows.slice(0, TBL.rows) : []);
+  const tblNum = (s) => { const m = /-?\d[\d,]*\.?\d*|-?\.\d+/.exec(String(s == null ? "" : s)); if (!m) return NaN; const n = parseFloat(m[0].replace(/,/g, "")); return Number.isFinite(n) ? n : NaN; };
+  const tblFmt = (n) => { const r = Math.round(n * 100) / 100; return r.toLocaleString("en-IN", { minimumFractionDigits: r % 1 ? 2 : 0, maximumFractionDigits: 2 }); };
+  function tblFigures(b) {
+    const cols = tblCols(b), rows = tblRows(b);
+    const sc = b && b.sum && typeof b.sum === "object" ? Math.min(Math.max(0, (+b.sum.col) | 0), cols.length - 1) : -1;
+    if (sc < 0) return null;
+    const cellAt = (r, c) => String(((rows[r] || [])[c]) == null ? "" : (rows[r] || [])[c]).trim();
+    const figure = (r) => {
+      const typed = cellAt(r, sc);
+      if (typed && Number.isFinite(tblNum(typed))) return tblNum(typed);
+      if (!typed && cols[sc].f === "qr" && sc >= 2) { const q = tblNum(cellAt(r, sc - 2)), p = tblNum(cellAt(r, sc - 1)); if (Number.isFinite(q) && Number.isFinite(p)) return q * p; }
+      return NaN;
+    };
+    const shown = rows.map((_, r) => { const typed = cellAt(r, sc); if (typed) return /^[\s\d,.₹$-]+$/.test(typed) && Number.isFinite(tblNum(typed)) ? tblFmt(tblNum(typed)) : typed; const f = figure(r); return Number.isFinite(f) ? tblFmt(f) : ""; });
+    let sub = 0; rows.forEach((_, r) => { const f = figure(r); if (Number.isFinite(f)) sub += f; });
+    let run = sub; const lines = [];
+    [["Contingency", b.sum.contingency], ["GST", b.sum.gst]].forEach(([l, p]) => {
+      const pc = +p; if (Number.isFinite(pc) && pc > 0) { const amt = (run * pc) / 100; lines.push({ l: `${l} ${pc}%`, amt }); run += amt; }
+    });
+    return { sc, shown, sub, lines, total: run, cur: typeof b.sum.cur === "string" ? b.sum.cur.slice(0, 3) : "" };
+  }
+  // How a table sits in its box: rows share the height (never taller than a few lines each); too many rows for the box are not drawn.
+  function tblGeom(b, box) {
+    const cols = tblCols(b), rows = tblRows(b), R = Math.max(1, rows.length);
+    const fig = tblFigures(b);
+    const footN = fig ? (fig.lines.length ? 2 + fig.lines.length : 1) : 0;
+    const base = 3.1 * Math.min(1.5, Math.max(0.7, +(b && b.size) || 1));
+    const hh = base * 2.3, fh = base * 2.1;
+    const body = box.h - hh - footN * fh, minRow = base * 2, maxRow = base * 4.4;
+    const rh = Math.min(maxRow, body / R);
+    const shown = rh >= minRow ? R : Math.max(0, Math.min(R, Math.floor(body / minRow)));
+    return { cols, rows, R, fig, footN, base, hh, fh, rh: Math.max(rh, minRow), shown, over: R - shown };
+  }
+  const tblNote = (g) => `${g.rows.length} row${g.rows.length === 1 ? "" : "s"}${g.over > 0 ? ` — ${g.over} do not fit in this box: make it taller, or carry the rest to a second page.` : "."}`;
+  function tblWrap(page, text, width, maxLines) {
+    const fit = (str) => { if (measure(page, str) <= width) return str; let t = str; while (t.length > 1 && measure(page, `${t}…`) > width) t = t.slice(0, -1); return `${t}…`; };
+    const out = []; let cur = "";
+    for (const w of String(text).split(/\s+/).filter(Boolean)) {
+      const t = cur ? `${cur} ${w}` : w;
+      if (!cur || measure(page, t) <= width) cur = t; else { out.push(cur); cur = w; }
+    }
+    if (cur) out.push(cur);
+    let lines = out.map(fit);
+    if (lines.length > maxLines) { lines = lines.slice(0, Math.max(1, maxLines)); lines[lines.length - 1] = fit(`${lines[lines.length - 1].replace(/…$/, "")} …`); }
+    return lines;
+  }
+  function tblOps(book, b, box, P, T, turn, op, page) {
+    const g = tblGeom(b, box), cols = g.cols, rows = g.rows;
+    const ink = blockColor(b.color, P, P.ink), soft = P.soft, rule = P.rule;
+    const K = T.kicker || T.body, Bd = T.body;
+    const txt = (s, x, y, size, spec, c, align, w) => {
+      const sp = spec.sp && spec.size ? (spec.sp * size) / spec.size : 0;
+      op({ k: "text", s: String(s), x, y, f: [w || spec.w || 400, size, spec.f, sp, false], c, align, rot: turn });
+    };
+    const wOf = (c) => (+c.w > 0 ? +c.w : 1), wsum = cols.reduce((t, c) => t + wOf(c), 0);
+    const xs = []; let acc = box.x; cols.forEach((c) => { xs.push(acc); acc += (box.w * wOf(c)) / wsum; }); xs.push(box.x + box.w);
+    const pad = Math.min(1.6, g.base * 0.5), look = b.look === "grid" || b.look === "plain" ? b.look : "lines";
+    let y = box.y;
+    cols.forEach((c, i) => {
+      const right = c.a === "r";
+      txt(String(c.h || "").toUpperCase(), right ? xs[i + 1] - pad : xs[i] + pad, y + g.hh * 0.66, g.base * 0.78, K, soft, right ? "right" : "left", Math.max(600, K.w || 600));
+    });
+    y += g.hh;
+    op({ k: "rect", x: box.x, y: y - 0.2, w: box.w, h: 0.3, c: ink, rot: turn });
+    const size = Math.min(g.base, g.rh * 0.46), lh = size * 1.3;
+    for (let r = 0; r < g.shown; r++) {
+      const ry = y + g.rh * r;
+      if (look !== "plain" && r > 0) op({ k: "rect", x: box.x, y: ry - 0.075, w: box.w, h: 0.15, c: rule, rot: turn });
+      cols.forEach((c, i) => {
+        const cell = g.fig && i === g.fig.sc ? g.fig.shown[r] : String((rows[r] || [])[i] == null ? "" : rows[r][i]);
+        if (!cell) return;
+        font(page, 500, size, Bd.f);
+        const lines = tblWrap(page, cell, xs[i + 1] - xs[i] - pad * 2, Math.max(1, Math.floor((g.rh - pad) / lh)));
+        const top = ry + (g.rh - lines.length * lh) / 2;
+        lines.forEach((ln, k) => txt(ln, c.a === "r" ? xs[i + 1] - pad : xs[i] + pad, top + k * lh + size * 0.92, size, Bd, ink, c.a === "r" ? "right" : "left", 500));
+      });
+    }
+    const end = y + g.rh * g.shown;
+    op({ k: "rect", x: box.x, y: end - 0.075, w: box.w, h: 0.15, c: rule, rot: turn });
+    if (look === "grid") {
+      for (let i = 0; i <= cols.length; i++) op({ k: "rect", x: (i === cols.length ? box.x + box.w : xs[i]) - 0.075, y: box.y, w: 0.15, h: end - box.y, c: rule, rot: turn });
+      op({ k: "rect", x: box.x, y: box.y, w: box.w, h: 0.15, c: rule, rot: turn });
+    }
+    if (g.fig) {
+      const f = g.fig, cur = f.cur || "";
+      const list = f.lines.length ? [["Subtotal", f.sub], ...f.lines.map((x) => [x.l, x.amt]), ["Total", f.total]] : [["Total", f.sub]];
+      const xl = xs[f.sc] - pad, xr = xs[f.sc + 1] - pad, x0 = xs[Math.max(0, f.sc - 1)];
+      list.forEach(([l, v], i) => {
+        const last = i === list.length - 1, ty = end + g.fh * i;
+        if (last) op({ k: "rect", x: x0, y: ty + 0.1, w: xs[f.sc + 1] - x0, h: 0.3, c: ink, rot: turn });
+        const sz = g.base * (last ? 1.05 : 0.92);
+        txt(l, xl, ty + g.fh * 0.68, sz, Bd, last ? ink : soft, "right", last ? 700 : 500);
+        txt(`${cur}${tblFmt(v)}`, xr, ty + g.fh * 0.68, sz, Bd, ink, "right", last ? 700 : 600);
+      });
+    }
+  }
+
   function planFree(book, entry, ground = null) {
     const G = geometry(book);
     const st = styleKey(book), D = trOf(book);
@@ -5368,6 +5484,7 @@
       const field = `b${i}`;
       const fx = effectsOf(b, P);
       if (b.k === "cal") { calOps(book, b, box, P, T, turn, op, page); return; }
+      if (b.k === "tbl") { tblOps(book, b, box, P, T, turn, op, page); return; }
       if (b.k === "shape") { const sh = shapeOf(b); op({ k: sh === "rect" ? "rect" : "path", shape: sh, corner: cornerOf(b), x: box.x, y: box.y, w: box.w, h: box.h, c: blockColor(b.fill, P, P.accent), a: b.o, rot: turn, ...fx }); return; }
       if (b.k === "line") {
         const c = blockColor(b.color, P, P.rule);
@@ -5878,7 +5995,12 @@
   // The pages each starts with (v576), in the order the research found them read.
   const PLAN_PAGES = {
     pitch: ["pt_idea", "pt_refs", "mb_palette", "pt_model", "tm_styling", "tm_hairmakeup", "tm_set", "tm_light", "pt_deliver", "pt_why"],
-    shoot: ["sp_brief", "mb_six", "sp_look", "sp_look", "sp_look", "tm_hairmakeup", "mb_notthis", "sp_shots", "sp_call", "sp_credits"]
+    shoot: ["sp_brief", "mb_six", "sp_look", "sp_look", "sp_look", "tm_hairmakeup", "mb_notthis", "sp_shots", "sp_call", "sp_credits"],
+    /* The production pack (v609): every document for a shoot in the order a
+       production meets them — the brief, the days, the scenes, the shots and
+       boards, the look, what to bring, where to be, the paperwork, the money,
+       and what is handed over. Any page can be taken out; the rest are in Add page. */
+    production: ["sp_brief", "pr_schedule", "sp_call", "pr_breakdown", "sp_shots", "pr_shotlist", "sb_six", "mb_palette", "tm_styling", "tm_hairmakeup", "pr_wardrobe", "pr_props", "pr_equipment", "pr_travel", "pr_permits", "pr_location", "pr_insurance", "pr_release", "pr_budget", "pr_deliverables", "sp_credits"]
   };
   const PLAN_COVER = { pitch: "pt_cover", shoot: "sp_cover" };
   function newBook(name) {
@@ -7070,6 +7192,30 @@
       ["sp_shots", "Shot list", "Eight shots, numbered, each with a picture, what it is, must or nice, and minutes."],
       ["sp_call", "Call sheet", "Where, call times, the day hour by hour, contacts, who brings what, good to know."],
       ["sp_credits", "Credits", "Everyone who made it, and a picture of the team."]] },
+    { group: "Production", top: true, items: [
+      ["pr_schedule", "Production schedule", "The days hour by hour — what, where and who — in rows you can add to."],
+      ["pr_breakdown", "Script breakdown", "One scene: where, when, what happens, and everything it needs, from cast and props to sound."],
+      ["pr_breakdown_list", "Breakdown list", "Every scene in one table: where, day or night, cast, props and wardrobe."],
+      ["pr_shotlist", "Shot list for film", "Shot, scene, size, angle, movement and lens, with a box to tick when it is done."],
+      ["pr_equipment", "Equipment list", "What is brought, whose it is, and boxes to tick going out and coming back."],
+      ["pr_props", "Props list", "Each prop, where it is used, where it comes from, what it costs and when it goes back."],
+      ["pr_wardrobe", "Wardrobe list", "The model's sizes, then every garment by look, where it is from and when it returns."],
+      ["pr_travel", "Travel and stay", "Who travels how and when, who stays where, and who meets them."],
+      ["pr_budget", "Production budget", "A line for each cost: quantity times rate adds itself up, with contingency and GST."],
+      ["pr_permits", "Filming permits", "Each permit, who gave it, when it is valid and what it cost, with room for the scans."],
+      ["pr_insurance", "Insurance certificate", "Insurer, policy, cover and dates, and the certificate itself."],
+      ["pr_location", "Location agreement", "Place, owner, dates, hours and fee, what was agreed, and signature lines."],
+      ["pr_release", "Talent releases", "Who signed which release, when, and its contract number."],
+      ["pr_scan", "Scanned copy", "A whole page for a signed paper: the agreement, the certificate or a permit."],
+      ["pr_deliverables", "Final deliverables", "What the client receives, how and until when, with sign-off lines."]] },
+    { group: "Storyboards", top: true, items: [
+      ["sb_six", "16:9 · six frames", "Six numbered frames, two by three, with a line under each. The usual size for a story."],
+      ["sb_four", "16:9 · four frames", "Four bigger frames with the notes beside each: what happens, and the camera."],
+      ["sb_twelve", "16:9 · twelve thumbnails", "The whole film on one page: twelve small frames, a line each."],
+      ["sb_vertical", "9:16 · Reels and Stories", "Eight tall frames, four across, for a vertical video."],
+      ["sb_wide", "2.39:1 · widescreen", "Six cinema-shaped frames with room for notes."],
+      ["sb_feed", "4:5 · the feed", "Four frames in the shape of an Instagram post, for a carousel."],
+      ["sb_one", "One frame", "A single big frame with its shot details and what happens."]] },
     { group: "Team pages", top: true, items: [
       ["tm_styling", "Styling", "The clothes: three pictures, garments, shoes, accessories, colours and what to avoid."],
       ["tm_hairmakeup", "Hair & make-up", "Exact looks to copy: skin, eyes, lips, hair and the time it takes."],
@@ -7100,12 +7246,16 @@
      look book template in it or a moodboard", and "for free things make a section called miscellaneous"): its own
      kind's first, then the free pages and layouts every book shares, under Miscellaneous; another kind's, never. A
      talent's comp cards or a brand's pages still lead their book. */
+  /* Money and paperwork start as the team's alone, left out of the client copy
+     (the owner, Oct 2026: "it should be option A but I can edit it as well"):
+     any of them can be put back with the page's own menu. */
+  const PRODUCTION_TEAM = new Set(["pr_budget", "pr_permits", "pr_insurance", "pr_location", "pr_scan", "pr_release", "pr_travel"]);
   const OWN_GROUPS = {
     magazine: ["Cover", "Magazine", "Comp cards", "For brands", "Studio pages", "Book pages", "How we work"],
     lookbook: ["Cover", "Lookbook", "For brands", "Studio pages", "Book pages"],
     pitch: ["Cover", "Pitch", "Team pages"],
-    moodboard: ["Cover", "Moodboard", "Shoot plan", "Team pages"],
-    shoot: ["Cover", "Shoot plan", "Moodboard", "Team pages"],
+    moodboard: ["Cover", "Moodboard", "Shoot plan", "Production", "Storyboards", "Team pages"],
+    shoot: ["Cover", "Shoot plan", "Production", "Storyboards", "Moodboard", "Team pages"],
     calendar: ["Cover", "Calendar"],
     misc: ["Cover", "One-offs"]
   };
@@ -7330,6 +7480,12 @@
     return tpl.map((b) => {
       const { keep, sample, bind, ...c } = b;
       if (c.style) c.style = { ...c.style };
+      // A table: its own copy of the columns and rows; the preview shows the sample rows, a new page the blank ones.
+      if (c.k === "tbl") {
+        c.cols = (c.cols || []).map((x) => ({ ...x }));
+        c.rows = (how === "preview" && Array.isArray(sample) ? sample : c.rows || []).map((r) => r.slice());
+        if (c.sum) c.sum = { ...c.sum };
+      }
       if (c.k === "text") c.t = (bind && how !== "layout" ? bookWords(book, bind) : "") || (t && bind ? talentWords(t, bind, keep) : "") || keep || (how === "preview" && sample) || "";
       if (c.k === "photo" && pick && bind) { const p = pick(String(bind).split(",")); if (p) c.p = p; }
       return c;
@@ -8196,6 +8352,180 @@
       ],
       ms_blank: []
     });
+    /* ---- Production documents (v609) ---------------------------------------
+       The owner, Oct 2026: "in portfolio builder I should be able to build" a
+       call sheet, production schedule, script breakdown, shot list, storyboards,
+       look book, colour palette, talent release forms, location agreement,
+       insurance certificate, filming permits, production budget sheet,
+       equipment list, wardrobe list, props list, H/MU reference sheet, client
+       and crew travel and accommodation, and a final deliverables document.
+       The call sheet, shot list, look book, colour story, styling and hair &
+       make-up pages were already here; these are the rest. A list is a TABLE
+       (rows can be added, a column can add itself up); a form is labelled
+       boxes. Money and paperwork start team-only (PRODUCTION_TEAM). A table
+       carries `rows` blank for a new page and `sample` rows for its picture
+       in the Add-page gallery only. */
+    const TB = (x, y, w, h, cols, blank, sample, more = {}) => ({ k: "tbl", x, y, w, h, cols, rows: Array.from({ length: blank }, () => cols.map(() => "")), sample, ...more });
+    const DOC = (kicker, sample) => [label(0.07, 0.05, 0.86, kicker), T("head", 0.07, 0.077, 0.86, 0.05, { sample })];
+    const Cc = (h, w) => ({ h, w });
+    const Cr = (h, w) => ({ h, w, a: "r" });
+    // A storyboard frame is a picture box with a hairline round it: a photograph, a reference, or a drawing made on the page.
+    const FRAME = (x, y, w, h) => P(x, y, w, h, { edge: "ink", edgeWidth: "hair" });
+    const SB_NOTES = ["Wide: she steps out onto the balcony.", "Close: her hand on the wet rail.", "Over the shoulder: the street below.", "Medium: she turns to camera.", "Detail: the hem of the linen, moving.", "Wide: she walks back inside.", "Close: a smile, looking away.", "Wide: the rain eases."];
+    const noteBeside = (n, x, y, w, sample) => [T("kicker", x, y, w, 0.02, { keep: `SHOT ${String(n).padStart(2, "0")}` }), T("body", x, r3(y + 0.027), w, 0.075, { sample }), label(x, r3(y + 0.115), w, "CAMERA"), T("body", x, r3(y + 0.142), w, 0.04, { sample: "Wide, 35 mm, static" })];
+    const noteUnder = (n, x, y, w, h, sample) => [T("kicker", x, y, w, 0.02, { keep: String(n).padStart(2, "0") }), T("body", x, r3(y + 0.021), w, h, { sample })];
+    // Frames in a grid, each with its number and a line or two beneath.
+    const frameGrid = (cols, rows, x0, y0, fw, fh, dx, dy, noteH, gap = 0.006) => Array.from({ length: cols * rows }, (_, i) => {
+      const x = r3(x0 + (i % cols) * dx), y = r3(y0 + Math.floor(i / cols) * dy);
+      return [FRAME(x, y, fw, fh), ...noteUnder(i + 1, x, r3(y + fh + gap), fw, noteH, SB_NOTES[i % SB_NOTES.length])];
+    }).flat();
+    const SAMPLE_DAY = [["Sat", "7:30", "Hair & make-up; set the light", "The flat, north window", "Hair, make-up, photographer"], ["Sat", "9:00", "Look 1 · the linen set", "Living room", "Model, stylist"], ["Sat", "12:30", "Lunch", "Kitchen", "Everyone"], ["Sat", "13:30", "Look 2 · the white shirt", "Balcony", "Model, stylist"], ["Sun", "9:00", "Look 3 · outdoors", "The park", "Model, photographer"]];
+    Object.assign(FREE_STARTS, {
+      // ---- Planning ----
+      pr_schedule: [
+        ...DOC("PRODUCTION SCHEDULE", "Monsoon linen · 18–19 October"),
+        ...rows(0.07, 0.14, 0.04, 0.16, 0.7, [["Project", "", "Monsoon linen for Acme"], ["Days", "", "Saturday 18 and Sunday 19 October"]]),
+        TB(0.07, 0.235, 0.86, 0.71, [Cc("Day", 0.8), Cc("Time", 1), Cc("What", 3.4), Cc("Where", 2.2), Cc("Who", 2.4)], 16, SAMPLE_DAY)
+      ],
+      pr_breakdown: [
+        ...DOC("SCRIPT BREAKDOWN", "Scene 4 · The balcony"),
+        ...rows(0.07, 0.14, 0.036, 0.2, 0.66, [["Scene", "", "4"], ["Inside or outside", "", "Outside"], ["Where", "", "The balcony, north side"], ["Day or night", "", "Day, overcast"], ["Length", "", "Half a page · 40 seconds"], ["Shoot day", "", "Saturday, 1:30 pm"]]),
+        label(0.07, 0.37, 0.86, "WHAT HAPPENS"),
+        T("body", 0.07, 0.397, 0.86, 0.1, { sample: "She steps out into the first rain, holds the wet rail, looks at the street and turns back to the camera." }),
+        ...[["CAST", "Model"], ["EXTRAS", "None"], ["WARDROBE", "Look 2: the white shirt, wide trousers"], ["HAIR & MAKE-UP", "Natural skin, hair damp at the ends"], ["PROPS", "A cup, an umbrella (not opened)"], ["SET DRESSING", "Two chairs, a plant, a towel on the rail"], ["SOUND & MUSIC", "Rain, a distant tram"], ["SPECIAL NOTES", "Cover the equipment; wet-weather plan: shoot from the doorway"]]
+          .flatMap(([lab, sample], i) => { const x = i % 2 ? 0.52 : 0.07, y = r3(0.52 + Math.floor(i / 2) * 0.108); return [label(x, y, 0.41, lab), T("body", x, r3(y + 0.028), 0.41, 0.07, { sample })]; })
+      ],
+      pr_breakdown_list: [
+        ...DOC("BREAKDOWN LIST", "Every scene at a glance"),
+        TB(0.07, 0.14, 0.86, 0.8, [Cc("Scene", 0.8), Cc("In / out", 0.9), Cc("Where", 2.2), Cc("Day / night", 1), Cc("Cast", 1.8), Cc("Props", 2), Cc("Wardrobe", 2)], 18,
+          [["1", "In", "Living room", "Day", "Model", "Records, cup", "Look 1"], ["2", "In", "Kitchen", "Day", "Model", "Kettle", "Look 1"], ["3", "In", "Bedroom", "Day", "Model", "Open book", "Look 1"], ["4", "Out", "Balcony", "Day", "Model", "Umbrella", "Look 2"], ["5", "Out", "The park", "Day", "Model", "—", "Look 3"]])
+      ],
+      pr_shotlist: [
+        ...DOC("SHOT LIST · FILM", "Monsoon linen · the film"),
+        TB(0.07, 0.14, 0.86, 0.8, [Cc("Shot", 0.7), Cc("Scene", 0.8), Cc("Size", 1.1), Cc("Angle", 1.1), Cc("Move", 1.2), Cc("Lens", 0.9), Cc("What happens", 3.2), Cc("Done", 0.7)], 18,
+          [["1A", "1", "Wide", "Eye level", "Static", "24 mm", "She enters the room", ""], ["1B", "1", "Medium", "Eye level", "Slow push", "35 mm", "She sits by the window", ""], ["1C", "1", "Close-up", "Low", "Static", "85 mm", "Hands around the cup", ""], ["2A", "2", "Wide", "High", "Pan left", "24 mm", "The kitchen, rain on glass", ""], ["4A", "4", "Wide", "Eye level", "Handheld", "35 mm", "She steps onto the balcony", ""]])
+      ],
+      // ---- Storyboards ----
+      sb_six: [
+        ...DOC("STORYBOARD · 16:9 · SIX FRAMES", "Scene 4 · The balcony"),
+        ...frameGrid(2, 3, 0.07, 0.135, 0.41, 0.163, 0.45, 0.263, 0.065)
+      ],
+      sb_four: [
+        ...DOC("STORYBOARD · 16:9 · FOUR FRAMES", "Scene 4 · The balcony"),
+        ...Array.from({ length: 4 }, (_, i) => { const y = r3(0.135 + i * 0.2); return [FRAME(0.07, y, 0.48, 0.191), ...noteBeside(i + 1, 0.58, y, 0.35, SB_NOTES[i])]; }).flat()
+      ],
+      sb_twelve: [
+        ...DOC("STORYBOARD · 16:9 · TWELVE THUMBNAILS", "The whole film on one page"),
+        ...frameGrid(3, 4, 0.07, 0.135, 0.27, 0.107, 0.295, 0.2, 0.06, 0.008)
+      ],
+      sb_vertical: [
+        ...DOC("STORYBOARD · 9:16 · REELS AND STORIES", "A 20-second Reel"),
+        ...Array.from({ length: 8 }, (_, i) => {
+          const x = r3(0.07 + (i % 4) * 0.22), y = i < 4 ? 0.135 : 0.535;
+          return [FRAME(x, y, 0.2, 0.2515), ...noteUnder(i + 1, x, r3(y + 0.258), 0.2, 0.085, SB_NOTES[i])];
+        }).flat()
+      ],
+      sb_wide: [
+        ...DOC("STORYBOARD · 2.39:1 · WIDESCREEN", "Scene 4 · The balcony"),
+        ...frameGrid(2, 3, 0.07, 0.135, 0.41, 0.1213, 0.45, 0.25, 0.09, 0.008)
+      ],
+      sb_feed: [
+        ...DOC("STORYBOARD · 4:5 · THE FEED", "A four-picture carousel"),
+        ...frameGrid(2, 2, 0.07, 0.135, 0.38, 0.336, 0.48, 0.43, 0.05, 0.007)
+      ],
+      sb_one: [
+        ...DOC("STORYBOARD · ONE FRAME", "The reveal"),
+        FRAME(0.07, 0.135, 0.86, 0.342),
+        ...rows(0.07, 0.5, 0.037, 0.2, 0.66, [["Shot", "", "12 · Scene 4"], ["Size and angle", "", "Wide, eye level"], ["Movement", "", "A slow push in"], ["Lens", "", "35 mm"], ["Light", "", "Window light from the left"], ["Sound", "", "Rain on the rail"], ["Length", "", "6 seconds"]]),
+        label(0.07, 0.78, 0.86, "WHAT HAPPENS"),
+        T("body", 0.07, 0.807, 0.86, 0.14, { sample: "She steps out, the rain starts, she holds the wet rail and looks down at the street." })
+      ],
+      // ---- Lists ----
+      pr_equipment: [
+        ...DOC("EQUIPMENT LIST", "Monsoon linen · the kit"),
+        ...rows(0.07, 0.14, 0.036, 0.2, 0.66, [["Kit packed by", "", "Aarav"], ["Collect from", "", "The studio, 7:00 am"]]),
+        TB(0.07, 0.225, 0.86, 0.72, [Cc("Item", 4), Cr("Qty", 0.8), Cc("Own or hire", 1.7), Cc("From", 2), Cc("Out", 0.7), Cc("Back", 0.7)], 22,
+          [["Mirrorless body", "2", "Own", "", "", ""], ["35 mm and 85 mm lenses", "2", "Own", "", "", ""], ["Continuous light, 300 W", "2", "Hire", "Lights & Co", "", ""], ["Softbox and stand", "2", "Own", "", "", ""], ["Reflector, 5-in-1", "1", "Own", "", "", ""], ["Memory cards, 128 GB", "6", "Own", "", "", ""]])
+      ],
+      pr_props: [
+        ...DOC("PROPS LIST", "Monsoon linen · what goes on set"),
+        ...rows(0.07, 0.14, 0.036, 0.2, 0.66, [["Props by", "", "Mira"]]),
+        TB(0.07, 0.195, 0.86, 0.75, [Cc("Prop", 3.2), Cc("Look or scene", 2), Cc("From", 2), Cr("Cost", 1.1), Cc("Return by", 1.4), Cc("Back", 0.7)], 22,
+          [["A white cup and saucer", "Look 1", "Own", "", "", ""], ["Old records, three", "Look 1", "Borrowed", "", "20 Oct", ""], ["A black umbrella", "Scene 4", "Buy", "450", "—", ""], ["Potted fern", "Scene 4", "Hire", "300", "19 Oct", ""]])
+      ],
+      pr_wardrobe: [
+        ...DOC("WARDROBE LIST", "Monsoon linen · looks 1 to 3"),
+        label(0.07, 0.14, 0.86, "THE MODEL'S SIZES"),
+        ...rows(0.07, 0.168, 0.036, 0.16, 0.26, [["Height", "", "5 ft 9"], ["Bust", "", "34"], ["Waist", "", "26"]]),
+        ...rows(0.52, 0.168, 0.036, 0.16, 0.25, [["Hips", "", "36"], ["Shoes", "", "UK 6"], ["Dress size", "", "S"]]),
+        TB(0.07, 0.29, 0.86, 0.66, [Cc("Look", 0.7), Cc("Garment", 3), Cc("Size", 0.9), Cc("From", 2), Cc("Return by", 1.4), Cc("Back", 0.7)], 20,
+          [["1", "Linen shirt, ivory", "S", "Acme", "22 Oct", ""], ["1", "Wide trousers, sand", "S", "Acme", "22 Oct", ""], ["2", "White shirt", "S", "Stylist's own", "", ""], ["2", "Gold hoops", "—", "Stylist's own", "", ""], ["3", "Rain jacket, green", "M", "Hire", "19 Oct", ""]])
+      ],
+      pr_travel: [
+        ...DOC("TRAVEL AND STAY", "Monsoon linen · crew and client"),
+        label(0.07, 0.14, 0.86, "GETTING THERE"),
+        TB(0.07, 0.165, 0.86, 0.34, [Cc("Who", 1.8), Cc("From → to", 2.6), Cc("When", 1.8), Cc("How", 1.2), Cc("Booking", 1.5)], 8,
+          [["Model", "Delhi → Noida", "Sat 6:30 am", "Cab", "CB-2210"], ["Stylist", "Jaipur → Noida", "Fri 9 pm", "Train", "PNR 4417"], ["Client", "Mumbai → Delhi", "Fri 6:15 pm", "Flight", "6E 241"]]),
+        label(0.07, 0.525, 0.86, "WHERE THEY STAY"),
+        TB(0.07, 0.55, 0.86, 0.3, [Cc("Who", 1.8), Cc("Where", 2.8), Cc("In", 1.1), Cc("Out", 1.1), Cc("Room", 0.9), Cc("Booking", 1.4)], 6,
+          [["Stylist", "A hotel near Sector 18", "Fri", "Sun", "204", "H-8890"], ["Client", "A hotel near Sector 18", "Fri", "Sat", "206", "H-8891"]]),
+        label(0.07, 0.875, 0.86, "WHO MEETS THEM, AND THE DRIVER"),
+        T("body", 0.07, 0.903, 0.86, 0.045, { sample: "Driver: Ramesh · 98100 00000 · airport pickup Friday 8:30 pm" })
+      ],
+      // ---- Money and paperwork (team only to start) ----
+      pr_budget: [
+        ...DOC("PRODUCTION BUDGET", "Monsoon linen · twelve photographs"),
+        ...rows(0.07, 0.14, 0.036, 0.16, 0.26, [["Client", "", "Acme"], ["Prepared by", "", "Studio"]]),
+        ...rows(0.52, 0.14, 0.036, 0.16, 0.25, [["Date", "", "1 October"], ["Valid for", "", "30 days"]]),
+        TB(0.07, 0.235, 0.86, 0.7, [Cc("Item", 4), Cr("Qty", 0.9), Cr("Rate", 1.5), { h: "Amount", w: 1.9, a: "r", f: "qr" }], 11,
+          [["Photographer · one day", "1", "25000", ""], ["Assistant", "2", "4000", ""], ["Hair & make-up", "1", "9000", ""], ["Studio hire", "1", "6500", ""], ["Retouching · 12 photographs", "12", "600", ""]],
+          { rows: ["Photographer", "Assistant", "Hair & make-up", "Stylist", "Model", "Studio or location", "Equipment hire", "Wardrobe and props", "Travel and stay", "Retouching", "Prints, delivery, other"].map((n) => [n, "", "", ""]), sum: { col: 3, cur: "₹", contingency: 10, gst: 18 } })
+      ],
+      pr_permits: [
+        ...DOC("FILMING PERMITS", "Monsoon linen · the park"),
+        ...rows(0.07, 0.14, 0.036, 0.2, 0.66, [["Permit lead", "", "Mira · 98100 00001"]]),
+        TB(0.07, 0.195, 0.86, 0.46, [Cc("Permit", 2.6), Cc("Given by", 2), Cc("Applied", 1.1), Cc("Approved", 1.1), Cc("Valid", 1.5), Cr("Fee", 0.9), Cc("On set", 0.8)], 10,
+          [["Shooting in the park", "The parks department", "1 Oct", "6 Oct", "18–19 Oct", "1500", ""], ["Tripod and lights", "The park office", "1 Oct", "6 Oct", "18–19 Oct", "—", ""]]),
+        label(0.07, 0.675, 0.41, "SCAN OR PHOTO · PERMIT 1"), P(0.07, 0.705, 0.41, 0.24),
+        label(0.52, 0.675, 0.41, "SCAN OR PHOTO · PERMIT 2"), P(0.52, 0.705, 0.41, 0.24)
+      ],
+      pr_insurance: [
+        ...DOC("INSURANCE CERTIFICATE", "Monsoon linen · equipment and liability"),
+        ...rows(0.07, 0.14, 0.036, 0.22, 0.64, [["Insurer", "", "An insurer"], ["Policy number", "", "POL-0000000"], ["What it covers", "", "Equipment and public liability"], ["Insured", "", "The studio"], ["Cover", "", "₹ 25,00,000"], ["Valid from", "", "1 October"], ["Valid to", "", "30 September"], ["Broker or agent", "", "Name · phone"], ["To claim, call", "", "1800 000 000"]]),
+        label(0.07, 0.48, 0.86, "THE CERTIFICATE · SCAN OR PHOTO"),
+        P(0.07, 0.51, 0.86, 0.44)
+      ],
+      pr_location: [
+        ...DOC("LOCATION AGREEMENT", "Monsoon linen · the flat"),
+        ...rows(0.07, 0.14, 0.036, 0.22, 0.64, [["Place", "", "A flat with a north window"], ["Address", "", "On the booking"], ["Owner or manager", "", "Name"], ["Contact", "", "98100 00002"], ["Shoot dates", "", "18 and 19 October"], ["Hours", "", "7:00 am to 6:00 pm"], ["Fee and deposit", "", "₹ 8,000 · deposit ₹ 2,000"], ["Power, parking, lift", "", "Yes · gate 2 · goods lift"], ["Neighbours told", "", "Yes, on 15 October"]]),
+        label(0.07, 0.48, 0.86, "WHAT WAS AGREED"),
+        T("body", 0.07, 0.507, 0.86, 0.26, { sample: "The owner lets the studio use the flat for the two days above; the studio leaves it as it found it, and the deposit comes back the day after." }),
+        L(0.07, 0.84, 0.38), L(0.55, 0.84, 0.38),
+        T("body", 0.07, 0.848, 0.38, 0.04, { keep: "Owner or manager: name, signature, date", style: { size: 0.8 } }),
+        T("body", 0.55, 0.848, 0.38, 0.04, { keep: "For the studio: name, signature, date", style: { size: 0.8 } })
+      ],
+      pr_scan: [
+        ...DOC("SCANNED COPY", "The signed location agreement"),
+        P(0.07, 0.14, 0.86, 0.78),
+        T("body", 0.07, 0.93, 0.86, 0.03, { sample: "Signed 15 October, kept on the studio's drive." })
+      ],
+      pr_release: [
+        ...DOC("TALENT RELEASES", "Monsoon linen"),
+        ...rows(0.07, 0.14, 0.036, 0.2, 0.66, [["Project", "", "Monsoon linen for Acme"]]),
+        TB(0.07, 0.195, 0.86, 0.72, [Cc("Name", 2.2), Cc("Role", 1.5), Cc("Which release", 2.6), Cc("Version", 1.1), Cc("Signed", 1.2), Cc("Contract no.", 1.7)], 18,
+          [["The model", "Model", "Test shoot release", "V4.2-TFP", "10 Oct", "WPS-2026-0412"], ["The stylist", "Stylist", "Studio release", "V4.2", "10 Oct", "WPS-2026-0413"]]),
+        T("body", 0.07, 0.93, 0.86, 0.03, { sample: "Each signed release is kept with its contract in the Vault.", style: { size: 0.85 } })
+      ],
+      pr_deliverables: [
+        ...DOC("FINAL DELIVERABLES", "Monsoon linen · what the client receives"),
+        ...rows(0.07, 0.14, 0.036, 0.2, 0.66, [["Delivered on", "", "28 October"], ["How", "", "A private link, kept for 30 days"], ["Usage", "", "Website and social, one year"], ["Revisions", "", "One round, included"], ["Kept by the studio until", "", "28 January"]]),
+        TB(0.07, 0.34, 0.86, 0.4, [Cc("What", 3.2), Cc("Format", 1.6), Cc("Size", 1.6), Cr("How many", 1), Cc("Sent", 0.8)], 9,
+          [["Edited photographs", "JPEG", "3000 px long edge", "12", ""], ["Web versions", "JPEG", "1600 px", "12", ""], ["Reel", "MP4", "1080 × 1920", "1", ""], ["Contact sheet", "PDF", "A4", "1", ""]]),
+        L(0.07, 0.86, 0.38), L(0.55, 0.86, 0.38),
+        T("body", 0.07, 0.868, 0.38, 0.04, { keep: "Received by the client: name, date", style: { size: 0.8 } }),
+        T("body", 0.55, 0.868, 0.38, 0.04, { keep: "Delivered by the studio: name, date", style: { size: 0.8 } })
+      ]
+    });
   })();
   // A layout's small picture, worked out from the layout itself.
   function layoutIconSpec(blocks) {
@@ -8207,6 +8537,7 @@
       else if (b.k === "shape") out.push(/^#[0-9a-f]{6}$/i.test(b.fill || "") ? `h${x},${y},${w},${h},${b.fill}` : `${b.fill === "ink" ? "q" : "b"}${x},${y},${w},${h}`);
       else if (b.k === "line") out.push(`b${x},${y},${w},1`);
       else if (b.k === "cal") { for (let q = 0; q < 5; q++) out.push(`t${x},${r(y + (h * (q + 1)) / 6)},${w},0.7`); }
+      else if (b.k === "tbl") { out.push(`q${x},${y},${w},0.7`); for (let q = 1; q <= 5; q++) out.push(`t${x},${r(y + (h * q) / 6)},${w},0.5`); }
       else if (b.k === "text") {
         if (b.fill) out.push(/^#[0-9a-f]{6}$/i.test(b.fill) ? `h${x},${y},${w},${h},${b.fill}` : `b${x},${y},${w},${h}`);
         const white = b.style && /^#fff/i.test(b.style.color || "") ? "w" : "t";
@@ -9245,6 +9576,7 @@
         misc: "Pick one, or type a size of your own for a blank page. Kept on this computer only.",
         calendar: "Any year, a hundred ahead if you like. Pick the year, the month it starts in and the first day of the week, then its shape. Kept on this computer only.",
         shootplan: "Everything for the day, eleven pages: the brief, the moodboard in six parts, three looks, hair & make-up, this-not-that, the shot list, the call sheet and the credits.",
+        production: "Every document for a shoot, twenty-two pages: the schedule, call sheet, script breakdown, shot lists and a storyboard, the colours, wardrobe, props and equipment, travel, permits, the location agreement, insurance, releases, the budget and the final deliverables. Take out what you do not need; money and paperwork start as team-only.",
         moodboard: `A cover, the board you pick and a back cover. Your photographs, or any picture copied from Pinterest, Google or anywhere and pasted with ${MOD}V; more boards are in Add page → Moodboard.`, lookbook: "A cover, a page about the collection, six looks and a back cover. Each look is one or two photographs with its number, its name and its lines.",
         compcard: "One page, like a printed comp card — a big photograph, three beside it, their name, measurements and brands — filled from their card. Every part can be changed." };
       const withKind = (nb, k) => {
@@ -9263,10 +9595,12 @@
           nb.name = nb.name.replace(/^Book /, "Calendar ");
           return calendarBook(nb, calPick.fmt, calPick);
         }
-        if (k === "pitch" || k === "shootplan") {
+        if (k === "pitch" || k === "shootplan" || k === "production") {
           nb.id = uid(true); nb.plan = KIND_PLAN[k];
-          nb.name = nb.name.replace(/^Book /, `${PLAN_NAME[nb.plan]} `);
-          nb.title = PLAN_NAME[nb.plan]; nb.subtitle = "";
+          if (k === "production") nb.pack = "production";   // read once by planPages, then dropped
+          const word = k === "production" ? "Production pack" : PLAN_NAME[nb.plan];
+          nb.name = nb.name.replace(/^Book /, `${word} `);
+          nb.title = word; nb.subtitle = "";
           nb.coverLayout = "custom"; nb.coverPage = { blocks: [] }; nb.pages = [];
           return nb;
         }
@@ -9296,7 +9630,7 @@
       let forWho = "studio", forName = "", forModel = "", kindByBrand = false;
       const OWN_MODEL = "__own";   // "Someone not on your list…"
       // A kind of book that is a plan, and the plan it makes.
-      const KIND_PLAN = { moodboard: "moodboard", pitch: "pitch", shootplan: "shoot", calendar: "calendar", misc: "misc" };
+      const KIND_PLAN = { moodboard: "moodboard", pitch: "pitch", shootplan: "shoot", production: "shoot", calendar: "calendar", misc: "misc" };
       let miscPick = { fmt: "postcard", w: 200, h: 200 };
       // What the calendar's chooser said, read before it closes (as the model typed in is).
       let calPick = { fmt: "wall", year: calOf(null).year, start: 0, week: 0, weekNo: "" };
@@ -9304,10 +9638,12 @@
         if (!PLAN_COVER[nb.plan]) return nb;
         nb.coverPage = { blocks: startBlocks(PLAN_COVER[nb.plan], nb, "add") };
         let look = 0;
-        nb.pages = PLAN_PAGES[nb.plan].map((key) => {
+        const pack = nb.pack === "production" ? "production" : nb.plan;
+        delete nb.pack;
+        nb.pages = PLAN_PAGES[pack].map((key) => {
           const blocks = startBlocks(key, nb, "add");
           if (key === "sp_look") { look++; const lab = blocks.find((b) => b.k === "text" && b.t === "LOOK 1"); if (lab) lab.t = `LOOK ${look}`; }
-          return { type: "free", blocks, ...(nb.plan === "shoot" && TEAM_PAGES.has(key) ? { teamOnly: true } : {}) };
+          return { type: "free", blocks, ...(nb.plan === "shoot" && (TEAM_PAGES.has(key) || PRODUCTION_TEAM.has(key)) ? { teamOnly: true } : {}) };
         });
         nb.pages.push({ type: "end", layout: "back" });
         return nb;
@@ -9439,8 +9775,8 @@
          the family's own (a magazine or — for a talent — a comp card; a
          moodboard or a shoot plan), and none when there is one. Calendars and
          one-offs are the studio's own, so they don't ask who for. */
-      const FAMILY_OF = { magazine: ["magazine", "compcard"], lookbook: ["lookbook"], pitch: ["pitch"], moodboard: ["moodboard", "shootplan"], calendar: ["calendar"], misc: ["misc"] };
-      const KIND_TITLE = { magazine: "New magazine", compcard: "New comp card", lookbook: "New lookbook", pitch: "New pitch", moodboard: "New moodboard", shootplan: "New shoot plan", calendar: "New calendar", misc: "Make something" };
+      const FAMILY_OF = { magazine: ["magazine", "compcard"], lookbook: ["lookbook"], pitch: ["pitch"], moodboard: ["moodboard", "shootplan", "production"], calendar: ["calendar"], misc: ["misc"] };
+      const KIND_TITLE = { magazine: "New magazine", compcard: "New comp card", lookbook: "New lookbook", pitch: "New pitch", moodboard: "New moodboard", shootplan: "New shoot plan", production: "New production pack", calendar: "New calendar", misc: "Make something" };
       const FAMILY_TITLE = { magazine: "New magazine", lookbook: "New lookbook", pitch: "New pitch", moodboard: "New moodboard or shoot plan", calendar: "New calendar", misc: "Make something" };
       const KIND_TILES = [
         ["magazine", "Magazine", "Your book of work, or one for a brand, a client or a talent.", "mg_cover"],
@@ -9490,7 +9826,7 @@
             <p class="sb-warn" id="sbForNeed" hidden></p>
           </div>
           <p class="sb-hint" id="sbForNote">${esc(forNoteNow())}</p>
-          <div class="sb-cpbase" id="sbKindRow"><span>Start with</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of book">${[["magazine", "A magazine"], ["lookbook", "A lookbook"], ["moodboard", "A moodboard"], ["pitch", "A pitch"], ["shootplan", "A shoot plan"], ["calendar", "A calendar"], ["misc", "Miscellaneous"], ["compcard", "A comp card"]].map(([k, nm]) => `<button type="button" role="radio" data-kind="${k}" aria-checked="${kind === k}" ${k === "compcard" && forWho !== "talent" ? "hidden" : ""}>${nm}</button>`).join("")}</div></div>
+          <div class="sb-cpbase" id="sbKindRow"><span>Start with</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of book">${[["magazine", "A magazine"], ["lookbook", "A lookbook"], ["moodboard", "A moodboard"], ["pitch", "A pitch"], ["shootplan", "A shoot plan"], ["production", "A production pack"], ["calendar", "A calendar"], ["misc", "Miscellaneous"], ["compcard", "A comp card"]].map(([k, nm]) => `<button type="button" role="radio" data-kind="${k}" aria-checked="${kind === k}" ${k === "compcard" && forWho !== "talent" ? "hidden" : ""}>${nm}</button>`).join("")}</div></div>
           <p class="sb-hint" id="sbKindNote">${esc(KIND_NOTE[kind])}</p>
           <div class="sb-startcc" id="sbStartCC" hidden><button type="button" class="sb-btn" data-start="custom" data-compcard="1">Make the comp card →</button><button type="button" class="sb-btn dark" data-start="custom" data-makeplan="1" hidden>Make it →</button></div>
           <div class="sb-startcal" id="sbStartMisc" ${kind === "misc" ? "" : "hidden"}>
@@ -9593,12 +9929,12 @@
           // A comp card is one page with no cover to choose: one button instead.
           // A moodboard starts on a board: its layouts stand where the covers would.
           // A pitch or a shoot plan has its own cover: one button too.
-          const cc = kind === "compcard", mb = kind === "moodboard", pl = kind === "pitch" || kind === "shootplan", cal = kind === "calendar" || kind === "misc";
+          const cc = kind === "compcard", mb = kind === "moodboard", pl = kind === "pitch" || kind === "shootplan" || kind === "production", cal = kind === "calendar" || kind === "misc";
           box.querySelector("#sbStartCal").hidden = kind !== "calendar";
           box.querySelector("#sbStartMisc").hidden = kind !== "misc";
           box.querySelector("#sbStartCC").hidden = !cc && !pl;
           box.querySelector('[data-compcard="1"]').hidden = !cc;
-          { const mk = box.querySelector("[data-makeplan]"); mk.hidden = !pl; mk.textContent = kind === "pitch" ? "Make the pitch →" : "Make the shoot plan →"; }
+          { const mk = box.querySelector("[data-makeplan]"); mk.hidden = !pl; mk.textContent = kind === "pitch" ? "Make the pitch →" : kind === "production" ? "Make the production pack →" : "Make the shoot plan →"; }
           box.querySelector("#sbCoverHint").hidden = cc || mb || pl || cal;
           box.querySelector("#sbStartCovers").hidden = cc || mb || pl || cal;
           box.querySelector("#sbStartBoards").hidden = !mb;
@@ -10308,7 +10644,7 @@
     const freePage = () => { const e = curEntry(); return e && e.type === "free" ? e : null; };
     const blocksOf = (e) => (Array.isArray(e.blocks) ? e.blocks : (e.blocks = []));
     const curBlock = () => { const e = freePage(); if (!e) return null; return blocksOf(e)[blockSel] || null; };
-    const BLOCK_NAME = { text: "Words", photo: "Photograph", shape: "Shape", line: "Line", cal: "Month" };
+    const BLOCK_NAME = { text: "Words", photo: "Photograph", shape: "Shape", line: "Line", cal: "Month", tbl: "Table" };
     const blockLabel = (b) => (b.k === "text" ? (String(b.t || "").trim().slice(0, 28) || "Words (empty)") : b.k === "line" && linePath(b) === "free" ? "Drawn line" : BLOCK_NAME[b.k] || b.k);
     /* The list of what is on an Anything page, as layers (the owner, Sep 29
        2026: "improve UX of this page … modern and minimalistic"): one slim
@@ -10320,7 +10656,8 @@
       photo: `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3.5 11.5l3-3 2.2 2.2L10.5 9l2 2.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>`,
       shape: `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor" opacity=".55"/></svg>`,
       line: `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2.5 8h11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
-      drawn: `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2.5 11c2-5 4 1 6-3s3-2 5-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`
+      drawn: `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2.5 11c2-5 4 1 6-3s3-2 5-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+      tbl: `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2.5 4h11M2.5 8h11M2.5 12h11M6.5 4v8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`
     };
     const svgI = (d) => `<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">${d}</svg>`;
     const ALIGN_ICON = {
@@ -10379,6 +10716,7 @@
         if (b.k === "photo") return b.p && b.p.id ? { text: "Photo", empty: false } : { text: "Empty photo frame", empty: true };
         if (b.k === "line") return { text: linePath(b) === "free" ? "Drawn line" : "Line", empty: false };
         if (b.k === "cal") { const at = calMonth(book, b.m || 0); return { text: `${b.look === "habits" ? "Habits · " : ""}${MONTHS[at.m]} ${at.y}`, empty: false }; }
+        if (b.k === "tbl") { const n = tblRows(b).length; return { text: `Table · ${n} row${n === 1 ? "" : "s"}`, empty: false }; }
         return { text: BLOCK_NAME[b.k] || b.k, empty: false };
       };
       const last = blocks.length - 1;
@@ -11166,6 +11504,7 @@
         : k === "photo" ? { k: "photo", x: at(0.12), y: at(0.16), w: 0.45, h: 0.3 }
         : k === "logo" ? { k: "photo", x: 0.7, y: 0.04, w: 0.24, h: 0.09, p: { id: brandOf().logo, x: 0.5, y: 0.5, zoom: 1, fit: "whole" } }
         : k === "shape" ? { k: "shape", x: at(0.12), y: at(0.16), w: 0.45, h: 0.18, fill: "accent" }
+        : k === "table" ? { k: "tbl", x: at(0.1), y: at(0.14), w: 0.8, h: 0.4, cols: [{ h: "Item", w: 3 }, { h: "Notes", w: 2 }], rows: [["", ""], ["", ""], ["", ""], ["", ""], ["", ""]] }
         : k === "drawing" ? { k: "shape", x: at(0.3), y: at(0.3), w: 0.2, h: round4((0.2 * geometry(book).Wa) / geometry(book).Ha), fill: "accent", shape: "g:sparkle" }
         : { k: "line", x: at(0.12), y: at(0.2), w: 0.3, thick: "narrow", color: "rule" };
       blocks.push(b);
@@ -11842,6 +12181,7 @@
       const card = type === "free" && start === "compcard" ? compCardBlocks(book) : null;
       if (card) entry.blocks = card.blocks;
       else if (type === "free") entry.blocks = startBlocks(start, book, "add");
+      if (type === "free" && PRODUCTION_TEAM.has(start)) entry.teamOnly = true;
       if (["photos", "spread", "story", "note", "quote", "feature", "article", "look"].includes(type)) entry.photos = [];
       if (type === "divider") { entry.heading = "Selected work"; entry.line = ""; }
       // Writing pages start empty: nothing is ever written for the studio.
@@ -13385,6 +13725,33 @@
           <label class="sb-check-row"><input type="checkbox" data-caltitle ${b.title === false ? "" : "checked"}> The month's name on top</label>
           <div class="sb-field"><span class="sb-label">Colour of the numbers</span><span class="sb-swatches" role="group" aria-label="Colour of the numbers">${swatch("calcol", "", "The style's own", P.ink, !b.color)}${fills.filter(([k]) => k !== "ink").map(([k, n, c]) => swatch("calcol", k, n, c, b.color === k)).join("")}</span></div>
           <p class="sb-hint">The year, the month it starts in and the day weeks start on are the whole calendar's: Design → Calendar${b.look === "habits" ? " — and so are the habits a tracker lists" : ""}.</p>` : "";
+      // A table (v609): its columns and rows as plain lines of text, how it looks, and whether it adds a column up.
+      const tblFields = b && b.k === "tbl" ? (() => {
+        const cols = tblCols(b), rows = tblRows(b), geo = tblGeom(b, blockBox(b, G.Wa, G.Ha));
+        const sum = b.sum && typeof b.sum === "object" ? b.sum : null;
+        const sc = sum ? Math.min(Math.max(0, (+sum.col) | 0), cols.length - 1) : 0;
+        return `
+          <div class="sb-field"><label class="sb-label" for="sbTblCols">Columns</label>
+            <input id="sbTblCols" type="text" data-tblcols value="${esc(cols.map((c) => c.h || "").join(" | "))}" maxlength="240" autocomplete="off" spellcheck="true">
+            <p class="sb-hint">Separate the names with | — up to ${TBL.cols}.</p></div>
+          <div class="sb-field"><label class="sb-label" for="sbTblRows">Rows</label>
+            <textarea id="sbTblRows" data-tblrows rows="9" wrap="off" spellcheck="true" style="white-space:pre;overflow:auto">${esc(rows.map((r) => r.join(" | ")).join("\n"))}</textarea>
+            <p class="sb-note" data-tblnote>${tblNote(geo)}</p>
+            <p class="sb-hint">One row to a line, the columns separated by | or a tab — so rows can be pasted straight from a spreadsheet. A line holding only | is an empty row to write in by hand.</p>
+            <div class="sb-adds"><button type="button" data-tbladd="5">+ 5 empty rows</button><button type="button" data-tbladd="clear">Clear the rows</button></div></div>
+          <div class="sb-field"><span class="sb-label">Right-aligned columns</span>
+            <div class="sb-adds">${cols.map((c, i) => `<label class="sb-check-row"><input type="checkbox" data-tblright="${i}" ${c.a === "r" ? "checked" : ""}> ${esc(c.h || `Column ${i + 1}`)}</label>`).join("")}</div></div>
+          <div class="sb-field"><span class="sb-label">Lines</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Lines">${[["", "A rule under each row"], ["grid", "A full grid"], ["plain", "None"]].map(([k, n]) => `<button type="button" role="radio" data-tbllook="${k}" aria-checked="${(b.look || "") === k}">${n}</button>`).join("")}</div></div>
+          <div class="sb-field"><span class="sb-label">Text size</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Text size">${[[0.85, "Smaller"], [1, "Normal"], [1.2, "Larger"]].map(([k, n]) => `<button type="button" role="radio" data-tblsize="${k}" aria-checked="${Math.abs((+b.size || 1) - k) < 0.05}">${n}</button>`).join("")}</div></div>
+          <label class="sb-check-row"><input type="checkbox" data-tbltotals ${sum ? "checked" : ""}> Add a column up (a total at the foot)</label>
+          ${sum ? `<div class="sb-field"><label class="sb-label" for="sbTblSc">Column to add up</label>
+              <select id="sbTblSc" data-tblsc>${cols.map((c, i) => `<option value="${i}" ${i === sc ? "selected" : ""}>${esc(c.h || `Column ${i + 1}`)}</option>`).join("")}</select>
+              <label class="sb-check-row"><input type="checkbox" data-tblqr ${cols[sc].f === "qr" ? "checked" : ""} ${sc < 2 ? "disabled" : ""}> Work out empty ones as the two columns before it multiplied</label>
+              <div class="sb-ptrow"><label>Currency <input type="text" data-tblcur value="${esc(sum.cur || "")}" maxlength="3" style="width:56px"></label>
+              <label>Contingency % <input type="number" data-tblcont min="0" max="100" step="1" value="${sum.contingency || ""}" style="width:72px"></label>
+              <label>GST % <input type="number" data-tblgst min="0" max="100" step="1" value="${sum.gst || ""}" style="width:72px"></label></div>
+              <p class="sb-hint">Each extra line is worked out on the total above it: the contingency on the subtotal, then GST on that.</p></div>` : ""}`;
+      })() : "";
       const words = b && b.k === "text" ? `
         <div class="sb-field"><span class="sb-label">What kind of words</span>
           <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of words">${[["kicker", "Small line"], ["head", "Headline"], ["intro", "Intro"], ["body", "Words"], ["quote", "Quote"]].map(([k, n]) => `<button type="button" role="radio" data-role="${k}" aria-checked="${(b.role || "body") === k}">${n}</button>`).join("")}</div></div>
@@ -13441,6 +13808,7 @@
           <button type="button" data-addblk="paste" title="Copy a picture anywhere (right-click → Copy image), then this, or ${MOD}V">${uiIc("paste", 20)}<span>Paste picture</span></button>
           <button type="button" data-addblk="shape">${uiIc("shape", 20)}<span>Shape</span></button>
           <button type="button" data-addblk="line">${uiIc("line", 20)}<span>Line</span></button>
+          <button type="button" data-addblk="table">${uiIc("grid", 20)}<span>Table</span></button>
           <button type="button" data-addblk="drawing">${uiIc("star", 20)}<span>Drawing</span></button>
           <button type="button" data-addblk="draw" aria-pressed="${drawing}">${uiIc("pen", 20)}<span>Draw by hand</span></button>
           ${brandOf().logo && (outsideCache || []).some((r) => r.id === brandOf().logo) ? `<button type="button" data-addblk="logo">${uiIc("badge", 20)}<span>Your logo</span></button>` : ""}
@@ -13448,7 +13816,7 @@
         ${b ? "" : layersHtml}
         ${b ? "" : pageLookHtml(entry, blocks.filter((x) => x.k === "photo").length, true)}
         ${b ? `<div class="sb-sec sb-rowbox sb-item"><div class="sb-itemhead"><button type="button" class="sb-btn quiet sb-backpage" data-backpage aria-label="Back to the page">${uiIc("left", 14)}<span>Page</span></button><h3>${esc(BLOCK_NAME[b.k] || "Thing")} ${blockSel + 1}</h3></div>
-          ${words}${calFields}${paint}${photoShape}${effects}
+          ${words}${calFields}${tblFields}${paint}${photoShape}${effects}
           ${b.k === "photo" ? `<div class="sb-adds"><button type="button" data-noteunder>${uiIc("type")}Add a note under it</button><button type="button" data-colours ${b.p && b.p.id ? "" : "disabled"}>${uiIc("palette")}Colours from it</button></div>` : ""}
           ${(() => {
             const rec = b.k === "photo" && b.p && /^out_/.test(String(b.p.id)) ? (outsideCache || []).find((r) => r.id === b.p.id && r.pasted) : null;
@@ -13487,6 +13855,45 @@
         box.querySelectorAll("[data-callook]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.callook === "mini" || x.dataset.callook === "habits") b.look = x.dataset.callook; else delete b.look; redraw(); }));
         { const ct = box.querySelector("[data-caltitle]"); if (ct) ct.addEventListener("change", () => { mark(); if (ct.checked) delete b.title; else b.title = false; redraw(); }); }
         box.querySelectorAll("[data-calcol]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.calcol) b.color = x.dataset.calcol; else delete b.color; redraw(); }));
+      }
+      if (b && b.k === "tbl") {
+        const cleanCell = (v) => String(v == null ? "" : v).replace(/[\r\n]+/g, " ").trim().slice(0, TBL.cell);
+        const parseRows = (text) => String(text).split(/\r?\n/).filter((ln) => ln.trim() !== "").slice(0, TBL.rows).map((ln) => (ln.includes("\t") ? ln.split("\t") : ln.split("|")).slice(0, TBL.cols).map(cleanCell));
+        const note = () => { const n = box.querySelector("[data-tblnote]"); if (n) n.textContent = tblNote(tblGeom(b, blockBox(b, G.Wa, G.Ha))); };
+        { const ci = box.querySelector("[data-tblcols]"); if (ci) ci.addEventListener("input", () => {
+          mark(true);
+          const names = ci.value.split("|").map(cleanCell).slice(0, TBL.cols), old = tblCols(b);
+          b.cols = (names.length ? names : [""]).map((h, i) => ({ ...(old[i] || { w: 1 }), h }));
+          if (b.sum) b.sum.col = Math.min((+b.sum.col) | 0, b.cols.length - 1);
+          change({ typing: true }); note();
+        }); }
+        { const ri = box.querySelector("[data-tblrows]"); if (ri) ri.addEventListener("input", () => { mark(true); b.rows = parseRows(ri.value); change({ typing: true }); note(); }); }
+        box.querySelectorAll("[data-tbladd]").forEach((x) => x.addEventListener("click", () => {
+          mark();
+          if (x.dataset.tbladd === "clear") b.rows = [];
+          else { const n = tblCols(b).length; b.rows = [...tblRows(b), ...Array.from({ length: +x.dataset.tbladd }, () => Array.from({ length: n }, () => ""))].slice(0, TBL.rows); }
+          redraw();
+        }));
+        box.querySelectorAll("[data-tblright]").forEach((x) => x.addEventListener("change", () => { mark(); const c = tblCols(b)[+x.dataset.tblright]; if (!c) return; if (x.checked) c.a = "r"; else delete c.a; b.cols = tblCols(b); redraw(); }));
+        box.querySelectorAll("[data-tbllook]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.tbllook) b.look = x.dataset.tbllook; else delete b.look; redraw(); }));
+        box.querySelectorAll("[data-tblsize]").forEach((x) => x.addEventListener("click", () => { mark(); const v = +x.dataset.tblsize; if (Math.abs(v - 1) < 0.05) delete b.size; else b.size = v; redraw(); }));
+        { const t = box.querySelector("[data-tbltotals]"); if (t) t.addEventListener("change", () => {
+          mark();
+          if (t.checked) { const cols = tblCols(b); b.cols = cols; b.sum = { col: cols.length - 1, cur: "₹" }; } else delete b.sum;
+          redraw();
+        }); }
+        { const sc = box.querySelector("[data-tblsc]"); if (sc) sc.addEventListener("change", () => { mark(); b.sum.col = +sc.value; redraw(); }); }
+        { const q = box.querySelector("[data-tblqr]"); if (q) q.addEventListener("change", () => {
+          mark(); const cols = tblCols(b); b.cols = cols;
+          cols.forEach((c) => { delete c.f; });
+          if (q.checked && cols[b.sum.col]) cols[b.sum.col].f = "qr";
+          redraw();
+        }); }
+        { const cu = box.querySelector("[data-tblcur]"); if (cu) cu.addEventListener("input", () => { mark(true); b.sum.cur = cu.value.slice(0, 3); change({ typing: true }); }); }
+        [["data-tblcont", "contingency"], ["data-tblgst", "gst"]].forEach(([attr, key]) => {
+          const el = box.querySelector(`[${attr}]`);
+          if (el) el.addEventListener("input", () => { mark(true); const v = Math.round(+el.value); if (Number.isFinite(v) && v > 0) b.sum[key] = Math.min(100, v); else delete b.sum[key]; change({ typing: true }); });
+        });
       }
       { const ph = $("#sbPageHead"); if (ph) ph.hidden = !!b; }
       placeInsert(box);
