@@ -789,3 +789,31 @@ window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"].status = "Archived — superseded by V3.
       : "Archived - superseded by V4.3 (no change to the paid-shoot wording)";
   }
 })();
+
+/* ── Location agreement (16 Oct 2026) ────────────────────────────────────────
+   Not a client contract: the paper a location's owner or manager signs for a
+   shoot at their place, printed from the portfolio builder's Production pages
+   (Location agreement). It is kept here, beside the contracts, so clause text has
+   one home — but outside WPS_CONTRACT_ARCHIVE, which is for what a booking agrees
+   to and carries versions, a Vault entry and the ACTIVE_CONTRACTS pointer.
+   Wording: drafted for the owner in plain English and APPROVED by the owner
+   word for word on 16 Oct 2026 ("it was correct the one you recommended").
+   The page's boxes (place, owner, dates, hours, fee and deposit, neighbours,
+   anything else) are what "written on this sheet" refers to. */
+window.WPS_LOCATION_AGREEMENT = (() => {
+  const clauses = [
+    ["The place and the dates", "The Owner lets the Studio use the place named on this sheet on the dates and hours written on it, to take photographs or film (the \"Shoot\")."],
+    ["Who is there", "The Studio's crew, and the people the Studio brings, may be at the place. The Studio is responsible for them."],
+    ["Fee and deposit", "The Studio pays the fee and the refundable deposit written on this sheet. The deposit comes back within 7 days if nothing is damaged or left behind."],
+    ["Care of the place", "The Studio keeps the place clean and safe, protects floors and furniture, moves nothing without the Owner's say-so, and leaves it as it was found."],
+    ["Damage", "The Studio pays the reasonable cost of repairing damage caused by the Studio or its people during the Shoot. The Owner tells the Studio of any damage within 48 hours."],
+    ["Rules and neighbours", "The Studio follows the building's rules and quiet hours. The Owner has said what neighbours need to be told."],
+    ["The Owner's right", "The Owner confirms they are entitled to let the Studio use the place. The Studio gets any permit the Shoot needs."],
+    ["The pictures", "The Studio may use the pictures made at the place, including the place itself. It will not publish the address or the Owner's name without the Owner's agreement."],
+    ["Safety", "No open flame, smoke, special effects or drone without the Owner's written agreement."],
+    ["Cancelling", "Either side may cancel with 48 hours' notice and the deposit comes back. A Studio cancellation inside 48 hours loses the fee, but not the deposit."],
+    ["Anything else we agreed", "is written on this sheet.", " "]   // the heading runs on into its sentence
+  ];
+  return { title: "Location agreement", approved: "16 October 2026", clauses, text: clauses.map(([h, t, join], i) => `${i + 1}. ${h}${join || ". "}${t}`).join("\n") };
+})();
+

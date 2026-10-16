@@ -7602,12 +7602,14 @@
     if (bind === "calyear") return calYearLabel(book);
     return "";
   }
+  // Words that live in contracts.js and are copied into a page when it is made (v616): the location agreement.
+  const sourceText = (name) => (name === "location" && window.WPS_LOCATION_AGREEMENT && window.WPS_LOCATION_AGREEMENT.text) || "";
   function startBlocks(key, book, how = "add") {
     const tpl = FREE_STARTS[key] || [];
     const t = how === "layout" ? null : talentOf(book);
     const pick = t ? talentPicker(book, t) : null;
     return tpl.map((b) => {
-      const { keep, sample, bind, ...c } = b;
+      const { keep, keepFrom, sample, bind, ...c } = b;
       if (c.style) c.style = { ...c.style };
       // A table: its own copy of the columns and rows; the preview shows the sample rows, a new page the blank ones.
       if (c.k === "tbl") {
@@ -7615,7 +7617,7 @@
         c.rows = (how === "preview" && Array.isArray(sample) ? sample : c.rows || []).map((r) => r.slice());
         if (c.sum) c.sum = { ...c.sum };
       }
-      if (c.k === "text") c.t = (bind && how !== "layout" ? bookWords(book, bind) : "") || (t && bind ? talentWords(t, bind, keep) : "") || keep || (how === "preview" && sample) || "";
+      if (c.k === "text") c.t = (bind && how !== "layout" ? bookWords(book, bind) : "") || (t && bind ? talentWords(t, bind, keep) : "") || (keepFrom ? sourceText(keepFrom) : "") || keep || (how === "preview" && sample) || "";
       if (c.k === "photo" && pick && bind) { const p = pick(String(bind).split(",")); if (p) c.p = p; }
       return c;
     });
@@ -8626,12 +8628,13 @@
       ],
       pr_location: [
         ...DOC("LOCATION AGREEMENT", "Monsoon linen · the flat"),
-        ...rows(0.07, 0.14, 0.036, 0.22, 0.64, [["Place", "", "A flat with a north window"], ["Address", "", "On the booking"], ["Owner or manager", "", "Name"], ["Contact", "", "98100 00002"], ["Shoot dates", "", "18 and 19 October"], ["Hours", "", "7:00 am to 6:00 pm"], ["Fee and deposit", "", "₹ 8,000 · deposit ₹ 2,000"], ["Power, parking, lift", "", "Yes · gate 2 · goods lift"], ["Neighbours told", "", "Yes, on 15 October"]]),
-        label(0.07, 0.48, 0.86, "WHAT WAS AGREED"),
-        T("body", 0.07, 0.507, 0.86, 0.26, { sample: "The owner lets the studio use the flat for the two days above; the studio leaves it as it found it, and the deposit comes back the day after." }),
-        L(0.07, 0.84, 0.38), L(0.55, 0.84, 0.38),
-        T("body", 0.07, 0.848, 0.38, 0.04, { keep: "Owner or manager: name, signature, date", style: { size: 0.8 } }),
-        T("body", 0.55, 0.848, 0.38, 0.04, { keep: "For the studio: name, signature, date", style: { size: 0.8 } })
+        ...rows(0.07, 0.14, 0.0325, 0.22, 0.64, [["Place", "", "A flat with a north window"], ["Address", "", "On the booking"], ["Owner or manager", "", "Name"], ["Contact", "", "98100 00002"], ["Shoot dates", "", "18 and 19 October"], ["Hours", "", "7:00 am to 6:00 pm"], ["Fee and deposit", "", "₹ 8,000 · deposit ₹ 2,000"], ["Power, parking, lift", "", "Yes · gate 2 · goods lift"], ["Neighbours told", "", "Yes, on 15 October"], ["Anything else we agreed", "", "A cup of tea at 4"]]),
+        label(0.07, 0.47, 0.86, "THE AGREEMENT"),
+        // The owner's own approved wording (16 Oct 2026), kept in contracts.js (WPS_LOCATION_AGREEMENT); one readable column, still ordinary words to edit.
+        T("body", 0.07, 0.497, 0.86, 0.36, { keepFrom: "location", style: { size: 0.8 } }),
+        L(0.07, 0.885, 0.38), L(0.55, 0.885, 0.38),
+        T("body", 0.07, 0.893, 0.38, 0.04, { keep: "Owner or manager: name, signature, date", style: { size: 0.8 } }),
+        T("body", 0.55, 0.893, 0.38, 0.04, { keep: "For the studio: name, signature, date", style: { size: 0.8 } })
       ],
       pr_scan: [
         ...DOC("SCANNED COPY", "The signed location agreement"),
@@ -8882,6 +8885,7 @@
   }
 
   function mount(root) {
+    try { if (window.loadContracts) window.loadContracts().catch(() => {}); } catch (e) { /* the agreement's box starts empty */ }
     injectCss();
     /* The studio's own photographs from this computer, read once as the
        builder opens and held in memory: library() runs on every redraw and a
