@@ -389,6 +389,16 @@ window.shootWindowMessage = function(entry) {
   const words = window.shootWindowWords(entry);
   return words ? `With this code you can book dates ${words}.` : "";
 };
+/* A place agreed by email (v613). A test shoot in a month the studio has filled
+   is refused, and "send a request instead" ends with the studio and the client
+   agreeing a date by email. This is how that date becomes a signed booking: the
+   studio makes the client an invite code for the agreed date and switches on
+   "Agreed by email" (allowFullMonth), and with that code the date can be booked
+   although the month is full. It only ever applies INSIDE the code's shoot
+   dates, so a switch with no date set does nothing. */
+window.codeAllowsFullMonth = function(entry, dateKey) {
+  return !!entry && typeof entry === "object" && entry.allowFullMonth === true && !!window.codeShootWindow(entry) && window.shootDateAllowedBy(entry, dateKey);
+};
 
 window.getPromoHomeStudioDiscount = function(entry) {
   if (!entry) return { type: "none" };
@@ -475,6 +485,8 @@ window.getAdminInviteCodes = function() {
       // Which shoot dates it allows (v608) — dropped here, it would vanish on reload.
       const shootFrom = typeof item === 'object' ? window.cleanCodeDate(item.shootFrom) : "";
       const shootTo = typeof item === 'object' ? window.cleanCodeDate(item.shootTo) : "";
+      // A place agreed by email (v613): written only when on, and only means anything with shoot dates.
+      const allowFullMonth = typeof item === 'object' && item.allowFullMonth === true && !!(shootFrom || shootTo);
       // This invite's own deliverables, in place of the test-shoot default (v588).
       const deliverables = typeof item === 'object' ? window.cleanDeliverables(item.deliverables) : "";
       if (codeStr && typeof codeStr === 'string' && !seen.has(codeStr.trim().toUpperCase())) {
@@ -488,6 +500,7 @@ window.getAdminInviteCodes = function() {
           ...(endDate ? { endDate } : {}),
           ...(shootFrom ? { shootFrom } : {}),
           ...(shootTo ? { shootTo } : {}),
+          ...(allowFullMonth ? { allowFullMonth: true } : {}),
           ...(deliverables ? { deliverables } : {})
         });
       }
@@ -5153,7 +5166,8 @@ window.resolveContractArchive = function(version) {
   const testShootMonthAfter = (monthKey, n = 1) => { const m = /^(\d{4})-(\d{2})$/.exec(monthKey); const d = new Date(+m[1], +m[2] - 1 + n, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
   const isConfirmedTestShoot = (b) => !!b && b.status !== "pencil" && !isTentativeBooking(b) && !isWorkshopBooking(b) && !isAssistingBooking(b) && !isBusyBooking(b)
     && /TFP|Selective Collaboration|test shoot/i.test(`${b.type || ""} ${b.contractVersion || ""}`);
-  const cleanLimit = (v) => { const n = typeof v === "string" && v.trim() === "" ? NaN : Number(v); return Number.isInteger(n) && n >= 0 && n <= 99 ? n : null; };
+  // Only a number, or a number typed as text, is a limit: an empty box is saved as null, and Number(null) is 0 — "none this month" — so null (and anything else) must read as "no limit".
+  const cleanLimit = (v) => { if (typeof v !== "number" && typeof v !== "string") return null; const n = typeof v === "string" && v.trim() === "" ? NaN : Number(v); return Number.isInteger(n) && n >= 0 && n <= 99 ? n : null; };
   function testShootLimitFor(monthKey, settings) {
     const lim = (settings || window.WPS_DATA.CALENDAR_SETTINGS || {}).testShootLimits;
     if (!lim || typeof lim !== "object") return null;
@@ -7789,7 +7803,11 @@ window.resolveContractArchive = function(version) {
       if (!el) return [];
       return Array.isArray(el._wpsPickedDates) && el._wpsPickedDates.length ? el._wpsPickedDates.slice() : parseTypedDates(el.value);
     };
-    const testMonthIsFull = (d) => { const sp = testShootSpots(testShootMonthKey(d)); return !!(sp && sp.full); };
+    /* A place agreed by email (v613): the invite code typed in lets THIS date through
+       although its month is full — see window.codeAllowsFullMonth. */
+    const monthAgreedByCode = (d) => { try { return window.codeAllowsFullMonth(bookingCalc.matchedInvite, getCalDateKey(d)); } catch (e) { return false; } };
+    const monthKeyAgreed = (m) => { try { const e = bookingCalc.matchedInvite, w = e && e.allowFullMonth === true && window.codeShootWindow(e); return !!w && (!w.from || m >= w.from.slice(0, 7)) && (!w.to || m <= w.to.slice(0, 7)); } catch (x) { return false; } };
+    const testMonthIsFull = (d) => { const sp = testShootSpots(testShootMonthKey(d)); return !!(sp && sp.full) && !monthAgreedByCode(d); };
     function testLimitProblem() {
       if (isAdmin() || !bookingIsTestShoot()) return "";
       const hit = requestedDays().find(testMonthIsFull);
@@ -8172,7 +8190,9 @@ window.resolveContractArchive = function(version) {
             if (isUserAdmin) return "";
             const note = (cls, text) => `<p class="${cls}" style="margin: 2px 0 6px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); text-align: center; line-height: 1.45;">${esc(text)}</p>`;
             const wins = activeCodeWindows().map((e) => window.shootWindowMessage(e));
-            const line = bookingIsTestShoot() ? testShootSpotsLine(`${viewYear}-${String(viewMonth + 1).padStart(2, "0")}`) : null;
+            const monthNow = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}`;
+            let line = bookingIsTestShoot() ? testShootSpotsLine(monthNow) : null;
+            if (line && monthKeyAgreed(monthNow) && (testShootSpots(monthNow) || {}).full) line = "This month is full, but the studio has agreed your date with you.";
             return `${wins.length ? note("dp-window", wins.join(" ")) : ""}${line ? note("dp-spots", line) : ""}${limitMsg ? `<p class="dp-limit-msg" role="alert" style="margin: 0 0 8px; padding: 8px 10px; border-radius: 8px; background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.3); color: #b91c1c; font-size: var(--font-xs); line-height: 1.45; font-weight: 600;">${esc(limitMsg)}${limitMsgAsk ? ` <button type="button" class="dp-request-btn link-arrow" style="padding: 0; margin-left: 4px; font-size: var(--font-xs);">Send the studio a request instead →</button>` : ""}</p>` : ""}`;
           })()}
           <div class="dp-grid">
@@ -10297,7 +10317,7 @@ window.resolveContractArchive = function(version) {
             ["Month asked for", fullNames.length ? `${fullNames.join(", ")} (full)` : "—"],
             ["Availability", "To be agreed by email — each of us confirms our own calendar"]
           ],
-          nextStep: "Reply by email with the dates the studio can do; the client confirms theirs. Once one is agreed, add it to the calendar as a Test shoot — it then counts toward that month.",
+          nextStep: "Reply by email with the dates the studio can do; the client confirms theirs. Once one is agreed, make them an invite code for that date (Invite codes: only that shoot date, “Agreed by email” switched on), press Publish now and send them the code — they book it on the booking page and sign the contract as usual, even though the month is full. Then add the booking to the calendar as a Test shoot.",
           done: "Your request has reached the studio. I'll reply by email with dates that work for both of us — you're welcome to send more preferred dates in your reply."
         }
       }));

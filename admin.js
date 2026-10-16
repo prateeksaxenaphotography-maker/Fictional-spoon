@@ -177,13 +177,18 @@ window.codeDatesFieldsHtml = function(prefix) {
         <label class="cx-field" id="${prefix}ShootToWrap" style="display: none;"><span class="cx-label">Until</span><input type="date" id="${prefix}ShootTo" /></label>
       </div>
       <p class="cx-hint">The days a client with this code may book their shoot on. Other days are greyed out in their date picker, with a note of the dates that are allowed. Fill in one end or both; both days count. This is separate from when the code itself works, above: a code can stop being usable on 30 October and still allow a shoot on 25 December. You are never held to it when you book as admin.</p>
+      ${prefix === "newInvite" ? `<label class="cx-check" id="${prefix}AgreedWrap" style="display: none;"><input type="checkbox" id="${prefix}Agreed" /><span><b>Agreed by email</b> — you and this person agreed the date, so they can book it even if that month's test shoots are full. Use it only for a date you have agreed.</span></label>` : ""}
+    
     </div>`;
 };
 
 window.syncCodeShootField = function(prefix) {
   const mode = document.getElementById(prefix + "ShootMode");
   const on = mode && mode.value === "between";
-  ["ShootFromWrap", "ShootToWrap"].forEach((id) => { const w = document.getElementById(prefix + id); if (w) w.style.display = on ? "" : "none"; });
+  ["ShootFromWrap", "ShootToWrap", "AgreedWrap"].forEach((id) => { const w = document.getElementById(prefix + id); if (w) w.style.display = on ? "" : "none"; });
+  // "Agreed by email" only means anything with shoot dates set: hiding it clears it.
+  const agreed = document.getElementById(prefix + "Agreed");
+  if (agreed && !on) agreed.checked = false;
 };
 
 window.syncCodeEndsField = function(prefix) {
@@ -207,6 +212,8 @@ window.fillCodeDatesFields = function(prefix, entry) {
   if (modeEl) modeEl.value = from || to ? "between" : "any";
   if (fromEl) fromEl.value = from;
   if (toEl) toEl.value = to;
+  const agreedEl = document.getElementById(prefix + "Agreed");
+  if (agreedEl) agreedEl.checked = !!(entry && entry.allowFullMonth === true && (from || to));
   window.syncCodeShootField(prefix);
 };
 
@@ -246,7 +253,9 @@ window.readCodeDatesFields = function(prefix) {
       return null;
     }
   }
-  return { startDate, endDate, shootFrom, shootTo };
+  // A place agreed by email (v613): only with shoot dates, only on an invite code.
+  const allowFullMonth = !!(shootFrom || shootTo) && !!document.getElementById(prefix + "Agreed")?.checked;
+  return { startDate, endDate, shootFrom, shootTo, allowFullMonth };
 };
 
 // The allowed shoot dates in words, for a code's card and the sentence under its form. Empty for any date.
@@ -851,7 +860,8 @@ const codeFormDates = (prefix) => (window.codeDatesLine({
 }) || "Works straight away, until you switch it off") + (() => {
   if (codeFormVal(prefix + "ShootMode") !== "between") return "";
   const line = window.codeShootLine({ shootFrom: codeFormVal(prefix + "ShootFrom"), shootTo: codeFormVal(prefix + "ShootTo") });
-  return line ? `. ${line.replace("Shoots ", "Clients can book shoots ")}` : "";
+  const agreed = prefix === "newInvite" && document.getElementById(prefix + "Agreed")?.checked;
+  return line ? `. ${line.replace("Shoots ", "Clients can book shoots ")}${agreed ? ", even if that month is full" : ""}` : "";
 })();
 const codeFormName = (id, fallback) => {
   const el = document.getElementById(id);
@@ -971,7 +981,8 @@ window.saveInviteCodeFromForm = function() {
     ...(dates.startDate ? { startDate: dates.startDate } : {}),
     ...(dates.endDate ? { endDate: dates.endDate } : {}),
     ...(dates.shootFrom ? { shootFrom: dates.shootFrom } : {}),
-    ...(dates.shootTo ? { shootTo: dates.shootTo } : {})
+    ...(dates.shootTo ? { shootTo: dates.shootTo } : {}),
+    ...(dates.allowFullMonth ? { allowFullMonth: true } : {})
   };
   if (editing) {
     const idx = list.findIndex(x => x.code === editing);
@@ -4067,7 +4078,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
              studio is never held to it. -->
         <div class="admin-panel" id="test-shoot-limits">
           <div class="admin-panel-head">Test shoots per month</div>
-          <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 8px 0 12px;">How many test shoots you will do in a month. Once a month is full, a client asking for a test shoot in it is told so and pointed to the next month with room. Only <strong>confirmed</strong> test shoots on your published calendar use up a place — a hold doesn't. You can always add one more yourself; the limit is only for clients.</p>
+          <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 8px 0 12px;">How many test shoots you will do in a month. Once a month is full, a client asking for a test shoot in it is told so and pointed to the next month with room. Only <strong>confirmed</strong> test shoots on your published calendar use up a place — a hold doesn't. You can always add one more yourself; the limit is only for clients. A client whose date you agreed with them by email can still book a full month: give them an invite code for that date with <strong>Agreed by email</strong> switched on.</p>
           <div style="display: flex; gap: 10px 16px; align-items: end; flex-wrap: wrap;">
             <label class="field" style="margin: 0; max-width: 220px;"><span>Most months</span><input type="number" id="tsLimitDefault" min="0" max="99" step="1" placeholder="No limit" /></label>
             <button type="button" class="admin-cal-btn" id="tsLimitDefaultBtn" style="font-weight: 800;">Update</button>
@@ -5386,7 +5397,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                 <span class="cx-badges">${window.codeStatusBadgeHtml(o)}<span class="code-live-slot" data-kind="invite" data-fp="${fp}"></span></span>
               </div>
               ${codeLine(codeStr, "invite code", codeStr === activeInviteCode ? `<span class="cx-tag" title="The code the studio's share links carry">Share-link code</span>` : "")}
-              ${facts([["Venue", o.location || "The talent chooses"], ["Venue cost", venueCost], ["Rental", rentalWords(window.getPromoHomeStudioDiscount(o))], ["Dates", window.codeDatesLine(o)], ["Shoot dates", window.codeShootLine(o).replace(/^Shoots /, "")], ["Deliverables", o.deliverables || ""]])}
+              ${facts([["Venue", o.location || "The talent chooses"], ["Venue cost", venueCost], ["Rental", rentalWords(window.getPromoHomeStudioDiscount(o))], ["Dates", window.codeDatesLine(o)], ["Shoot dates", window.codeShootLine(o).replace(/^Shoots /, "")], ["If the month is full", o.allowFullMonth === true ? "Can still book it: agreed by email" : ""], ["Deliverables", o.deliverables || ""]])}
               <div class="code-live-note cx-live-note" data-kind="invite" data-fp="${fp}" hidden></div>
               ${cardFoot(isOn, "Invite", codeStr)}
             </article>`;

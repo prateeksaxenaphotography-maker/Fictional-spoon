@@ -1124,6 +1124,13 @@ try {
     for (const f of ["startDate", "endDate", "shootFrom", "shootTo"]) {
       if (c[f] !== undefined && c[f] !== null && c[f] !== "" && !isDay(c[f])) fail(`${name}: ${f} is not a YYYY-MM-DD date (${JSON.stringify(c[f])})`);
     }
+    // "Agreed by email" (v613): an invite code that lets one agreed date through although its month is
+    // full. Without shoot dates it would mean "any date in any full month", which is never what was meant.
+    if (c.allowFullMonth !== undefined) {
+      if (c.allowFullMonth !== true) fail(`${name}: allowFullMonth must be true or left out`);
+      else if (!isDay(c.shootFrom) && !isDay(c.shootTo)) fail(`${name}: "Agreed by email" needs the shoot dates it is for`);
+      else if (String(name).startsWith("promo")) warn(`${name}: "Agreed by email" only works on an invite code`);
+    }
     // A code's own deliverables line (v588) is shown to the client and named
     // in their signed record: a line of text, as the admin form keeps it.
     if (c.deliverables !== undefined && (typeof c.deliverables !== "string" || c.deliverables.length > 200)) fail(`${name}: deliverables must be a line of text of up to 200 characters`);
