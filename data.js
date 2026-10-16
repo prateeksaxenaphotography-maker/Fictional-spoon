@@ -3066,18 +3066,21 @@ window.WPS_DATA = {
       "2026-10-25::b_1791825432312_0b1i",
       "2026-10-25::Anticipated Client Hold",
       "2026-10-24::b_1791955006902_rqq9",
-      "2026-10-24::Test shoot"
+      "2026-10-24::Test shoot",
+      "2026-11-28::b_audit_NP-20261017-004338-P04B",
+      "2026-11-28::NP-20261017-004338-P04B",
+      "2026-11-28::prateek"
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1792145225637,
-    "syncedAt": 1792145225637,
+    "updatedAt": 1792178355072,
+    "syncedAt": 1792178355072,
     "testShootLimits": {
       "default": 2,
       "months": {
         "2026-11": 3
       },
-      "at": 1792144392952
+      "at": 1792178334619
     }
   },
   "INVITE_CODES": [
