@@ -4043,6 +4043,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 8px 0 12px;">How many test shoots you will do in a month. Once a month is full, a client asking for a test shoot in it is told so and pointed to the next month with room. Only <strong>confirmed</strong> test shoots on your published calendar use up a place — a hold doesn't. You can always add one more yourself; the limit is only for clients.</p>
           <div style="display: flex; gap: 10px 16px; align-items: end; flex-wrap: wrap;">
             <label class="field" style="margin: 0; max-width: 220px;"><span>Most months</span><input type="number" id="tsLimitDefault" min="0" max="99" step="1" placeholder="No limit" /></label>
+            <button type="button" class="admin-cal-btn" id="tsLimitDefaultBtn" style="font-weight: 800;">Update</button>
             <span style="font-size: var(--font-xs); color: var(--ink-soft); padding-bottom: 10px;">Leave empty for no limit. 0 means none.</span>
           </div>
           <div style="margin-top: 16px;">
@@ -4058,7 +4059,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft);">Where you stand</span>
             <div id="tsLimitOverview" style="margin-top: 8px; font-size: var(--font-xs); line-height: 1.7;"></div>
           </div>
-          <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 12px 0 0;">Saved on this computer as you type. Publish the calendar to put it on the site — and add each test shoot you accept to the calendar, because a client's request only counts once it is there and published.</p>
+          <p id="tsLimitStatus" role="status" aria-live="polite" style="min-height: 1.4em; margin: 12px 0 0; font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);"></p>
+          <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 4px 0 0;">Press Update to save a change on this computer. Then publish the calendar to put it on the site — and add each test shoot you accept to the calendar, because a client's request only counts once it is there and published.</p>
         </div>
         <div class="admin-panel">
           <div class="admin-panel-head" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminPkgBody');const a=document.getElementById('adminPkgArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
@@ -6379,11 +6381,15 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         const l = window.WPS_DATA.CALENDAR_SETTINGS.testShootLimits;
         return { default: l && Number.isInteger(l.default) ? l.default : null, months: Object.fromEntries(Object.entries((l && l.months) || {}).filter(([k, v]) => /^\d{4}-\d{2}$/.test(k) && Number.isInteger(v))) };
       };
+      // The line under the panel says whether the last change is kept: green once saved, amber while an edit is waiting for Update.
+      const say = (text, saved) => { const el = $("#tsLimitStatus"); if (el) { el.textContent = text; el.style.color = saved ? "#059669" : "#b45309"; } };
       const write = (next, said) => {
         window.WPS_DATA.CALENDAR_SETTINGS.testShootLimits = { default: next.default, months: next.months, at: Date.now() };
         markUnpublished("calendar");
-        if (saveCalendarSettings() && said) toast(said + " Publish the calendar to show it on the site.");
+        const kept = saveCalendarSettings();
+        if (kept && said) toast(said + " Publish the calendar to show it on the site.");
         paint();
+        if (kept && said) say(`✓ ${said} Saved on this computer — publish the calendar to show it on the site.`, true);
       };
       const paint = () => {
         const cur = read();
@@ -6395,13 +6401,23 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           list.innerHTML = keys.length ? keys.map((k) => `<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
               <span style="min-width: 150px; font-weight: 700;">${esc(longMonth(k))}</span>
               <input type="number" class="ts-month-n" data-month="${esc(k)}" min="0" max="99" step="1" value="${cur.months[k]}" style="width: 90px; padding: 6px 8px;" aria-label="Test shoots in ${esc(longMonth(k))}" />
+              <span style="font-size: var(--font-xs); color: var(--ink-soft);">test shoots</span>
+              <button type="button" class="admin-cal-btn ts-month-u" data-month="${esc(k)}" style="font-weight: 800;" aria-label="Update ${esc(longMonth(k))}">Update</button>
               <button type="button" class="admin-cal-btn ts-month-x" data-month="${esc(k)}" aria-label="Use the usual number for ${esc(longMonth(k))}">Remove</button>
             </div>`).join("") : `<span style="font-size: var(--font-xs); color: var(--ink-soft);">None — every month uses the number above.</span>`;
-          list.querySelectorAll(".ts-month-n").forEach((inp) => inp.addEventListener("change", () => {
-            const n = num(inp.value); const now = read();
-            if (n === null) { paint(); return; }
-            now.months[inp.dataset.month] = n; write(now, `${longMonth(inp.dataset.month)} set to ${n}.`);
-          }));
+          const saveRow = (k) => {
+            const inp = list.querySelector(`.ts-month-n[data-month="${k}"]`); if (!inp) return;
+            const n = num(inp.value), now = read();
+            if (n === null) { toast("Type a whole number from 0 to 99 for that month."); say("Not saved yet — use a whole number from 0 to 99.", false); return; }
+            now.months[k] = n; write(now, `${longMonth(k)} set to ${n}.`);
+          };
+          // An edit waits for Update (or Enter): the button lights up so it is plain that it has not been kept yet.
+          list.querySelectorAll(".ts-month-n").forEach((inp) => {
+            const upd = list.querySelector(`.ts-month-u[data-month="${inp.dataset.month}"]`);
+            inp.addEventListener("input", () => { if (upd) upd.classList.add("primary"); say(`Not saved yet — press Update for ${longMonth(inp.dataset.month)}.`, false); });
+            inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); saveRow(inp.dataset.month); } });
+          });
+          list.querySelectorAll(".ts-month-u").forEach((b) => b.addEventListener("click", () => saveRow(b.dataset.month)));
           list.querySelectorAll(".ts-month-x").forEach((b) => b.addEventListener("click", () => {
             const now = read(); delete now.months[b.dataset.month]; write(now, `${longMonth(b.dataset.month)} goes back to the usual number.`);
           }));
@@ -6423,11 +6439,15 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           ov.innerHTML = rows.join("");
         }
       };
-      $("#tsLimitDefault")?.addEventListener("change", (e) => {
-        const raw = e.target.value.trim(); const n = num(raw); const now = read();
-        if (raw !== "" && n === null) { paint(); toast("Use a whole number from 0 to 99, or leave it empty for no limit."); return; }
+      const saveDefault = () => {
+        const raw = ($("#tsLimitDefault")?.value || "").trim(), n = num(raw), now = read();
+        if (raw !== "" && n === null) { toast("Use a whole number from 0 to 99, or leave it empty for no limit."); say("Not saved yet — use a whole number from 0 to 99, or leave it empty.", false); return; }
+        $("#tsLimitDefaultBtn")?.classList.remove("primary");
         now.default = n; write(now, n === null ? "No limit on most months." : `Most months: ${n} test shoot${n === 1 ? "" : "s"}.`);
-      });
+      };
+      $("#tsLimitDefault")?.addEventListener("input", () => { $("#tsLimitDefaultBtn")?.classList.add("primary"); say("Not saved yet — press Update.", false); });
+      $("#tsLimitDefault")?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); saveDefault(); } });
+      $("#tsLimitDefaultBtn")?.addEventListener("click", saveDefault);
       $("#tsLimitAddBtn")?.addEventListener("click", () => {
         const k = ($("#tsLimitMonthNew")?.value || "").trim(); const n = num($("#tsLimitMonthNewN")?.value ?? "");
         if (!/^\d{4}-\d{2}$/.test(k)) { toast("Pick the month first."); return; }
