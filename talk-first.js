@@ -14,7 +14,15 @@
 
    Loaded on the press by app.js (which hands over the booking page's own
    helpers), so the code every visitor downloads stays inside its budget. */
-window.WPS_TALK_FIRST = function ({ $, esc, setError, clearError, form, panel }) {
+/* `ask` (v608) turns the same sender into a TEST SHOOT REQUEST: for a client
+   whose month is full. The owner, Oct 2026: when there is no place, they "can
+   send a request saying whenever photographer/studio is available, with an
+   availability check from both parties over email, and they can send in their
+   preferred dates". So it carries the same details plus the dates they would
+   like (or "whenever the studio is free"), books nothing, and asks the studio to
+   reply with dates that suit both. Without `ask` it is Talk first, unchanged.
+     ask = { intro, enquiry, extra: [[label, value]], nextStep, done } */
+window.WPS_TALK_FIRST = function ({ $, esc, setError, clearError, form, panel, ask }) {
   const v = (id) => (($("#" + id) || {}).value || "").trim();
   const name = v("b_name"), email = v("b_email");
   const okMail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -26,11 +34,21 @@ window.WPS_TALK_FIRST = function ({ $, esc, setError, clearError, form, panel })
     return;
   }
 
+  // A test shoot is vetted on the person's work, so a request asks for it as the booking does.
+  if (ask) {
+    if (!v("b_instagram")) {
+      setError("b_instagram", "Instagram / Website is mandatory for test shoots.");
+      const el = $("#b_instagram"); if (el) { el.scrollIntoView({ block: "center" }); el.focus({ preventScroll: true }); }
+      return;
+    }
+    clearError("b_instagram");
+  }
+
   const to = (window.STUDIO_CONFIG && window.STUDIO_CONFIG.email) || "prateeksaxenaphotography@gmail.com";
-  const subject = `Talk first — ${name}`;
+  const subject = ask ? `Test shoot request — ${name}` : `Talk first — ${name}`;
   const role = (($("#b_role") || {}).selectedOptions || [])[0];
-  const lines = [["Name", name], ["Role", role ? role.text.trim() : "—"], ["Email", email], ["Phone", v("b_phone") || "—"], ["Instagram / Website", v("b_instagram") || "—"]];
-  const plain = `Hi,\n\nI'd like to talk first, before booking.\n\n${lines.map(([k, x]) => `${k}: ${x}`).join("\n")}\n\nThanks,\n${name}`;
+  const lines = [["Name", name], ["Role", role ? role.text.trim() : "—"], ["Email", email], ["Phone", v("b_phone") || "—"], ["Instagram / Website", v("b_instagram") || "—"], ...((ask && ask.extra) || [])];
+  const plain = `Hi,\n\n${ask ? ask.intro : "I'd like to talk first, before booking."}\n\n${lines.map(([k, x]) => `${k}: ${x}`).join("\n")}\n\nThanks,\n${name}`;
   const enc = encodeURIComponent;
   const links = {
     "#bookGmailLink": `https://mail.google.com/mail/?view=cm&fs=1&to=${enc(to)}&su=${enc(subject)}&body=${enc(plain)}`,
@@ -55,12 +73,12 @@ window.WPS_TALK_FIRST = function ({ $, esc, setError, clearError, form, panel })
         ? `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>`
         : `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>`;
     });
-    put("#bookSuccessHeading", (el) => { el.textContent = sending ? "Sending…" : sent ? "Details sent." : mode === "gmail" ? "One last step — press Send." : "One last step — pick how to send."; });
+    put("#bookSuccessHeading", (el) => { el.textContent = sending ? "Sending…" : sent ? (ask ? "Request sent." : "Details sent.") : mode === "gmail" ? "One last step — press Send." : "One last step — pick how to send."; });
     put("#bookSuccessMsg", (el) => {
       el.innerHTML = sending
         ? "Sending your details to the studio — <strong>please keep this page open</strong> for a moment."
         : sent
-        ? `<strong>Thanks, ${esc(name.split(/\s+/)[0] || name)}.</strong> Your details have reached the studio. I'll get in touch by email or a call.`
+        ? `<strong>Thanks, ${esc(name.split(/\s+/)[0] || name)}.</strong> ${ask ? esc(ask.done) : "Your details have reached the studio. I'll get in touch by email or a call."}`
         : mode === "gmail"
         ? "I've opened your details, already filled in, in a <strong>new Gmail tab</strong> — switch to it and press <strong>Send</strong>. Don't use Gmail? Any button below sends the same."
         : "Your details are ready — <strong>choose one of the buttons below</strong> and press Send in whichever app opens. Nothing has reached the studio yet.";
@@ -76,8 +94,8 @@ window.WPS_TALK_FIRST = function ({ $, esc, setError, clearError, form, panel })
     show(opened ? "gmail" : "manual");
   };
   window.sendStudioMail(to, {
-    _subject: subject, "Enquiry": "Talk first — wants to talk before booking", _replyto: email, _template: "box",
+    _subject: subject, "Enquiry": ask ? ask.enquiry : "Talk first — wants to talk before booking", _replyto: email, _template: "box",
     ...Object.fromEntries(lines),
-    "Next step": "Get in touch by email or a call. If you meet, add it to the calendar with Meeting; clients see that day as busy."
+    "Next step": ask ? ask.nextStep : "Get in touch by email or a call. If you meet, add it to the calendar with Meeting; clients see that day as busy."
   }, { wait: 15000 }).then((r) => (r && r.ok ? show("sent") : fallback())).catch(fallback);
 };

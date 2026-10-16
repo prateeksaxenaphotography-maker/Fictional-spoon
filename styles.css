@@ -707,6 +707,14 @@ body.menu-open .upload-sticky-bar { display: none; }
   cursor: not-allowed !important;
   background: rgba(0, 0, 0, 0.03);
 }
+/* A day a code does not allow (v608): greyed out, with the allowed dates in its note. */
+.dp-cell.dp-outside {
+  color: var(--line-2) !important;
+  text-decoration: line-through;
+  opacity: 0.45;
+  cursor: not-allowed !important;
+  background: rgba(0, 0, 0, 0.03);
+}
 .dp-cell.dp-booked {
   color: #ff4d4d !important;
   font-weight: 800;

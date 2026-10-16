@@ -164,7 +164,26 @@ window.codeDatesFieldsHtml = function(prefix) {
         <label class="cx-field" id="${prefix}EndDateWrap" style="display: none;"><span class="cx-label">Last day it works</span><input type="date" id="${prefix}EndDate" /></label>
       </div>
       <p class="cx-hint">A blank start means it works straight away. Dates are checked on the day the client books, not the day of the shoot, and both days count — a code ending on the 31st works all day on the 31st.</p>
+    </div>
+    <div class="cx-section cx-dates">
+      <h4>Which shoot dates it allows</h4>
+      <div class="cx-inline is-wrap">
+        <label class="cx-field"><span class="cx-label">Shoot dates</span>
+          <select id="${prefix}ShootMode" onchange="window.syncCodeShootField('${prefix}')">
+            <option value="any">Any date</option>
+            <option value="between">Only certain dates</option>
+          </select></label>
+        <label class="cx-field" id="${prefix}ShootFromWrap" style="display: none;"><span class="cx-label">From</span><input type="date" id="${prefix}ShootFrom" /></label>
+        <label class="cx-field" id="${prefix}ShootToWrap" style="display: none;"><span class="cx-label">Until</span><input type="date" id="${prefix}ShootTo" /></label>
+      </div>
+      <p class="cx-hint">The days a client with this code may book their shoot on. Other days are greyed out in their date picker, with a note of the dates that are allowed. Fill in one end or both; both days count. This is separate from when the code itself works, above: a code can stop being usable on 30 October and still allow a shoot on 25 December. You are never held to it when you book as admin.</p>
     </div>`;
+};
+
+window.syncCodeShootField = function(prefix) {
+  const mode = document.getElementById(prefix + "ShootMode");
+  const on = mode && mode.value === "between";
+  ["ShootFromWrap", "ShootToWrap"].forEach((id) => { const w = document.getElementById(prefix + id); if (w) w.style.display = on ? "" : "none"; });
 };
 
 window.syncCodeEndsField = function(prefix) {
@@ -183,6 +202,12 @@ window.fillCodeDatesFields = function(prefix, entry) {
   if (endsEl) endsEl.value = end ? "date" : "open";
   if (endEl) endEl.value = end;
   window.syncCodeEndsField(prefix);
+  const from = window.cleanCodeDate(entry && entry.shootFrom), to = window.cleanCodeDate(entry && entry.shootTo);
+  const modeEl = document.getElementById(prefix + "ShootMode"), fromEl = document.getElementById(prefix + "ShootFrom"), toEl = document.getElementById(prefix + "ShootTo");
+  if (modeEl) modeEl.value = from || to ? "between" : "any";
+  if (fromEl) fromEl.value = from;
+  if (toEl) toEl.value = to;
+  window.syncCodeShootField(prefix);
 };
 
 // { startDate, endDate } with "" for "not set", or null when the form was
@@ -203,7 +228,31 @@ window.readCodeDatesFields = function(prefix) {
       && !confirm(`${window.formatCodeDate(endDate)} has already passed, so nobody will be able to use this code. Save it anyway?`)) {
     return null;
   }
-  return { startDate, endDate };
+  // Which shoot dates it allows (v608). "Any date" writes nothing.
+  let shootFrom = "", shootTo = "";
+  if (document.getElementById(prefix + "ShootMode")?.value === "between") {
+    shootFrom = window.cleanCodeDate(document.getElementById(prefix + "ShootFrom")?.value);
+    shootTo = window.cleanCodeDate(document.getElementById(prefix + "ShootTo")?.value);
+    if (!shootFrom && !shootTo) {
+      alert("Pick the first day, the last day, or both for the shoot dates — or change it to \"Any date\".");
+      return null;
+    }
+    if (shootFrom && shootTo && shootTo < shootFrom) {
+      alert(`The last shoot date (${window.formatCodeDate(shootTo)}) is before the first (${window.formatCodeDate(shootFrom)}), so no date would be allowed.`);
+      return null;
+    }
+    if (shootTo && shootTo < window.codeTodayKey()
+        && !confirm(`${window.formatCodeDate(shootTo)} has already passed, so nobody could book a date with this code. Save it anyway?`)) {
+      return null;
+    }
+  }
+  return { startDate, endDate, shootFrom, shootTo };
+};
+
+// The allowed shoot dates in words, for a code's card and the sentence under its form. Empty for any date.
+window.codeShootLine = function(entry) {
+  const words = window.shootWindowWords(entry);
+  return words ? `Shoots ${words}` : "";
 };
 
 // The dates in words, for the line under a code on its card. Empty when the
@@ -578,7 +627,8 @@ window.saveNewPromoCodeFromForm = function() {
   }
   const active = document.getElementById("newPromoActive") ? !!document.getElementById("newPromoActive").checked : true;
   // Written only when set, so a code with no dates stays the shape it was.
-  const dateFields = { ...(dates.startDate ? { startDate: dates.startDate } : {}), ...(dates.endDate ? { endDate: dates.endDate } : {}) };
+  const dateFields = { ...(dates.startDate ? { startDate: dates.startDate } : {}), ...(dates.endDate ? { endDate: dates.endDate } : {}),
+    ...(dates.shootFrom ? { shootFrom: dates.shootFrom } : {}), ...(dates.shootTo ? { shootTo: dates.shootTo } : {}) };
   // Renamed while editing. Done here, after every check above has passed: it
   // used to run first, so a rename refused for a bad home studio value had
   // already dropped the old code from the draft.
@@ -795,10 +845,14 @@ window.syncInviteWaiveVisibility = function() {
 const codeFormEsc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const codeFormVal = (id) => ((document.getElementById(id) || {}).value || "").trim();
 const codeFormInr = (n) => `₹${Math.max(0, Math.round(Number(n) || 0)).toLocaleString("en-IN")}`;
-const codeFormDates = (prefix) => window.codeDatesLine({
+const codeFormDates = (prefix) => (window.codeDatesLine({
   startDate: codeFormVal(prefix + "StartDate"),
   endDate: codeFormVal(prefix + "Ends") === "date" ? codeFormVal(prefix + "EndDate") : ""
-}) || "Works straight away, until you switch it off";
+}) || "Works straight away, until you switch it off") + (() => {
+  if (codeFormVal(prefix + "ShootMode") !== "between") return "";
+  const line = window.codeShootLine({ shootFrom: codeFormVal(prefix + "ShootFrom"), shootTo: codeFormVal(prefix + "ShootTo") });
+  return line ? `. ${line.replace("Shoots ", "Clients can book shoots ")}` : "";
+})();
 const codeFormName = (id, fallback) => {
   const el = document.getElementById(id);
   return el && !el.readOnly && codeFormVal(id) ? codeFormVal(id).toUpperCase() : fallback;
@@ -915,7 +969,9 @@ window.saveInviteCodeFromForm = function() {
     ...(deliverables ? { deliverables } : {}),
     ...(isOn ? {} : { active: false }),
     ...(dates.startDate ? { startDate: dates.startDate } : {}),
-    ...(dates.endDate ? { endDate: dates.endDate } : {})
+    ...(dates.endDate ? { endDate: dates.endDate } : {}),
+    ...(dates.shootFrom ? { shootFrom: dates.shootFrom } : {}),
+    ...(dates.shootTo ? { shootTo: dates.shootTo } : {})
   };
   if (editing) {
     const idx = list.findIndex(x => x.code === editing);
@@ -5301,7 +5357,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                 <span class="cx-badges">${window.codeStatusBadgeHtml(o)}<span class="code-live-slot" data-kind="invite" data-fp="${fp}"></span></span>
               </div>
               ${codeLine(codeStr, "invite code", codeStr === activeInviteCode ? `<span class="cx-tag" title="The code the studio's share links carry">Share-link code</span>` : "")}
-              ${facts([["Venue", o.location || "The talent chooses"], ["Venue cost", venueCost], ["Rental", rentalWords(window.getPromoHomeStudioDiscount(o))], ["Dates", window.codeDatesLine(o)], ["Deliverables", o.deliverables || ""]])}
+              ${facts([["Venue", o.location || "The talent chooses"], ["Venue cost", venueCost], ["Rental", rentalWords(window.getPromoHomeStudioDiscount(o))], ["Dates", window.codeDatesLine(o)], ["Shoot dates", window.codeShootLine(o).replace(/^Shoots /, "")], ["Deliverables", o.deliverables || ""]])}
               <div class="code-live-note cx-live-note" data-kind="invite" data-fp="${fp}" hidden></div>
               ${cardFoot(isOn, "Invite", codeStr)}
             </article>`;
@@ -5325,7 +5381,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               </div>
               ${codeLine(codeKey, "promo code")}
               ${item.label ? `<p class="cx-note">${esc(item.label)}</p>` : ""}
-              ${facts([["Comes off", hasPackageDiscount ? (item.includeAddons ? "The package and the rental" : "The package") : ""], ["Rental", rentalWords(window.getPromoHomeStudioDiscount(item))], ["Dates", window.codeDatesLine(item)], ["Deliverables", item.deliverables || ""]])}
+              ${facts([["Comes off", hasPackageDiscount ? (item.includeAddons ? "The package and the rental" : "The package") : ""], ["Rental", rentalWords(window.getPromoHomeStudioDiscount(item))], ["Dates", window.codeDatesLine(item)], ["Shoot dates", window.codeShootLine(item).replace(/^Shoots /, "")], ["Deliverables", item.deliverables || ""]])}
               <div class="code-live-note cx-live-note" data-kind="promo" data-fp="${fp}" hidden></div>
               ${cardFoot(window.promoCodeIsActive(item), "Promo", codeKey)}
             </article>`;

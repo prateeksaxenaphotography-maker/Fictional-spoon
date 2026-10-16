@@ -1090,7 +1090,9 @@ try {
   ];
   for (const [name, c] of datedCodes) {
     if (!c || typeof c !== "object") continue;
-    for (const f of ["startDate", "endDate"]) {
+    // The shoot dates a code allows (v608): a malformed one reads as "any date",
+    // which opens exactly the days the studio meant to keep closed — so it stops the publish.
+    for (const f of ["startDate", "endDate", "shootFrom", "shootTo"]) {
       if (c[f] !== undefined && c[f] !== null && c[f] !== "" && !isDay(c[f])) fail(`${name}: ${f} is not a YYYY-MM-DD date (${JSON.stringify(c[f])})`);
     }
     // A code's own deliverables line (v588) is shown to the client and named
@@ -1098,6 +1100,7 @@ try {
     if (c.deliverables !== undefined && (typeof c.deliverables !== "string" || c.deliverables.length > 200)) fail(`${name}: deliverables must be a line of text of up to 200 characters`);
     // The cheap direction — nobody gets a discount they should not — so it is
     // worth saying but not worth holding the whole site back for.
+    if (isDay(c.shootFrom) && isDay(c.shootTo) && c.shootTo < c.shootFrom) warn(`${name} allows shoots from ${c.shootFrom} to ${c.shootTo}, which is backwards, so no date would be allowed`);
     if (isDay(c.startDate) && isDay(c.endDate) && c.endDate < c.startDate) warn(`${name} ends (${c.endDate}) before it starts (${c.startDate}), so it can never work`);
   }
   // The previous publish, read the same way as check 10 (absent on a first

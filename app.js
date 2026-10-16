@@ -362,6 +362,34 @@ window.codeDatesReason = function(entry) {
   return "";
 };
 
+/* Which SHOOT dates a code allows (v608). Separate from startDate/endDate, which
+   say when the code itself can be typed in: shootFrom / shootTo say which days a
+   client holding it may book. Both optional, both "YYYY-MM-DD", both days
+   included; neither means any date, which is every code saved before this. A
+   client with such a code sees the other days greyed out in the date picker and
+   is told the window if a date outside it gets in anyway. The studio, signed
+   in, is never held to it. */
+window.codeShootWindow = function(entry) {
+  if (!entry || typeof entry !== "object") return null;
+  const from = window.cleanCodeDate(entry.shootFrom), to = window.cleanCodeDate(entry.shootTo);
+  return from || to ? { from, to } : null;
+};
+window.shootDateAllowedBy = function(entry, dateKey) {
+  const w = window.codeShootWindow(entry);
+  if (!w) return true;
+  return !((w.from && dateKey < w.from) || (w.to && dateKey > w.to));
+};
+window.shootWindowWords = function(entry) {
+  const w = window.codeShootWindow(entry);
+  if (!w) return "";
+  if (w.from && w.to) return `between ${window.formatCodeDate(w.from)} and ${window.formatCodeDate(w.to)}`;
+  return w.from ? `from ${window.formatCodeDate(w.from)} onwards` : `up to ${window.formatCodeDate(w.to)}`;
+};
+window.shootWindowMessage = function(entry) {
+  const words = window.shootWindowWords(entry);
+  return words ? `With this code you can book dates ${words}.` : "";
+};
+
 window.getPromoHomeStudioDiscount = function(entry) {
   if (!entry) return { type: "none" };
   if (entry.homeStudioDiscount && entry.homeStudioDiscount.type && entry.homeStudioDiscount.type !== "none") {
@@ -444,6 +472,9 @@ window.getAdminInviteCodes = function() {
       const isOff = typeof item === 'object' && item.active === false;
       const startDate = typeof item === 'object' ? window.cleanCodeDate(item.startDate) : "";
       const endDate = typeof item === 'object' ? window.cleanCodeDate(item.endDate) : "";
+      // Which shoot dates it allows (v608) — dropped here, it would vanish on reload.
+      const shootFrom = typeof item === 'object' ? window.cleanCodeDate(item.shootFrom) : "";
+      const shootTo = typeof item === 'object' ? window.cleanCodeDate(item.shootTo) : "";
       // This invite's own deliverables, in place of the test-shoot default (v588).
       const deliverables = typeof item === 'object' ? window.cleanDeliverables(item.deliverables) : "";
       if (codeStr && typeof codeStr === 'string' && !seen.has(codeStr.trim().toUpperCase())) {
@@ -455,6 +486,8 @@ window.getAdminInviteCodes = function() {
           ...(isOff ? { active: false } : {}),
           ...(startDate ? { startDate } : {}),
           ...(endDate ? { endDate } : {}),
+          ...(shootFrom ? { shootFrom } : {}),
+          ...(shootTo ? { shootTo } : {}),
           ...(deliverables ? { deliverables } : {})
         });
       }
@@ -7190,6 +7223,7 @@ window.resolveContractArchive = function(version) {
                     </div>
                     <div id="b_date_booked_note" style="display: none; font-size: var(--font-xs); color: #dc2626; margin-top: 6px; line-height: 1.4;">This date already has a booking — you're welcome to send a request anyway. I'll confirm it or suggest an alternative date.</div>
                     <div id="b_date_limit_note" role="alert" style="display: none; font-size: var(--font-xs); color: #dc2626; margin-top: 6px; line-height: 1.45; font-weight: 600;"></div>
+                    <button type="button" id="b_date_request_btn" class="link-arrow" hidden style="margin-top: 6px; padding: 0; font-size: var(--font-xs); text-align: left;">No month suits? Send the studio a request instead →</button>
                   </label>
                </div>
                 <div class="production-brief" id="productionBrief" hidden>
@@ -7741,13 +7775,34 @@ window.resolveContractArchive = function(version) {
       const hit = requestedDays().find(testMonthIsFull);
       return hit ? testShootFullMessage(testShootMonthKey(hit)) : "";
     }
+    /* Codes that limit which shoot dates may be booked (v608): the invite and/or
+       promo code the client has applied that is live and carries a window. A day
+       must fall inside EVERY window. */
+    function activeCodeWindows() {
+      try { return [bookingCalc.matchedInvite, bookingCalc.matchedDiscount].filter((e) => e && typeof e === "object" && window.codeShootWindow(e)); }
+      catch (e) { return []; }
+    }
+    const codeWindowRefusing = (d) => { if (isAdmin()) return null; const key = getCalDateKey(d); return activeCodeWindows().find((e) => !window.shootDateAllowedBy(e, key)) || null; };
+    function codeWindowProblem() {
+      const bad = requestedDays().map(codeWindowRefusing).find(Boolean);
+      return bad ? window.shootWindowMessage(bad) : "";
+    }
+    // The one answer for the date box: a code's window first, then a full test-shoot month.
+    const dateRuleProblem = () => codeWindowProblem() || testLimitProblem();
+    // The way out of a full month (v608): a request instead of a booking.
+    // Offered only for the full-month case, never for a code's date window.
+    const canAskInstead = () => !isAdmin() && !codeWindowProblem() && !!testLimitProblem();
+    let askForDatesHandler = null;
     function paintTestLimitNote() {
       const note = $("#b_date_limit_note");
       if (!note) return;
-      const msg = testLimitProblem();
+      const msg = dateRuleProblem();
       note.textContent = msg;
       note.style.display = msg ? "block" : "none";
+      const ask = $("#b_date_request_btn");
+      if (ask) ask.hidden = !canAskInstead();
     }
+    $("#b_date_request_btn")?.addEventListener("click", () => askForDatesHandler && askForDatesHandler());
     ["change", "input", "click"].forEach((ev) => $("#bookingForm")?.addEventListener(ev, () => setTimeout(paintTestLimitNote, 0)));
 
     // ── Multi-Link & Multi-File Attachments Handling ──
@@ -7912,6 +7967,7 @@ window.resolveContractArchive = function(version) {
       let pickerMode = "range"; // "range" or "multi"
       let pickerIsWriting = false;   // true only while updateInput fills the field
       let limitMsg = "";             // why the last-clicked day was refused (test-shoot month full)
+      let limitMsgAsk = false;       // …and whether a request is the way out (a full month, not a code's window)
       let viewYear, viewMonth; // currently displayed month
 
       const today = indiaToday();
@@ -8093,9 +8149,11 @@ window.resolveContractArchive = function(version) {
             <button type="button" class="dp-nav-btn dp-next" aria-label="Next month">›</button>
           </div>
           ${(() => {
-            if (isUserAdmin || !bookingIsTestShoot()) return "";
-            const line = testShootSpotsLine(`${viewYear}-${String(viewMonth + 1).padStart(2, "0")}`);
-            return `${line ? `<p class="dp-spots" style="margin: 2px 0 6px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); text-align: center;">${esc(line)}</p>` : ""}${limitMsg ? `<p class="dp-limit-msg" role="alert" style="margin: 0 0 8px; padding: 8px 10px; border-radius: 8px; background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.3); color: #b91c1c; font-size: var(--font-xs); line-height: 1.45; font-weight: 600;">${esc(limitMsg)}</p>` : ""}`;
+            if (isUserAdmin) return "";
+            const note = (cls, text) => `<p class="${cls}" style="margin: 2px 0 6px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); text-align: center; line-height: 1.45;">${esc(text)}</p>`;
+            const wins = activeCodeWindows().map((e) => window.shootWindowMessage(e));
+            const line = bookingIsTestShoot() ? testShootSpotsLine(`${viewYear}-${String(viewMonth + 1).padStart(2, "0")}`) : null;
+            return `${wins.length ? note("dp-window", wins.join(" ")) : ""}${line ? note("dp-spots", line) : ""}${limitMsg ? `<p class="dp-limit-msg" role="alert" style="margin: 0 0 8px; padding: 8px 10px; border-radius: 8px; background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.3); color: #b91c1c; font-size: var(--font-xs); line-height: 1.45; font-weight: 600;">${esc(limitMsg)}${limitMsgAsk ? ` <button type="button" class="dp-request-btn link-arrow" style="padding: 0; margin-left: 4px; font-size: var(--font-xs);">Send the studio a request instead →</button>` : ""}</p>` : ""}`;
           })()}
           <div class="dp-grid">
             ${DAYS.map(d => `<span class="dp-day-label">${d}</span>`).join("")}
@@ -8139,6 +8197,18 @@ window.resolveContractArchive = function(version) {
             } else {
               if (status.isDefaultBlockedWeekday && status.isManuallyOpened) classes.push("dp-open-weekday");
               classes.push("dp-active");
+            }
+          }
+
+          // A code that allows only some shoot dates: the others are greyed out
+          // and say why (v608). Only days a client could otherwise ask for — a
+          // closed weekday or a day the photographer is away keeps its own reason.
+          if (!past && !isUserAdmin) {
+            const refusing = codeWindowRefusing(d);
+            if (refusing && !classes.includes("dp-workshop") && !classes.includes("dp-assisting") && !classes.includes("dp-blocked")) {
+              ["dp-active", "dp-booked", "dp-testshoot", "dp-open-weekday"].forEach((c) => { const i = classes.indexOf(c); if (i >= 0) classes.splice(i, 1); });
+              classes.push("dp-outside");
+              titleAttr = window.shootWindowMessage(refusing);
             }
           }
 
@@ -8202,8 +8272,9 @@ window.resolveContractArchive = function(version) {
       // A test-shoot client clicking a day in a month that is full: the day is
       // not taken, and the reason is said in the picker itself.
       function refuseFullTestMonth(clicked) {
-        if (isAdmin() || !bookingIsTestShoot() || !testMonthIsFull(clicked)) { limitMsg = ""; return false; }
+        if (isAdmin() || !bookingIsTestShoot() || !testMonthIsFull(clicked)) { limitMsg = ""; limitMsgAsk = false; return false; }
         limitMsg = testShootFullMessage(testShootMonthKey(clicked));
+        limitMsgAsk = true;
         renderCalendar();
         return true;
       }
@@ -8247,14 +8318,14 @@ window.resolveContractArchive = function(version) {
           e.stopPropagation();
           viewMonth--;
           if (viewMonth < 0) { viewMonth = 11; viewYear--; }
-          limitMsg = "";
+          limitMsg = ""; limitMsgAsk = false;
           renderCalendar();
         });
         popup.querySelector(".dp-next")?.addEventListener("click", (e) => {
           e.stopPropagation();
           viewMonth++;
           if (viewMonth > 11) { viewMonth = 0; viewYear++; }
-          limitMsg = "";
+          limitMsg = ""; limitMsgAsk = false;
           renderCalendar();
         });
 
@@ -8306,6 +8377,16 @@ window.resolveContractArchive = function(version) {
             });
           });
 
+          popup.querySelectorAll(".dp-cell.dp-outside").forEach(cell => {
+            cell.addEventListener("click", (e) => {
+              e.stopPropagation();
+              const refusing = codeWindowRefusing(new Date(viewYear, viewMonth, parseInt(cell.dataset.day)));
+              limitMsg = refusing ? window.shootWindowMessage(refusing) : "";
+              limitMsgAsk = false;
+              renderCalendar();
+            });
+          });
+
           popup.querySelectorAll(".dp-cell.dp-blocked").forEach(cell => {
             cell.addEventListener("click", (e) => {
               e.stopPropagation();
@@ -8323,6 +8404,12 @@ window.resolveContractArchive = function(version) {
             });
           });
         }
+
+        popup.querySelector(".dp-request-btn")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          closePopup();
+          askForDatesHandler && askForDatesHandler();
+        });
 
         popup.querySelector(".dp-clear")?.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -9670,7 +9757,7 @@ window.resolveContractArchive = function(version) {
           // A code that arrived by link skips apply(), so the dates are
           // explained here too rather than only when it is typed.
           const why = ok ? "" : window.codeDatesReason(findInvite(inv));
-          out.push(`<span class="code-chip ${ok ? "is-ok" : "is-bad"}"><b>${esc(inv)}</b><span>${ok ? "Invite verified · test shoot unlocked" : (why ? esc(sentence(why)) : "Invite code not recognised")}</span><button type="button" data-clear="invite" aria-label="Remove invite code">×</button></span>`);
+          out.push(`<span class="code-chip ${ok ? "is-ok" : "is-bad"}"><b>${esc(inv)}</b><span>${ok ? ("Invite verified · test shoot unlocked" + (window.shootWindowWords(findInvite(inv)) ? " · shoots " + window.shootWindowWords(findInvite(inv)) : "")) : (why ? esc(sentence(why)) : "Invite code not recognised")}</span><button type="button" data-clear="invite" aria-label="Remove invite code">×</button></span>`);
         }
         const pr = (promoEl.value || "").trim().toUpperCase();
         if (pr) {
@@ -9678,7 +9765,7 @@ window.resolveContractArchive = function(version) {
           const ok = st.includes("APPLIED");
           const savings = ($("#discountSavingsBadge")?.textContent || "").replace(/^[^:]*:\s*/, "").replace(/[\u{1F300}-\u{1FAFF}]/gu, "").trim();
           const why = ok ? "" : window.codeDatesReason(findPromo(pr));
-          out.push(`<span class="code-chip ${ok ? "is-ok" : "is-bad"}"><b>${esc(pr)}</b><span>${ok ? ("Promo applied" + (savings ? " · " + esc(savings) : "")) : (why ? esc(sentence(why)) : "Promo code not valid for this booking")}</span><button type="button" data-clear="promo" aria-label="Remove promo code">×</button></span>`);
+          out.push(`<span class="code-chip ${ok ? "is-ok" : "is-bad"}"><b>${esc(pr)}</b><span>${ok ? ("Promo applied" + (savings ? " · " + esc(savings) : "") + (window.shootWindowWords(findPromo(pr)) ? " · shoots " + window.shootWindowWords(findPromo(pr)) : "")) : (why ? esc(sentence(why)) : "Promo code not valid for this booking")}</span><button type="button" data-clear="promo" aria-label="Remove promo code">×</button></span>`);
         }
         if (lastError) out.push(`<span class="code-chip is-bad"><span>${esc(lastError)}</span></span>`);
         chips.innerHTML = out.join("");
@@ -9927,7 +10014,7 @@ window.resolveContractArchive = function(version) {
       }
       // A test shoot in a month the studio has filled (the date may have been
       // picked before the kind of booking was chosen, or typed).
-      const fullMonthProblem = testLimitProblem();
+      const fullMonthProblem = dateRuleProblem();
       if (fullMonthProblem) { setError("b_date", fullMonthProblem); firstBad = firstBad || "b_date"; }
 
       const email = val("b_email");
@@ -10158,8 +10245,7 @@ window.resolveContractArchive = function(version) {
     }
 
     // Talk first (v594): the Contact card's details only, nothing booked. Its code (talk-first.js) loads on the press.
-    $("#talkSubmitBtn")?.addEventListener("click", () => {
-      const go = () => window.WPS_TALK_FIRST({ $, esc, setError, clearError, form, panel: successPanel });
+    const withTalkFirst = (go) => {
       if (window.WPS_TALK_FIRST) return go();
       const v = (document.querySelector('script[src*="app.js?v="]')?.getAttribute("src") || "").split("v=")[1] || "";
       const s = document.createElement("script");
@@ -10167,7 +10253,35 @@ window.resolveContractArchive = function(version) {
       s.onload = go;
       s.onerror = () => toast("Couldn't send just now — please try again in a moment.");
       document.head.appendChild(s);
+    };
+    $("#talkSubmitBtn")?.addEventListener("click", () => {
+      withTalkFirst(() => window.WPS_TALK_FIRST({ $, esc, setError, clearError, form, panel: successPanel }));
     });
+    /* A test shoot in a month that is full: the way out is a request, not a dead
+       end (the owner, Oct 2026). It goes the way Talk first does — nothing is
+       booked, no calendar is touched — carrying the dates the client would like,
+       or "whenever the studio is free", and asks the studio to reply by email with
+       dates that suit them both. Once a date is agreed the studio adds it to the
+       calendar and it counts toward that month. */
+    askForDatesHandler = () => {
+      const days = requestedDays();
+      const fullNames = [...new Set(days.filter(testMonthIsFull).map((d) => testShootMonthName(testShootMonthKey(d))))];
+      const preferred = ($("#b_date")?.value || "").trim();
+      withTalkFirst(() => window.WPS_TALK_FIRST({
+        $, esc, setError, clearError, form, panel: successPanel,
+        ask: {
+          intro: "I'd like to do a test shoot, but the month I looked at is full. Please let me know when you are free — my preferred dates are below, and I'm happy to go with whenever suits the studio.",
+          enquiry: "Test shoot request — no place free in the month asked; wants the studio's next free dates",
+          extra: [
+            ["Preferred dates", preferred || "Whenever the studio is free"],
+            ["Month asked for", fullNames.length ? `${fullNames.join(", ")} (full)` : "—"],
+            ["Availability", "To be agreed by email — each of us confirms our own calendar"]
+          ],
+          nextStep: "Reply by email with the dates the studio can do; the client confirms theirs. Once one is agreed, add it to the calendar as a Test shoot — it then counts toward that month.",
+          done: "Your request has reached the studio. I'll reply by email with dates that work for both of us — you're welcome to send more preferred dates in your reply."
+        }
+      }));
+    };
 
     const handleBookingSubmit = (e) => {
       if (e) e.preventDefault();
