@@ -2898,16 +2898,6 @@ window.WPS_DATA = {
           "updatedAt": 1791810306467
         }
       ],
-      "2026-10-21": [
-        {
-          "id": "b_1791805260731_y3a5",
-          "isTentative": true,
-          "status": "tentative",
-          "type": "Fashion Editorial",
-          "contractVersion": "Pending Agreement",
-          "updatedAt": 1791805263818
-        }
-      ],
       "2026-10-20": [
         {
           "id": "b_1791805267974_bjr1",
@@ -2926,16 +2916,6 @@ window.WPS_DATA = {
           "type": "Selective Collaboration (TFP)",
           "contractVersion": "V4.2-TFP",
           "updatedAt": 1791955128735
-        }
-      ],
-      "2026-10-18": [
-        {
-          "id": "b_1791827047985_26i8",
-          "isTentative": true,
-          "status": "tentative",
-          "type": "Fashion Editorial",
-          "contractVersion": "Pending Agreement",
-          "updatedAt": 1791827047985
         }
       ],
       "2026-10-24": [
@@ -3069,12 +3049,14 @@ window.WPS_DATA = {
       "2026-10-24::Test shoot",
       "2026-11-28::b_audit_NP-20261017-004338-P04B",
       "2026-11-28::NP-20261017-004338-P04B",
-      "2026-11-28::prateek"
+      "2026-11-28::prateek",
+      "2026-10-21::b_1791805260731_y3a5",
+      "2026-10-18::b_1791827047985_26i8"
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1792178355072,
-    "syncedAt": 1792178355072,
+    "updatedAt": 1792221306539,
+    "syncedAt": 1792221306539,
     "testShootLimits": {
       "default": 2,
       "months": {
