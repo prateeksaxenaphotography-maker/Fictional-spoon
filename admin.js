@@ -2079,6 +2079,20 @@ function cleanModelPdfs(state) {
           }
           return Object.keys(out).length ? { contactOn: out } : {};
         })(),
+        /* Which measurements this PDF shows where the studio overruled the album, and whether it carries the studio's
+           branding (v620). Named here or this normaliser drops them and the studio finds both back where they were on
+           reopening. Kinds and true/false only; branding is written only when it is OFF, so an old arrangement and a
+           PDF that kept it read the same. */
+        ...(() => {
+          const out = {};
+          if (sp.statsOn && typeof sp.statsOn === "object") {
+            for (const [k, x] of Object.entries(sp.statsOn).slice(0, 12)) {
+              if (["height", "chest", "waist", "hips", "shoes", "hair", "eyes"].includes(k) && typeof x === "boolean") out[k] = x;
+            }
+          }
+          return Object.keys(out).length ? { statsOn: out } : {};
+        })(),
+        ...(sp.branding === false ? { branding: false } : {}),
         // How much air between the photographs. Absent means "medium".
         ...(["none", "narrow", "wide"].includes(sp.spacing) ? { spacing: sp.spacing } : {}),
         order: ids(sp.order),

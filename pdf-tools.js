@@ -824,6 +824,13 @@
     return Math.round(PDF_PAGE.gap * f * 100) / 100;
   };
   const PDF_FOOTER_H = 8.5;
+  /* Studio branding (v620, the owner: "I get an ability to turn on studio branding on portfolio card, i.e. if I want
+     nerdyphotographer.in studio branding is not there"). It is the studio's name and mark in the header, the foot of
+     every page (the credit, the booking link, one line on the studio) and the credit on a full-photo cover. A PDF
+     leaves it out only when the studio said so for that PDF: a spec with no answer, and every visitor's, keeps it. The
+     faint name across a watermarked preview is not branding, it is the lock on the free copy, and stays. */
+  const pdfBranded = (spec) => !spec || spec.branding !== false;
+  const pdfFooterH = (spec) => (pdfBranded(spec) ? PDF_FOOTER_H : 0);
   // A LITERAL stack, never a CSS variable: this string goes into ctx.font, and
   // canvas does not resolve var(). An unresolvable font makes the whole
   // declaration invalid, so the canvas silently keeps its default 10px sans and
@@ -1132,10 +1139,11 @@
     return `Model portfolio${updated}${spec.pages > 1 ? ` · Page ${pageNo} of ${spec.pages}` : ""}`;
   }
 
-  function drawPdfHeader(page, mark, label) {
+  function drawPdfHeader(page, mark, label, spec) {
     const { w, margin: M } = PDF_PAGE;
     const base = M + 3.4;
     page.text(label, M, base, pdfType("header", { ...PDF_LABEL, size: 2.3 }));
+    if (!pdfBranded(spec)) { page.rule(M, M + 6, w - M); return M + 6; }
     const brand = "nerdyphotographer.in";
     const brandStyle = pdfType("brand", { weight: 700, size: 2.3, family: PDF_MONO, spacing: 0.3, upper: true, color: "#000", align: "right" });
     const bw = page.measure(brand, brandStyle);
@@ -1177,12 +1185,23 @@
     return top + h;
   }
 
-  function portfolioPdfStatCells(shoot) {
-    if (shoot.showStatsOnModelPortfolio === false) return [];
+  /* Every measurement the model has, each with the album's answer (its one PDF switch for all of them). The studio may
+     answer for one measurement on one PDF without touching the album (v620, the owner: "I can toggle on and off model
+     stats while creating the portfolio"), the same way the contact details do (v587). A key names a KIND of measurement,
+     never its value: it is what a saved portfolio stores, and that file is public. */
+  function portfolioPdfStatChoices(shoot) {
+    const on = shoot.showStatsOnModelPortfolio !== false;
     return [
-      ["Height", window.statText("height", shoot.height)], [chestLabelOf(shoot), window.statText("chest", shoot.chest)], ["Waist", window.statText("waist", shoot.waist)], ["Hips", window.statText("hips", shoot.hips)],
-      ["Shoes", window.statText("shoes", shoot.shoes)], ["Hair", shoot.modelHair], ["Eyes", shoot.modelEyes]
-    ].filter(([, v]) => v && String(v).trim()).map(([label, v]) => ({ label, value: String(v).trim() }));
+      ["height", "Height", window.statText("height", shoot.height)], ["chest", chestLabelOf(shoot), window.statText("chest", shoot.chest)],
+      ["waist", "Waist", window.statText("waist", shoot.waist)], ["hips", "Hips", window.statText("hips", shoot.hips)],
+      ["shoes", "Shoes", window.statText("shoes", shoot.shoes)], ["hair", "Hair", shoot.modelHair], ["eyes", "Eyes", shoot.modelEyes]
+    ].filter(([, , v]) => v && String(v).trim()).map(([key, label, v]) => ({ key, label, value: String(v).trim(), on }));
+  }
+  // This PDF's answer where it has one, the album's where it doesn't.
+  const statChosen = (c, statsOn) => (statsOn && typeof statsOn[c.key] === "boolean" ? statsOn[c.key] : c.on);
+  function portfolioPdfStatCells(shoot, extra) {
+    const statsOn = extra && extra.statsOn;
+    return portfolioPdfStatChoices(shoot).filter((c) => statChosen(c, statsOn)).map(({ label, value }) => ({ label, value }));
   }
 
   /* Every detail the contact line could carry for this model, each with the
@@ -1297,7 +1316,8 @@
 
   // Branding: the credit, the booking link and one line on the studio. It
   // doubles as the studio's marketing, so every page carries it.
-  function drawPdfFooter(page) {
+  function drawPdfFooter(page, spec) {
+    if (!pdfBranded(spec)) return;
     const { w, h, margin: M } = PDF_PAGE;
     const top = h - M - PDF_FOOTER_H;
     page.rule(M, top, w - M);
@@ -1568,7 +1588,7 @@
   // The header, name and model-type badges a first page opens with; returns
   // where the content below them starts.
   function drawPdfTitleBlock(page, spec, mark) {
-    const nameBase = drawPdfName(page, spec.name, drawPdfHeader(page, mark, pdfHeaderLabel(spec, 1)) + 5, 12);
+    const nameBase = drawPdfName(page, spec.name, drawPdfHeader(page, mark, pdfHeaderLabel(spec, 1), spec) + 5, 12);
     return drawPdfBadges(page, spec.shoot, nameBase + 3) + 5;
   }
 
@@ -1578,7 +1598,7 @@
   function pdfDetailsBlock(page, spec, top, draw) {
     const { w: PW, margin: M } = PDF_PAGE;
     const CW = PW - M * 2;
-    const stats = portfolioPdfStatCells(spec.shoot);
+    const stats = portfolioPdfStatCells(spec.shoot, spec);
     /* A watermarked page — the free preview, the free PNGs, a studio sample — keeps the phone and email for the
        paid PDF, saying where they go (v582, the owner: "if I give number and email id with watermark then why
        will anyone pay me, won't they like to directly connect with them?"). The same width of row either way is
@@ -1611,7 +1631,7 @@
     const CW = PW - M * 2;
     const y = drawPdfTitleBlock(page, spec, mark);
     const detailsH = pdfDetailsBlock(page, spec, 0, false);
-    const photoMaxH = PH - M - PDF_FOOTER_H - 5 - (detailsH ? detailsH + 5 : 0) - y;
+    const photoMaxH = PH - M - pdfFooterH(spec) - 5 - (detailsH ? detailsH + 5 : 0) - y;
     if (spec.layout === "equal") {
       const all = [spec.lead, ...spec.others];
       const grid = pdfEqualGrid(imgs.map(pdfAspect), CW, photoMaxH, gap, spec.fewerOnTop, all.map((s) => s.wide || 0), spec.cols || 0);
@@ -1622,7 +1642,7 @@
       const x0 = M + (CW - grid.width) / 2;
       grid.cells.forEach((c, i) => drawPdfSlot(page, imgs[i], all[i], x0 + c.x, gridTop + c.y, c.w, c.h, spec.tagPlace, spec.tagAlign));
       pdfDetailsBlock(page, spec, gridTop + grid.height + 5, true);
-      drawPdfFooter(page);
+      drawPdfFooter(page, spec);
       return;
     }
     const layout = pdfLeadLayout(pdfAspect(imgs[0]), imgs.slice(1).map(pdfAspect), CW, photoMaxH, gap, spec.bigAt);
@@ -1632,7 +1652,7 @@
     drawPdfSlot(page, imgs[0], spec.lead, M + layout.lead.x, top + layout.lead.y, layout.lead.w, layout.lead.h, spec.tagPlace, spec.tagAlign);
     layout.cells.forEach((c, i) => drawPdfSlot(page, imgs[i + 1], spec.others[i], M + c.x, top + c.y, c.w, c.h, spec.tagPlace, spec.tagAlign));
     pdfDetailsBlock(page, spec, top + layout.height + 5, true);
-    drawPdfFooter(page);
+    drawPdfFooter(page, spec);
   }
 
   // The optional front cover: one photo across the whole sheet, with the
@@ -1655,15 +1675,18 @@
     ctx.fillRect(0, u(fadeTop), u(PW), u(PH - fadeTop));
 
     const white = "#fff", soft = "rgba(255,255,255,0.8)";
-    const credit = "Photographed by nerdyphotographer.in";
-    const creditStyle = pdfType("brand", { ...PDF_LABEL, size: 2.3, color: soft });
-    page.text(credit, M, PH - M, creditStyle);
-    page.link(M, PH - M - 3, page.measure(credit, creditStyle), 4, "https://www.nerdyphotographer.in/");
-    ctx.fillStyle = "rgba(255,255,255,0.35)";
-    ctx.fillRect(u(M), u(PH - M - 6), u(CW), Math.max(1, u(0.25)));
+    const branded = pdfBranded(spec);
+    if (branded) {
+      const credit = "Photographed by nerdyphotographer.in";
+      const creditStyle = pdfType("brand", { ...PDF_LABEL, size: 2.3, color: soft });
+      page.text(credit, M, PH - M, creditStyle);
+      page.link(M, PH - M - 3, page.measure(credit, creditStyle), 4, "https://www.nerdyphotographer.in/");
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      ctx.fillRect(u(M), u(PH - M - 6), u(CW), Math.max(1, u(0.25)));
+    }
 
-    // Built upward from the credit line: badges, the name, then its label.
-    let baseline = PH - M - 11;
+    // Built upward from the credit line (or from the margin, without one): badges, the name, then its label.
+    let baseline = PH - M - (branded ? 11 : 4);
     if (modelTypesOf(spec.shoot).length) {
       drawPdfBadges(page, spec.shoot, baseline - 4.6, { text: white, stroke: "rgba(255,255,255,0.7)" });
       baseline -= 8.6;
@@ -1681,9 +1704,9 @@
   function composeFramedCoverPdf(page, spec, img, mark) {
     const { w: PW, h: PH, margin: M } = PDF_PAGE;
     const CW = PW - M * 2;
-    const top = drawPdfHeader(page, mark, pdfHeaderLabel(spec, 0)) + 7;
-    drawPdfFooter(page);
-    const footerTop = PH - M - PDF_FOOTER_H;
+    const top = drawPdfHeader(page, mark, pdfHeaderLabel(spec, 0), spec) + 7;
+    drawPdfFooter(page, spec);
+    const footerTop = PH - M - pdfFooterH(spec);
     const nameStyle = (size) => pdfType("name", { weight: 800, size, family: PDF_DISPLAY, spacing: -0.025 * size, upper: true, color: "#000", align: "center" });
     let size = 20;
     while (size > 6 && page.measure(spec.name, nameStyle(size)) > CW) size -= 0.25;
@@ -1747,11 +1770,13 @@
     // Measurements sitting on the studio line at the foot: two to a row, or
     // one when the column is too narrow to hold "Dark Brown" beside "38-40".
     const brandBase = PH - M;
-    const stats = portfolioPdfStatCells(spec.shoot);
+    const stats = portfolioPdfStatCells(spec.shoot, spec);
     const perRow = colW >= 50 ? 2 : 1;
     const cellW = (colW - (perRow - 1) * 4) / perRow;
-    const statsTop = brandBase - 10 - Math.ceil(stats.length / perRow) * (PDF_CELL_H + 3.2);
+    const branded = pdfBranded(spec);
+    const statsTop = brandBase - (branded ? 10 : 4) - Math.ceil(stats.length / perRow) * (PDF_CELL_H + 3.2);
     stats.forEach((cell, i) => drawPdfCell(page, cell, x + (i % perRow) * (cellW + 4), statsTop + Math.floor(i / perRow) * (PDF_CELL_H + 3.2), cellW));
+    if (!branded) return;
     page.rule(x, brandBase - 6, x + colW);
     if (mark) page.ctx.drawImage(mark, page.u(x), page.u(brandBase - 3.7), page.u(4.2), page.u(4.2));
     // The studio name shrinks, never overflows, when the column is narrow.
@@ -1769,7 +1794,7 @@
     const CW = PW - M * 2;
     const y = drawPdfTitleBlock(page, spec, mark);
     const detailsH = pdfDetailsBlock(page, spec, 0, false);
-    const roomH = PH - M - PDF_FOOTER_H - 5 - (detailsH ? detailsH + 5 : 0) - y;
+    const roomH = PH - M - pdfFooterH(spec) - 5 - (detailsH ? detailsH + 5 : 0) - y;
     // As large as the room allows. The photo may give up a tenth of its frame
     // to fill more of the page: a portrait off its sides, a landscape off its
     // top and bottom.
@@ -1780,7 +1805,7 @@
     const top = y + Math.max(0, (roomH - lh) / 2);
     drawPdfSlot(page, img, spec.lead, M + (CW - lw) / 2, top, lw, lh, spec.tagPlace, spec.tagAlign);
     pdfDetailsBlock(page, spec, top + lh + 5, true);
-    drawPdfFooter(page);
+    drawPdfFooter(page, spec);
   }
 
   // A page of nothing but poses: page two, and page three when there is one.
@@ -1788,13 +1813,13 @@
     const { w: PW, h: PH, margin: M } = PDF_PAGE;
     const gap = pdfGap(spec);
     const CW = PW - M * 2;
-    let y = drawPdfHeader(page, mark, pdfHeaderLabel(spec, pageNo)) + 4.5;
+    let y = drawPdfHeader(page, mark, pdfHeaderLabel(spec, pageNo), spec) + 4.5;
     const nameStyle = pdfType("name", { weight: 800, size: 6, family: PDF_DISPLAY, spacing: -0.12, upper: true, color: "#000" });
     const name = page.fit(spec.name, CW - 30, nameStyle);
     page.text(name, M, y + 4.4, nameStyle);
     page.text("Poses", M + page.measure(name, nameStyle) + 3, y + 4.4, PDF_LABEL);
     y += 9;
-    const gridH = PH - M - PDF_FOOTER_H - 5 - y;
+    const gridH = PH - M - pdfFooterH(spec) - 5 - y;
     if (spec.layout !== "equal") {
       // One big photo, on this page too: the first photo the client put on it
       // is the big one, the rest sit beside or beneath it.
@@ -1803,7 +1828,7 @@
       const top = y + Math.max(0, (gridH - layout.height) / 2);
       drawPdfSlot(page, imgs[0], spec.others[0], M + layout.lead.x, top + layout.lead.y, layout.lead.w, layout.lead.h, spec.tagPlace, spec.tagAlign);
       layout.cells.forEach((c, i) => drawPdfSlot(page, imgs[i + 1], spec.others[i + 1], M + c.x, top + c.y, c.w, c.h, spec.tagPlace, spec.tagAlign));
-      drawPdfFooter(page);
+      drawPdfFooter(page, spec);
       return;
     }
     const grid = pdfEqualGrid(imgs.map(pdfAspect), CW, gridH, gap, spec.fewerOnTop, spec.others.map((s) => s.wide || 0), spec.cols || 0);
@@ -1811,7 +1836,7 @@
     page.wide = spec.others.filter((s, i) => grid.spans[i] === 2).map((s) => s.photo.id);
     const x0 = M + (CW - grid.width) / 2;
     grid.cells.forEach((c, i) => drawPdfSlot(page, imgs[i], spec.others[i], x0 + c.x, y + c.y, c.w, c.h, spec.tagPlace, spec.tagAlign));
-    drawPdfFooter(page);
+    drawPdfFooter(page, spec);
   }
 
   function loadImageOnce(src) {
@@ -2090,6 +2115,11 @@
       .map((pose) => ({ ...pose, candidates: photos.filter((p) => pose.angle ? p.angle === pose.angle : !known.some((k) => k.angle === p.angle)) }))
       .filter((pose) => pose.candidates.length);
     const newSaleRef = () => `NP-${Date.now().toString(36).slice(-3).toUpperCase()}${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+    /* A new PDF starts with no social media, email or agency on it (v620, the owner: "by default comp card should not show
+       any socials about agency or model ... as admin I can show that and turn it on"). Every kind this model has is set
+       OFF for the studio, and a tap turns one on. An arrangement saved before this keeps what it was saved with, and one
+       saved with no answer still reads the album's switches. A visitor never gets the choice: they see the album's. */
+    const noContactYet = () => (admin ? Object.fromEntries(portfolioPdfContactChoices(shoot).map((c) => [c.key, false])) : {});
     const state = {
       pages: 1,
       count: 0,            // photos on the pages; the cover isn't counted
@@ -2121,7 +2151,9 @@
       spacing: "medium",   // air between the photographs: none/narrow/medium/wide
       statsAlign: "left",  // the measurements row: left, centre or right
       contactAlign: "left",// the Instagram/email row, answered separately
-      contactOn: {},       // contact detail key → shown on this PDF, where the studio overruled the album
+      contactOn: noContactYet(), // contact detail key → shown on this PDF; a new one starts with all off (v620)
+      statsOn: {},         // measurement key → shown on this PDF, where the studio overruled the album (v620)
+      branding: true,      // the studio's name, mark and foot on every page; the studio may leave it off one PDF (v620)
       // Print the pose under each photograph, or don't. It used to be decided
       // for the client: tags appeared only when EVERY photograph across the
       // whole PDF had a pose, so one untagged shot anywhere silently stripped
@@ -2148,7 +2180,7 @@
        new one quietly inherited them — and since v543 the builder opens on
        the latest saved portfolio, a new one always began from it. */
     const FRESH = ["pages", "count", "lead", "cover", "coverId", "coverStyle", "layout", "perPage", "span", "order",
-      "fewerOnTop", "cols", "sheetView", "layouts", "bigAt", "detailsAlign", "spacing", "statsAlign", "contactAlign", "contactOn",
+      "fewerOnTop", "cols", "sheetView", "layouts", "bigAt", "detailsAlign", "spacing", "statsAlign", "contactAlign", "contactOn", "statsOn", "branding",
       "tags", "tagPlace", "tagAlign", "filter", "adjust"].reduce((o, k) => { o[k] = JSON.parse(JSON.stringify(state[k])); return o; }, {});
     const cache = new Map();
     let renderToken = 0;
@@ -2348,6 +2380,9 @@
         statsAlign: state.statsAlign, contactAlign: state.contactAlign,
         // Which contact details this PDF shows where it differs from the album (v587).
         contactOn: { ...(state.contactOn || {}) },
+        // Which measurements this PDF shows where it differs from the album, and whether it carries the studio's branding (v620).
+        statsOn: { ...(state.statsOn || {}) },
+        branding: state.branding !== false,
         tags: tagsPerPage(), tagPlace: state.tagPlace, tagAlign: state.tagAlign, perPage: perPage(),
         spacing: state.spacing,
         span: JSON.parse(JSON.stringify(state.span || {})),
@@ -2558,6 +2593,9 @@
         statsAlign: state.statsAlign,
         contactAlign: state.contactAlign,
         contactOn: admin ? { ...(state.contactOn || {}) } : {},
+        // Only the studio can answer either; a visitor's PDF is always the album's measurements and the studio's branding.
+        statsOn: admin ? { ...(state.statsOn || {}) } : {},
+        branding: admin ? state.branding !== false : true,
         spacing: state.spacing,
         tagPlace: state.tagPlace,
         tagAlign: state.tagAlign,
@@ -2662,6 +2700,9 @@
       state.contactAlign = okAlign(sp.contactAlign, state.detailsAlign);
       // Saved before a PDF could answer for itself: the album's switches, as before.
       state.contactOn = sp.contactOn && typeof sp.contactOn === "object" ? { ...sp.contactOn } : {};
+      // Saved before a PDF could choose its measurements or its branding: the album's measurements, and the branding every PDF had.
+      state.statsOn = sp.statsOn && typeof sp.statsOn === "object" ? { ...sp.statsOn } : {};
+      state.branding = sp.branding !== false;
       // Saved before the studio could choose it: the page's own gutter.
       state.spacing = ["none", "narrow", "medium", "wide"].includes(sp.spacing) ? sp.spacing : "medium";
       // An arrangement saved before the switch existed has no answer, and
@@ -3307,29 +3348,35 @@
       });
     }
 
-    /* The contact line, detail by detail, for this PDF alone (v587). Each
-       switch starts where the album has it; a tap answers for this PDF and
-       leaves the album and its other PDFs as they were. Tapping one back to
-       the album's answer forgets this PDF's, so "changed" always means
-       changed. */
+    /* The details on a PDF, kind by kind, for this PDF alone (v587 for the contact line, v620 for the measurements and the
+       studio's branding). A new PDF starts with the model's social media, email and agency all OFF; the measurements start
+       where the album has them. A tap answers for this PDF and leaves the album and its other PDFs as they were. Every
+       answer is stored (never "forgotten" by tapping back to the album's), so a PDF made today does not change if the album
+       is ticked next month. "Changed" means different from the album. */
+    const contactChipHtml = (c, agencyOn) => {
+      const held = c.underAgency && !agencyOn;
+      const on = contactChosen(c, state.contactOn) && !held;
+      return `<button type="button" class="pp-contact-chip" data-contact-key="${esc(c.key)}" aria-pressed="${on}"${held ? " disabled" : ""} title="${esc(held ? `${c.value} — prints with the agency's name` : `${on ? "Showing" : "Hidden"}: ${c.value}`)}"><span class="pp-contact-k">${esc(c.label)}</span><span class="pp-contact-v">${esc(c.value)}</span></button>`;
+    };
     function contactChipsHtml() {
       const all = portfolioPdfContactChoices(shoot);
       if (!all.length) return `<p class="pp-hint pp-contact-none">No Instagram, email or agency on this model's albums. Only a phone or place typed in below would print.</p>`;
       const agency = all.find((c) => c.key === "agency");
       const agencyOn = !!agency && contactChosen(agency, state.contactOn);
-      const changed = all.some((c) => typeof (state.contactOn || {})[c.key] === "boolean");
+      const changed = all.some((c) => typeof (state.contactOn || {})[c.key] === "boolean" && state.contactOn[c.key] !== c.on);
+      // The model's own, and the agency's with its links, are two different asks of two different people.
+      const mine = all.filter((c) => c.key !== "agency" && !c.underAgency), theirs = all.filter((c) => c.key === "agency" || c.underAgency);
       return `<div class="pp-contact-on">
           <p class="pp-contact-cap">Contact details on this PDF</p>
-          <div class="pp-contact-chips" role="group" aria-label="Contact details on this PDF">
-            ${all.map((c) => {
-              const held = c.underAgency && !agencyOn;
-              const on = contactChosen(c, state.contactOn) && !held;
-              return `<button type="button" class="pp-contact-chip" data-contact-key="${esc(c.key)}" aria-pressed="${on}"${held ? " disabled" : ""} title="${esc(held ? `${c.value} — prints with the agency's name` : `${on ? "Showing" : "Hidden"}: ${c.value}`)}"><span class="pp-contact-k">${esc(c.label)}</span><span class="pp-contact-v">${esc(c.value)}</span></button>`;
-            }).join("")}
-          </div>
+          ${mine.length ? `<p class="pp-contact-sub">The model: social media and email</p>
+          <div class="pp-contact-chips" role="group" aria-label="The model's social media and email on this PDF">${mine.map((c) => contactChipHtml(c, agencyOn)).join("")}</div>` : ""}
+          ${theirs.length ? `<p class="pp-contact-sub">The agency: name and its social media</p>
+          <div class="pp-contact-chips" role="group" aria-label="The agency's name and social media on this PDF">${theirs.map((c) => contactChipHtml(c, agencyOn)).join("")}</div>` : ""}
           <p class="pp-hint pp-contact-note">${changed
-            ? `Changed for this PDF only. The album and its other PDFs are as they were. <button type="button" class="pp-link" id="ppContactReset">Use the album's settings</button>`
-            : "As the album has them. Tap one to show or hide it on this PDF only."}</p>
+            ? `Different from the album, for this PDF only. The album and its other PDFs are as they were. <button type="button" class="pp-link" id="ppContactReset">Use the album's settings</button>`
+            : all.some((c) => contactChosen(c, state.contactOn))
+              ? "As the album has them. Tap one to show or hide it on this PDF only."
+              : "Nothing prints until you tap it on. The album and its other PDFs are not touched."}</p>
         </div>`;
     }
     function wireContactChips() {
@@ -3343,16 +3390,58 @@
         else {
           const c = portfolioPdfContactChoices(shoot).find((x) => x.key === chip.dataset.contactKey);
           if (!c) return;
-          const next = { ...(state.contactOn || {}) };
-          const want = !contactChosen(c, next);
-          if (want === c.on) delete next[c.key]; else next[c.key] = want;
-          state.contactOn = next;
+          state.contactOn = { ...(state.contactOn || {}), [c.key]: !contactChosen(c, state.contactOn) };
         }
         wrap.innerHTML = contactChipsHtml();
         const again = wrap.querySelector(reset ? ".pp-contact-chip" : `[data-contact-key="${chip.dataset.contactKey}"]`);
         if (again) again.focus();
         drawPreview();
       });
+    }
+
+    // The measurements, one by one (v620). Each starts where the album has it.
+    function statChipsHtml() {
+      const all = portfolioPdfStatChoices(shoot);
+      if (!all.length) return `<p class="pp-hint pp-contact-none">No measurements on this model's albums.</p>`;
+      const changed = all.some((c) => typeof (state.statsOn || {})[c.key] === "boolean" && state.statsOn[c.key] !== c.on);
+      return `<div class="pp-contact-on">
+          <p class="pp-contact-cap">Measurements on this PDF</p>
+          <div class="pp-contact-chips" role="group" aria-label="Measurements on this PDF">
+            ${all.map((c) => {
+              const on = statChosen(c, state.statsOn);
+              return `<button type="button" class="pp-contact-chip" data-stat-key="${esc(c.key)}" aria-pressed="${on}" title="${esc(`${on ? "Showing" : "Hidden"}: ${c.label} ${c.value}`)}"><span class="pp-contact-k">${esc(c.label)}</span><span class="pp-contact-v">${esc(c.value)}</span></button>`;
+            }).join("")}
+          </div>
+          <p class="pp-hint pp-contact-note">${changed
+            ? `Different from the album, for this PDF only. <button type="button" class="pp-link" id="ppStatsReset">Use the album's settings</button>`
+            : "As the album has them. Tap one to show or hide it on this PDF only."}</p>
+        </div>`;
+    }
+    function wireStatChips() {
+      const wrap = body.querySelector("#ppStatsOnWrap");
+      if (!wrap) return;
+      wrap.addEventListener("click", (e) => {
+        const reset = e.target.closest("#ppStatsReset");
+        const chip = e.target.closest("[data-stat-key]");
+        if (!reset && !chip) return;
+        if (reset) state.statsOn = {};
+        else {
+          const c = portfolioPdfStatChoices(shoot).find((x) => x.key === chip.dataset.statKey);
+          if (!c) return;
+          state.statsOn = { ...(state.statsOn || {}), [c.key]: !statChosen(c, state.statsOn) };
+        }
+        wrap.innerHTML = statChipsHtml();
+        const again = wrap.querySelector(reset ? ".pp-contact-chip" : `[data-stat-key="${chip.dataset.statKey}"]`);
+        if (again) again.focus();
+        drawPreview();
+      });
+    }
+
+    // The studio's branding on every page of this PDF (v620). Off leaves the name, the mark and the foot out.
+    function wireBrandSwitch() {
+      const sw = body.querySelector("#ppBrandOn");
+      if (!sw) return;
+      sw.addEventListener("change", () => { state.branding = sw.checked; drawPreview(); });
     }
 
     // Which alignment the stats row is showing as chosen.
@@ -3680,7 +3769,17 @@ ${admin ? `
               <button type="button" role="radio" data-contact-align="centre" title="Contact line centred" aria-label="Contact line centred">${iconBtn("alignCentre", "Centre")}</button>
               <button type="button" role="radio" data-contact-align="right" title="Contact line to the right" aria-label="Contact line to the right">${iconBtn("alignRight", "Right")}</button>
             </div>
+            ${admin ? `<div id="ppStatsOnWrap" data-forsheet="first">${statChipsHtml()}</div>` : ""}
             ${admin ? `<div id="ppContactOnWrap" data-forsheet="first">${contactChipsHtml()}</div>` : ""}
+          </section>
+          <!-- The studio's name, mark and foot on every page: on, as every PDF has had them, until the studio turns it off for
+               one PDF (v620). The faint name across a free preview is the lock on that copy and is not part of this. -->
+          <section class="pp-group" data-group="brand">
+            <h4 class="pp-group-name">Studio branding</h4>
+            <div data-forsheet="any">
+              <label class="pp-switch"><input type="checkbox" id="ppBrandOn"${state.branding !== false ? " checked" : ""} /><span class="pp-switch-track" aria-hidden="true"></span><span>nerdyphotographer.in on every page</span></label>
+              <p class="pp-hint">The studio name and mark at the top, and the credit, booking link and one line about the studio at the foot. Off leaves them out of this PDF only.</p>
+            </div>
           </section>
           ` : ""}
         </div>
@@ -3951,6 +4050,8 @@ ${admin ? `
          Gating the markup without gating the wiring threw on null and
          took the client's whole preview down with it. */
       wireContactChips();
+      wireStatChips();
+      wireBrandSwitch();
       const seg_ContactAlignSeg = body.querySelector("#ppContactAlignSeg");
       if (seg_ContactAlignSeg) seg_ContactAlignSeg.addEventListener("click", (e) => {
         const btn = e.target.closest("[data-contact-align]");
@@ -4856,7 +4957,7 @@ ${admin ? `
                 ? await Promise.all(pages.map((p) => (watermark && !admin)
                   ? pdfCanvasJpeg(p.canvas, 0.84).then((b) => new Blob([withDpi(b, dpi)], { type: "image/jpeg" }))
                   : pdfCanvasPng(p.canvas).then(async (bl) => new Blob([withDpi(new Uint8Array(await bl.arrayBuffer()), dpi)], { type: "image/png" }))))
-                : await buildPortfolioPdf(pages, `${spec.name} — Model Portfolio${watermark ? " (preview)" : ""}`);
+                : await buildPortfolioPdf(pages, `${spec.name} — Model Portfolio${watermark ? " (preview)" : ""}`, spec.branding === false ? { author: "", creator: "" } : undefined);
             } finally {
               // Full-resolution canvases are large; give the memory back.
               pages.forEach((p) => { p.canvas.width = 0; p.canvas.height = 0; });
