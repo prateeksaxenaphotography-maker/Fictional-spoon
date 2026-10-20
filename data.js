@@ -3055,8 +3055,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1792477556758,
-    "syncedAt": 1792477556758,
+    "updatedAt": 1792477783832,
+    "syncedAt": 1792477783832,
     "testShootLimits": {
       "default": 2,
       "months": {
@@ -3105,6 +3105,21 @@ window.WPS_DATA = {
       "desc": "Photographer direct unlock code",
       "location": "Home Studio, Sector 46, Noida",
       "venueCost": 3000
+    },
+    {
+      "code": "#5390b153f0693874f00b",
+      "desc": "for year 2026",
+      "location": "Home studio, sector 46, Noida",
+      "venueCost": null,
+      "homeStudioDiscount": {
+        "type": "free"
+      },
+      "startDate": "2026-10-15",
+      "endDate": "2026-12-31",
+      "shootFrom": "2026-10-20",
+      "shootTo": "2026-12-30",
+      "allowFullMonth": true,
+      "deliverables": "Full gallery + 3 clicks retouched per look"
     }
   ],
   "PROMO_CODES": {
@@ -3282,7 +3297,7 @@ window.WPS_DATA = {
   },
   "HOME_STUDIO_RATE_TFP": 4000,
   "SETTINGS_AT": {
-    "INVITE_CODES": 1792140447067,
+    "INVITE_CODES": 1792477773344,
     "PROMO_CODES": 1792140537781,
     "PACKAGES": 1792477552693,
     "TFP_PACKAGE": 1792477552694,
