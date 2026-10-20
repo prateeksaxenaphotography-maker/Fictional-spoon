@@ -2919,7 +2919,7 @@ window.WPS_DATA = {
           "status": "confirmed",
           "type": "Selective Collaboration (TFP)",
           "contractVersion": "V4.2-TFP",
-          "updatedAt": 1791955128735
+          "updatedAt": 1792479911656
         }
       ],
       "2026-10-24": [
@@ -2929,7 +2929,7 @@ window.WPS_DATA = {
           "status": "confirmed",
           "type": "Selective Collaboration (TFP)",
           "contractVersion": "Not Required",
-          "updatedAt": 1791955045973
+          "updatedAt": 1792479931860
         }
       ],
       "2026-11-14": [
@@ -3060,8 +3060,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1792479888702,
-    "syncedAt": 1792479888702,
+    "updatedAt": 1792479945905,
+    "syncedAt": 1792479945905,
     "testShootLimits": {
       "default": 2,
       "months": {
