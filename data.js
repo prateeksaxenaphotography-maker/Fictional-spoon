@@ -3060,8 +3060,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1792479945905,
-    "syncedAt": 1792479945905,
+    "updatedAt": 1792480036068,
+    "syncedAt": 1792480036068,
     "testShootLimits": {
       "default": 2,
       "months": {
@@ -3302,7 +3302,7 @@ window.WPS_DATA = {
   },
   "HOME_STUDIO_RATE_TFP": 4000,
   "SETTINGS_AT": {
-    "INVITE_CODES": 1792477773344,
+    "INVITE_CODES": 1792480028396,
     "PROMO_CODES": 1792140537781,
     "PACKAGES": 1792477552693,
     "TFP_PACKAGE": 1792477552694,
