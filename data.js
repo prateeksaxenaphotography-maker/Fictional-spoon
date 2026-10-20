@@ -2961,6 +2961,16 @@ window.WPS_DATA = {
           "contractVersion": "Pending Agreement",
           "updatedAt": 1791958261395
         }
+      ],
+      "2026-11-28": [
+        {
+          "id": "b_1792480119303_3olm",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "TFP-LIABILITY-RELEASE-V4.3",
+          "updatedAt": 1792480119303
+        }
       ]
     },
     "removedBookingIds": [
@@ -3060,8 +3070,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1792480036068,
-    "syncedAt": 1792480036068,
+    "updatedAt": 1792480174312,
+    "syncedAt": 1792480174312,
     "testShootLimits": {
       "default": 2,
       "months": {
@@ -3302,7 +3312,7 @@ window.WPS_DATA = {
   },
   "HOME_STUDIO_RATE_TFP": 4000,
   "SETTINGS_AT": {
-    "INVITE_CODES": 1792480028396,
+    "INVITE_CODES": 1792480168508,
     "PROMO_CODES": 1792140537781,
     "PACKAGES": 1792477552693,
     "TFP_PACKAGE": 1792477552694,
