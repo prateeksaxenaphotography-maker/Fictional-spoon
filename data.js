@@ -3055,8 +3055,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1792221306539,
-    "syncedAt": 1792221306539,
+    "updatedAt": 1792477556758,
+    "syncedAt": 1792477556758,
     "testShootLimits": {
       "default": 2,
       "months": {
@@ -3284,14 +3284,14 @@ window.WPS_DATA = {
   "SETTINGS_AT": {
     "INVITE_CODES": 1792140447067,
     "PROMO_CODES": 1792140537781,
-    "PACKAGES": 1791618731794,
-    "TFP_PACKAGE": 1791618731795,
-    "HOME_STUDIO_RATE": 1791618731795,
-    "PORTFOLIO_PDF": 1791302275441,
+    "PACKAGES": 1792477552693,
+    "TFP_PACKAGE": 1792477552694,
+    "HOME_STUDIO_RATE": 1792477552694,
+    "PORTFOLIO_PDF": 1792305536741,
     "HOME_SLIDESHOW": 1791474369889,
     "STUDIO": 0,
     "MEASURE_UNITS": 1790269147688,
-    "HOME_STUDIO_RATE_TFP": 1791618731795
+    "HOME_STUDIO_RATE_TFP": 1792477552694
   },
   "TESTIMONIALS": {
     "items": [
@@ -3936,65 +3936,11 @@ window.WPS_DATA = {
   "MODEL_PDFS": {
     "versions": [
       {
-        "id": "mp_muwv4edi_zr7ss",
-        "shootId": "comp-card-Kunaal%20Raghav%20(%40https%3A%2F%2Fwww.instagram.com%2Fkunaal_raghav07%2F%3Fhl%3Den)",
-        "modelKey": "kunaal-raghav",
-        "name": "test 1",
-        "updatedAt": 1791302275441,
-        "spec": {
-          "pages": 1,
-          "count": 5,
-          "perPage": [
-            5
-          ],
-          "span": {},
-          "firstPage": 0,
-          "picks": [
-            "mr5526tu5qjzd9-12",
-            "mr5525z3emtds3-7",
-            "mr55268fnt3bp6-8",
-            "mr5525kbficskl-5",
-            "mr5526qyua40ad-11"
-          ],
-          "cleared": [],
-          "lead": "mr5526tu5qjzd9-12",
-          "cover": true,
-          "coverId": "mr5525erdhzei6-4",
-          "coverStyle": "full",
-          "tags": [
-            false
-          ],
-          "tagPlace": "in",
-          "tagAlign": "left",
-          "layout": "equal",
-          "layouts": [
-            "lead"
-          ],
-          "cols": [
-            0
-          ],
-          "bigAt": [
-            "top"
-          ],
-          "detailsAlign": "centre",
-          "statsAlign": "centre",
-          "contactAlign": "left",
-          "contactOn": {
-            "agency-instagram": false,
-            "agency-website": false
-          },
-          "spacing": "wide",
-          "order": [],
-          "fewerOnTop": false,
-          "adjust": {}
-        }
-      },
-      {
         "id": "mp_muibi3wg_q4nmp",
         "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
         "modelKey": "atharv-sharma",
         "name": "Test 2",
-        "updatedAt": 1791282581059,
+        "updatedAt": 1792305536740,
         "spec": {
           "pages": 2,
           "count": 8,
@@ -4046,6 +3992,7 @@ window.WPS_DATA = {
           "contactOn": {
             "email": false
           },
+          "branding": false,
           "spacing": "none",
           "order": [
             "muca56vgez53vb-0",
@@ -4095,6 +4042,60 @@ window.WPS_DATA = {
               "zoom": 1
             }
           }
+        }
+      },
+      {
+        "id": "mp_muwv4edi_zr7ss",
+        "shootId": "comp-card-Kunaal%20Raghav%20(%40https%3A%2F%2Fwww.instagram.com%2Fkunaal_raghav07%2F%3Fhl%3Den)",
+        "modelKey": "kunaal-raghav",
+        "name": "test 1",
+        "updatedAt": 1791302275441,
+        "spec": {
+          "pages": 1,
+          "count": 5,
+          "perPage": [
+            5
+          ],
+          "span": {},
+          "firstPage": 0,
+          "picks": [
+            "mr5526tu5qjzd9-12",
+            "mr5525z3emtds3-7",
+            "mr55268fnt3bp6-8",
+            "mr5525kbficskl-5",
+            "mr5526qyua40ad-11"
+          ],
+          "cleared": [],
+          "lead": "mr5526tu5qjzd9-12",
+          "cover": true,
+          "coverId": "mr5525erdhzei6-4",
+          "coverStyle": "full",
+          "tags": [
+            false
+          ],
+          "tagPlace": "in",
+          "tagAlign": "left",
+          "layout": "equal",
+          "layouts": [
+            "lead"
+          ],
+          "cols": [
+            0
+          ],
+          "bigAt": [
+            "top"
+          ],
+          "detailsAlign": "centre",
+          "statsAlign": "centre",
+          "contactAlign": "left",
+          "contactOn": {
+            "agency-instagram": false,
+            "agency-website": false
+          },
+          "spacing": "wide",
+          "order": [],
+          "fewerOnTop": false,
+          "adjust": {}
         }
       }
     ],
