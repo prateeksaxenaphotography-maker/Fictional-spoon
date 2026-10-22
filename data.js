@@ -2970,6 +2970,13 @@ window.WPS_DATA = {
           "type": "Selective Collaboration (TFP)",
           "contractVersion": "TFP-LIABILITY-RELEASE-V4.3",
           "updatedAt": 1792480119303
+        },
+        {
+          "id": "b_audit_NP-20261020-123839-YNUP",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "TFP-LIABILITY-RELEASE-V4.3"
         }
       ]
     },
@@ -3070,8 +3077,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1792480174312,
-    "syncedAt": 1792480174312,
+    "updatedAt": 1792655393713,
+    "syncedAt": 1792655393713,
     "testShootLimits": {
       "default": 2,
       "months": {
@@ -3312,7 +3319,7 @@ window.WPS_DATA = {
   },
   "HOME_STUDIO_RATE_TFP": 4000,
   "SETTINGS_AT": {
-    "INVITE_CODES": 1792480168508,
+    "INVITE_CODES": 1792655385942,
     "PROMO_CODES": 1792140537781,
     "PACKAGES": 1792477552693,
     "TFP_PACKAGE": 1792477552694,
