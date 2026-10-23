@@ -3054,8 +3054,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1792728852482,
-    "syncedAt": 1792728852482,
+    "updatedAt": 1792742936707,
+    "syncedAt": 1792742936707,
     "testShootLimits": {
       "default": 2,
       "months": {},
@@ -3166,25 +3166,29 @@ window.WPS_DATA = {
       "id": "pkg_1",
       "name": "Basic Test / Comp Card",
       "price": 7000,
-      "specs": "20 Proof Clicks + 0 Retouched (No RAW files delivered)"
+      "specs": "20 Proof Clicks + 0 Retouched (No RAW files delivered)",
+      "studioFee": 2000
     },
     {
       "id": "pkg_2",
       "name": "Mini Portfolio",
       "price": 10000,
-      "specs": "25 Proof Clicks + 3-5 Retouched Clicks (No RAW files delivered)"
+      "specs": "25 Proof Clicks + 3-5 Retouched Clicks (No RAW files delivered)",
+      "studioFee": 2000
     },
     {
       "id": "pkg_3",
       "name": "Standard Editorial Portfolio",
       "price": 25000,
-      "specs": "50 Unedited + 8-12 Retouched Clicks (No RAW files delivered)"
+      "specs": "50 Unedited + 8-12 Retouched Clicks (No RAW files delivered)",
+      "studioFee": 0
     },
     {
       "id": "pkg_4",
       "name": "Premium Brand Campaign",
       "price": 50000,
-      "specs": "100 Unedited + 15-25 Retouched Clicks (No RAW files delivered)"
+      "specs": "100 Unedited + 15-25 Retouched Clicks (No RAW files delivered)",
+      "studioFee": 0
     },
     {
       "id": "pkg_5",
@@ -3296,14 +3300,14 @@ window.WPS_DATA = {
   "SETTINGS_AT": {
     "INVITE_CODES": 1792655385942,
     "PROMO_CODES": 1792140537781,
-    "PACKAGES": 1792728850036,
-    "TFP_PACKAGE": 1792728850037,
-    "HOME_STUDIO_RATE": 1792728850037,
+    "PACKAGES": 1792742933021,
+    "TFP_PACKAGE": 1792742933022,
+    "HOME_STUDIO_RATE": 1792742933022,
     "PORTFOLIO_PDF": 1792305536741,
     "HOME_SLIDESHOW": 1791474369889,
     "STUDIO": 0,
     "MEASURE_UNITS": 1790269147688,
-    "HOME_STUDIO_RATE_TFP": 1792728850037
+    "HOME_STUDIO_RATE_TFP": 1792742933022
   },
   "TESTIMONIALS": {
     "items": [
