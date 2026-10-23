@@ -3054,8 +3054,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1792728559060,
-    "syncedAt": 1792728559060,
+    "updatedAt": 1792728778764,
+    "syncedAt": 1792728778764,
     "testShootLimits": {
       "default": 2,
       "months": {},
@@ -3201,7 +3201,7 @@ window.WPS_DATA = {
   ],
   "TFP_PACKAGE": {
     "name": "Test Shoot / TFP Collaboration",
-    "specs": "Full Proofing Gallery + 8 Retouched Master Clicks (No RAW files delivered)"
+    "specs": "Full Proofing Gallery + 3 Retouched Master Clicks Per Look (No RAW files delivered)"
   },
   "HOME_STUDIO_RATE": 1000,
   "PORTFOLIO_PDF": {
@@ -3296,14 +3296,14 @@ window.WPS_DATA = {
   "SETTINGS_AT": {
     "INVITE_CODES": 1792655385942,
     "PROMO_CODES": 1792140537781,
-    "PACKAGES": 1792477552693,
-    "TFP_PACKAGE": 1792477552694,
-    "HOME_STUDIO_RATE": 1792477552694,
+    "PACKAGES": 1792728776143,
+    "TFP_PACKAGE": 1792728776143,
+    "HOME_STUDIO_RATE": 1792728776143,
     "PORTFOLIO_PDF": 1792305536741,
     "HOME_SLIDESHOW": 1791474369889,
     "STUDIO": 0,
     "MEASURE_UNITS": 1790269147688,
-    "HOME_STUDIO_RATE_TFP": 1792477552694
+    "HOME_STUDIO_RATE_TFP": 1792728776143
   },
   "TESTIMONIALS": {
     "items": [
