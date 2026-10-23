@@ -47,7 +47,11 @@ window.WPS_TALK_FIRST = function ({ $, esc, setError, clearError, form, panel, a
   const to = (window.STUDIO_CONFIG && window.STUDIO_CONFIG.email) || "prateeksaxenaphotography@gmail.com";
   const subject = ask ? `Test shoot request — ${name}` : `Talk first — ${name}`;
   const role = (($("#b_role") || {}).selectedOptions || [])[0];
-  const lines = [["Name", name], ["Role", role ? role.text.trim() : "—"], ["Email", email], ["Phone", v("b_phone") || "—"], ["Instagram / Website", v("b_instagram") || "—"], ...((ask && ask.extra) || [])];
+  // How they heard about the studio (v621): a line only when they said; the Contact card carries it, so Talk first does.
+  const heard = v("b_heard");
+  const referredBy = heard === "Referred by someone" ? v("b_referrer").replace(/\s+/g, " ").slice(0, 120) : "";
+  const heardLines = heard ? [["How they heard about the studio", heard], ...(heard === "Referred by someone" ? [["Referred by", referredBy || "(no details given)"]] : [])] : [];
+  const lines = [["Name", name], ["Role", role ? role.text.trim() : "—"], ["Email", email], ["Phone", v("b_phone") || "—"], ["Instagram / Website", v("b_instagram") || "—"], ...heardLines, ...((ask && ask.extra) || [])];
   const plain = `Hi,\n\n${ask ? ask.intro : "I'd like to talk first, before booking."}\n\n${lines.map(([k, x]) => `${k}: ${x}`).join("\n")}\n\nThanks,\n${name}`;
   const enc = encodeURIComponent;
   const links = {

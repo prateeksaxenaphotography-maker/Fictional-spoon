@@ -13,6 +13,17 @@
     const studioEmail = window.STUDIO_CONFIG?.email || "prateeksaxenaphotography@gmail.com";
 
     const val = (id) => $("#" + id)?.value.trim() || "";
+    /* How they found the studio (v621). Optional from end to end: nothing here ever blocks a send or asks twice. Only
+       "Referred by someone" opens the second box, and that box is optional too. What reaches the studio is a line for the
+       answer and, for a referral, a line for who (or "(no details given)" when they chose it and left the box empty). */
+    const REFERRED = "Referred by someone";
+    const heardOf = () => {
+      const heard = val("b_heard");
+      const referredBy = heard === REFERRED ? val("b_referrer").replace(/\s+/g, " ").slice(0, 120) : "";
+      const lines = heard ? `How they heard about the studio: ${heard}\n` + (heard === REFERRED ? `Referred by: ${referredBy || "(no details given)"}\n` : "") : "";
+      const fields = heard ? { "How they heard about the studio": heard, ...(heard === REFERRED ? { "Referred by": referredBy || "(no details given)" } : {}) } : {};
+      return { heard, referredBy, lines, fields };
+    };
     const fieldOf = (id) => $("#" + id)?.closest(".field, .check-line");
 
     // "Today" is India's today: the studio is in Noida, and a visitor abroad
@@ -2616,6 +2627,7 @@
 
       const name = val("b_name"), role = val("b_role"), email = val("b_email");
       const phone = val("b_phone"), instagram = val("b_instagram"), type = val("b_type");
+      const heardInfo = heardOf();
       /* Booking on someone else's behalf. `subjectName` is the person in front
          of the camera; `name` above is whoever is arranging and paying. Where
          they are the same person these are all empty and nothing downstream
@@ -3061,6 +3073,7 @@
           `Email: ${email}\n` +
           `Phone: ${phone || '—'}\n` +
           `Instagram / Website: ${instagram || '—'}\n` +
+          heardInfo.lines +
           `Shoot Type: ${type}\n` +
           `Proposed Date: ${date}\n` +
           (laterMode ? `⚠️ Date Status: TO BE AGREED — the client has seen the costs, accepted the terms and signed. Agree a date with them by email, then add it to the calendar as a Test shoot.\n` : "") +
@@ -3119,6 +3132,7 @@
           `Email: ${email}\n` +
           `Phone: ${phone || '—'}\n` +
           `Instagram / Website: ${instagram || '—'}\n` +
+          heardInfo.lines +
           `Shoot Type: ${type}\n` +
           `Proposed Date: ${date}\n` +
           (laterMode ? `⚠️ Date Status: TO BE AGREED — the client has seen the costs, accepted the terms and signed. Agree a date with them by email, then add it to the calendar as a Test shoot.\n` : "") +
@@ -3382,6 +3396,8 @@
           "Email": email,
           "Phone": phone || "—",
           "Instagram / Website": instagram || "—",
+          // How they heard about the studio: only when they said (v621). The signed contract record does not carry it.
+          ...heardInfo.fields,
           // Booking for someone else: the one email that always reaches the
           // studio never said who was in front of the camera (Sep 2026 audit, B7).
           ...(onBehalf ? {
@@ -4093,6 +4109,11 @@
       openTermsModal("[Your name]", "Commercial");
     }
 
+    // "Someone referred me" opens the optional box for who; any other answer, or none, puts it away.
+    const syncHeard = () => { const f = $("#b_referrer_field"); if (f) f.hidden = $("#b_heard")?.value !== REFERRED; };
+    $("#b_heard")?.addEventListener("change", syncHeard);
+    syncHeard();
+
     /* A draft of the form, kept for this browser tab only. Going back and
        forward used to empty every field, a long brief included (Sep 2026
        audit, B25). Cleared once a request is sent, and by "Send another". */
@@ -4134,6 +4155,7 @@
         dateEl.dispatchEvent(new Event("input", { bubbles: true }));
       }
       ["b_name", "b_email", "b_date"].forEach(clearError);
+      syncHeard();
       if (successPanel) successPanel.hidden = true;
       form.hidden = false;
       form.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "start" });

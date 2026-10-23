@@ -7131,6 +7131,25 @@ window.resolveContractArchive = function(version) {
                  <label class="field"><span>Phone Number</span><input id="b_phone" type="tel" maxlength="20" autocomplete="tel" placeholder="+91 99999-99999" /></label>
                </div>
                <label class="field"><span id="b_instagram_label">Instagram / Website</span><input id="b_instagram" type="text" placeholder="e.g. @handle or website.com" /></label>
+               <!-- How they found the studio (v621, the owner: "an option asking if the person is referred by someone or how
+                    did they hear about it ... non mandatory"). Skipping it is a complete answer. Only "Referred by someone"
+                    opens a second box, and that is optional too: one box for whichever the person has — a name, an email,
+                    a website or a social handle — because nobody should have to know which kind to give. -->
+               <label class="field" id="b_heard_field"><span>How did you hear about us? <span class="field-opt">(optional)</span></span>
+                 <select id="b_heard">
+                   <option value="">Choose one, or skip</option>
+                   <option value="Referred by someone">Someone referred me</option>
+                   <option value="Instagram">Instagram</option>
+                   <option value="Kavyar">Kavyar</option>
+                   <option value="Google search">Google search</option>
+                   <option value="Saw your credit on another page">I saw your credit on another page</option>
+                   <option value="Other">Other</option>
+                 </select>
+               </label>
+               <label class="field" id="b_referrer_field" hidden><span>Who referred you? <span class="field-opt">(optional)</span></span>
+                 <input id="b_referrer" type="text" maxlength="120" autocomplete="off" placeholder="Name, email, website or @handle" />
+                 <small class="field-hint">Whichever you have. You can leave this empty.</small>
+               </label>
 
                <!-- Booking for someone else. An agency, a brand or a manager
                     could always book, but the form only ever asked for ONE
