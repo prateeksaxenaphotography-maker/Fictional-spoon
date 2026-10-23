@@ -817,6 +817,28 @@ function getHomeStudioRate(forTestShoot) {
 }
 window.getHomeStudioRate = getHomeStudioRate;
 
+/* A package's own studio fee (v624, the owner: "in each package I should be able to configure an independent fee for home
+   studio or studio in future"). It is what a client pays to use the studio (the home studio today, a studio of its own
+   later) WITH THAT PACKAGE. Blank follows the standard rate above (the "Paid shoots" box); a number replaces it; 0 means
+   the studio comes with the package. A test shoot has its own rate and has no package fee. The fee lives on the package,
+   so it follows the package when it is renamed, reordered or published. */
+window.packageStudioFee = function(pkg) {
+  const n = pkg && pkg.studioFee;
+  if (n === null || n === undefined || n === "") return null;
+  const v = Number(n);
+  return Number.isFinite(v) && v >= 0 ? Math.round(v) : null;
+};
+window.getHomeStudioRateFor = function(pkg, forTestShoot) {
+  if (!forTestShoot) { const own = window.packageStudioFee(pkg); if (own !== null) return own; }
+  return getHomeStudioRate(forTestShoot);
+};
+// The package a booking form's "Budget / package" box has chosen, by the exact option it wrote, then by name.
+window.packageOfBudget = function(value) {
+  const v = String(value || "");
+  const all = (typeof getAdminPackages === "function" ? getAdminPackages() : []) || [];
+  return all.find((p) => v === `₹${Number(p.price).toLocaleString("en-IN")} (${p.name})`) || all.find((p) => v.includes(p.name)) || null;
+};
+
 // Model portfolio PDF: whether clients can buy the one- or two-page PDF they
 // build from a model's pose-tagged photos, what it costs, and the UPI ID that
 // receives it. Published with the other rates, because visitors can only read
@@ -7124,7 +7146,12 @@ window.resolveContractArchive = function(version) {
                     inferred from your job. A makeup artist may well be booking
                     a shoot of themselves, and reading it off the Role dropdown
                     made the form demand a second person's details from them. -->
-               <label class="check-line" id="b_adult_line"><input type="checkbox" id="b_adult" /><span>I am 18 or over *<em class="check-hint">Under 18? You need a parent or guardian to book this for you — they tick “I am booking on behalf of someone else” below and add your name.</em></span></label>
+               <label class="check-line" id="b_adult_line"><input type="checkbox" id="b_adult" /><span>I am 18 or over *<em class="check-hint">Under 18? Tick the box below instead, or ask a parent or guardian to book for you.</em></span></label>
+               <!-- A 16-year-old who fills the form in (the owner, Oct 2026: "or guardian asked the child to fill"; the tick says only
+                    "I am under 18", not that anyone knows). It drives the same machinery as booking for someone under 18: the child is the
+                    person photographed, the release goes to the guardian, who is copied on the signed contract and whose
+                    reply the studio waits for. Only the guardian's name and email are asked on top. -->
+               <label class="check-line" id="b_selfminor_line"><input type="checkbox" id="b_selfminor" /><span>I am under 18<em class="check-hint">Add a parent or guardian's name and their own email below. They get a copy of everything, and nothing is confirmed until they reply to say yes.</em></span></label>
                <label class="check-line" id="b_onbehalf_line"><input type="checkbox" id="b_onbehalf" /><span>I am booking on behalf of someone else — they are being photographed, not me</span></label>
                <div class="field-row">
                  <label class="field"><span>Email Address *</span><input id="b_email" type="email" required autocomplete="email" placeholder="name@example.com" /></label>
@@ -7176,7 +7203,7 @@ window.resolveContractArchive = function(version) {
                  <p class="field-hint subject-hint" id="b_subject_email_hint">Their release goes to their email address. It does not replace yours.</p>
                  <label class="check-line"><input type="checkbox" id="b_subject_minor" /><span>They are under 18</span></label>
                  <div id="b_guardian_block" class="guardian-block" hidden>
-                   <p class="subject-lede">Someone under 18 cannot give this permission themselves, so the release goes to their parent or guardian instead.</p>
+                   <p class="subject-lede">Someone under 18 cannot give this permission themselves, so the release goes to their parent or guardian instead. They are copied on the signed contract, so this needs their own email address, not the child's.</p>
                    <div class="field-row">
                      <label class="field"><span>Parent or guardian's name *</span><input id="b_guardian_name" type="text" placeholder="Who is responsible for them" /></label>
                      <label class="field"><span>Their email *</span><input id="b_guardian_email" type="email" placeholder="name@example.com" /></label>

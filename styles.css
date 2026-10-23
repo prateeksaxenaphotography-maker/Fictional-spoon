@@ -3058,6 +3058,9 @@ html.theme-dark { color-scheme: dark; }
 .production-brief { margin: 0 0 18px; }
 .production-note { margin: -4px 0 0; font-size: 12.5px; color: var(--ink-soft); }
 .field-hint { display: block; font-weight: 400; font-size: 12px; color: var(--ink-soft); margin-top: 3px; text-transform: none; letter-spacing: 0; }
+/* Booking for yourself as someone under 18: only the guardian's name and email are asked; the rest of the "who is being
+   photographed" block is you, so it stays out of the way. */
+.subject-block.is-self > :not(.guardian-block) { display: none !important; }
 .field-opt { margin-left: 4px; font-weight: 400; color: var(--ink-soft); text-transform: none; letter-spacing: 0; }
 .book-wrap #bookingForm.is-production #codeBox,
 .book-wrap #bookingForm.is-production #b_budget_field,

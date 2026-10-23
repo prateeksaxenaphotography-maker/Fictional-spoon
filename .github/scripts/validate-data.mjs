@@ -1092,6 +1092,12 @@ try {
     if (D[key] === undefined || D[key] === null) fail(`data.js no longer publishes ${key} — clients would fall back to built-in defaults that do not match the studio's`);
   }
   if (Array.isArray(D.PACKAGES) && D.PACKAGES.length === 0) fail("PACKAGES is published as an empty list — the booking form would have nothing to quote");
+  // A package's own studio fee (v624): absent follows the standard rate; present it is a whole number of rupees, 0 or more.
+  (Array.isArray(D.PACKAGES) ? D.PACKAGES : []).forEach((p) => {
+    if (p && p.studioFee !== undefined && !(typeof p.studioFee === "number" && Number.isInteger(p.studioFee) && p.studioFee >= 0)) {
+      fail(`PACKAGES: "${p.name}" has a studio fee that is not a whole number of rupees (${JSON.stringify(p.studioFee)}) — the quote would charge the wrong rental`);
+    }
+  });
   // The studio (Oct 2026): what and where it is, its room limit and finishing
   // time. Optional — absent, the site uses the home studio as it always was —
   // but read into the contract a client agrees to, so a malformed one stops

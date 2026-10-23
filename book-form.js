@@ -13,6 +13,8 @@
     const studioEmail = window.STUDIO_CONFIG?.email || "prateeksaxenaphotography@gmail.com";
 
     const val = (id) => $("#" + id)?.value.trim() || "";
+    // What the studio costs with the package chosen in the budget box (v624): the package's own fee, else the standard rate.
+    const studioRateNow = (forTest) => window.getHomeStudioRateFor(window.packageOfBudget($("#b_budget")?.value), forTest);
     /* How they found the studio (v621). Optional from end to end: nothing here ever blocks a send or asks twice. Only
        "Referred by someone" opens the second box, and that box is optional too. What reaches the studio is a line for the
        answer and, for a referral, a line for who (or "(no details given)" when they chose it and left the box empty). */
@@ -917,6 +919,12 @@
         subjectBlock.hidden = !onBehalf;
         const adultLine = $("#b_adult_line");
         if (adultLine) adultLine.hidden = onBehalf;
+        // "I am under 18": offered until someone says they are booking for someone else,
+        // and while it is ticked the "someone else" tick is put away (it would say the child is not the one photographed).
+        const selfMinor = !!$("#b_selfminor")?.checked;
+        const selfLine = $("#b_selfminor_line"); if (selfLine) selfLine.hidden = onBehalf && !selfMinor;
+        const behalfLine = $("#b_onbehalf_line"); if (behalfLine) behalfLine.hidden = selfMinor;
+        subjectBlock.classList.toggle("is-self", selfMinor);
         const minor = !!$("#b_subject_minor")?.checked;
         const guardianBlock = $("#b_guardian_block");
         if (guardianBlock) guardianBlock.hidden = !(onBehalf && minor);
@@ -947,8 +955,8 @@
         }
         if (hint) {
           hint.textContent = bookerIsCompany
-            ? (minor ? "Used only to reach them about the shoot. The release goes to their guardian." : "Used only to reach them about the shoot — no release is sent to them.")
-            : (minor ? "Used only to reach them about the shoot. The release goes to their guardian." : "Their release goes to their email address. It does not replace yours.");
+            ? (minor ? "Used only to reach them about the shoot. The release goes to their guardian." : "Used only to reach them about the shoot — no release is sent to them. Leave it empty rather than using your own address.")
+            : (minor ? "Used only to reach them about the shoot. The release goes to their guardian." : "Their release goes to their email address, so it needs to be their own, not yours. It does not replace yours.");
         }
         if (tick) {
           tick.textContent = bookerIsCompany
@@ -1098,7 +1106,7 @@
             // venue pick itself may not be made yet.
             const bannerHsDiscount = getPromoHomeStudioDiscount(matchedDiscount);
             // A set rental price below the standard rate, as the discount it is.
-            const bannerFixedPct = bannerHsDiscount.type === "fixed" ? (applyPromoHomeStudioDiscount(matchedDiscount, getHomeStudioRate(false)).pct || 0) : 0;
+            const bannerFixedPct = bannerHsDiscount.type === "fixed" ? (applyPromoHomeStudioDiscount(matchedDiscount, studioRateNow(false)).pct || 0) : 0;
             savingsBadge.textContent = bannerFixedPct
               ? (hasPackageDiscount
                   ? `🎉 Promo Offer Applied: ${tagMsg} on your package — plus a ${bannerFixedPct}% home studio discount if you shoot there!`
@@ -1382,8 +1390,8 @@
         const c = matchedInvite && typeof matchedInvite === "object" ? Number(matchedInvite.venueCost) : 0;
         homeStudioFee = (!isNaN(c) && c > 0) ? c : 0;
       } else if (dropdownHomeStudio) {
-        // Collaborations can carry their own rate for the same room.
-        homeStudioFee = getHomeStudioRate(isTfpType || isValidInvite);
+        // Collaborations can carry their own rate for the same room, and a package its own (v624).
+        homeStudioFee = studioRateNow(isTfpType || isValidInvite);
       }
       const homeStudioSelected = dropdownHomeStudio || inviteLocksVenue;
 
@@ -1415,7 +1423,7 @@
       // Its worth is the studio's own rate for that kind of booking.
       const inviteVenueComplimentary = inviteLocksVenue && homeStudioFee === 0 && !promoFreesHomeStudio && !inviteFreesHomeStudio;
       if (inviteVenueComplimentary) {
-        homeStudioListPrice = getHomeStudioRate(isTfpType || isValidInvite);
+        homeStudioListPrice = studioRateNow(isTfpType || isValidInvite);
       }
       const venueComplimentary = promoFreesHomeStudio || inviteFreesHomeStudio || inviteVenueComplimentary;
       // Which code earned it, for the line the talent reads.
@@ -2320,9 +2328,22 @@
     // "test@example.c" used to pass; a real address ends in a dot and at least
     // two letters (Sep 2026 audit, B33).
     const emailLooksReal = (v) => /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(String(v || "").trim());
+    /* The same inbox written another way is the same inbox (v622): capitals, a +tag, Gmail's dots, googlemail. A release
+       that has to reach another person, or a parent or guardian, means nothing if it lands in the booker's own box. It
+       cannot tell two inboxes of one person apart: that is for the studio's own check (the release must come BACK from
+       that address, and the studio calls them). */
+    const emailKey = (v) => {
+      const [local = "", host = ""] = String(v || "").trim().toLowerCase().split("@");
+      const domain = host === "googlemail.com" ? "gmail.com" : host;
+      let l = local.split("+")[0];
+      if (domain === "gmail.com") l = l.replace(/\./g, "");
+      return `${l}@${domain}`;
+    };
+    const sameInbox = (a, b) => !!String(a || "").trim() && !!String(b || "").trim() && emailKey(a) === emailKey(b);
 
     function validate() {
       let firstBad = null;
+      mirrorSelf();
       const require = (id, msg) => {
         if (!val(id)) { setError(id, msg); firstBad = firstBad || id; }
         else clearError(id);
@@ -2390,12 +2411,36 @@
         else if (needed && /email/.test(id) && !emailLooksReal(v)) { setError(id, "That email doesn't look right."); firstBad = firstBad || id; }
         else clearError(id);
       });
+      /* Two people, two inboxes (v622, the owner: "people don't use the same email id to bypass the system"). An adult
+         booked for by someone else is sent their own release, so it needs their address, not the booker's. For someone
+         under 18 the release goes to a parent or guardian, who must not be the child's own address. A parent booking for
+         their own child may of course give their own address as the guardian's, and a guardian who asked the child to
+         fill the form in is the same case from the other side: the child's address as the booker's is allowed, as the
+         guardian's is not. An agency or brand holds the rights and is not asked for the model's inbox, but if it gives one it
+         is not its own. */
+      if (onBehalfNow) {
+        const bookerAt = val("b_email"), theirAt = val("b_subject_email"), guardAt = val("b_guardian_email");
+        if (minorNow) {
+          if (sameInbox(guardAt, theirAt)) {
+            setError("b_guardian_email", "That's the same email as the child's. The release goes to a parent or guardian, so it needs their own email address.");
+            firstBad = firstBad || "b_guardian_email";
+          }
+        } else if (sameInbox(bookerAt, theirAt)) {
+          // An agency or brand is not sent the model's release, so its box is optional: the same address there is no
+          // answer at all, and is asked to be left empty (the owner, Oct 2026: on behalf, never the same email).
+          const company = ["Agency", "Brand"].includes(val("b_role"));
+          setError("b_subject_email", company
+            ? "That's the same email as yours. Leave this empty, or add their own email address."
+            : "That's the same email as yours. Their release goes to them, so it needs their own email address.");
+          firstBad = firstBad || "b_subject_email";
+        }
+      }
       // Someone booking for themselves agrees to a contract, which in India
       // needs an adult; under 18, a parent or guardian books for them
       // (Sep 2026 audit, B24). The form still never asks an age.
       if (!onBehalfNow && !$("#b_adult")?.checked) {
         // Said plainly (the owner, Sep 29 2026: "this should tell them … that you need a guardian to book it").
-        setError("b_adult", "You need to be 18 or over to book. If you are under 18, a parent or guardian needs to book this for you — they tick “I am booking on behalf of someone else” and add your name.");
+        setError("b_adult", "You need to be 18 or over to book on your own. If you are under 18, tick “I am under 18” and add a parent or guardian's name and email, or ask a parent or guardian to book for you.");
         firstBad = firstBad || "b_adult";
       } else clearError("b_adult");
       if (onBehalfNow && !$("#b_authorised")?.checked) {
@@ -2454,7 +2499,11 @@
         fd.append("_template", "box");
         if (payload.clientEmail) {
           fd.append("_replyto", payload.clientEmail);
-          fd.append("_cc", payload.clientEmail);
+          // The booker, and for someone under 18 the parent or guardian too (v622): the person who has to agree sees what
+          // was signed. Once if they are the same inbox. FormSubmit takes the addresses comma-separated.
+          const copies = [payload.clientEmail, payload.participantIsMinor ? payload.guardianEmail : ""].filter(Boolean)
+            .filter((a, i, all) => all.findIndex((b) => sameInbox(a, b)) === i);
+          fd.append("_cc", copies.join(","));
         }
         fd.append("Record Type", "Signed booking contract — a copy for the client and for the studio's records");
         fd.append("Contract Number", payload.contractNumber || "—");
@@ -2533,11 +2582,13 @@
         : "PHOTO RELEASE — sent to the person photographed, awaiting their reply");
       fd.append("Being photographed", payload.subjectName || "—");
       if (payload.isMinor) fd.append("Parent or guardian", payload.signedBy || "—");
-      fd.append("Booked by", `${payload.bookerName || "—"} (${payload.bookerRole || "—"}, ${payload.bookerEmail || "—"})`);
+      fd.append("Booked by", payload.selfMinor ? `${payload.subjectName || "—"} themselves (under 18, ${payload.bookerEmail || "—"})` : `${payload.bookerName || "—"} (${payload.bookerRole || "—"}, ${payload.bookerEmail || "—"})`);
       fd.append("Shoot", `${payload.shootType || "—"} on ${payload.date || "—"}${payload.location ? `, ${payload.location}` : ""}`);
       fd.append("Contract Number", payload.contractNumber || "—");
       fd.append("What you are agreeing to", [
-        `${who}, this shoot was booked for ${payload.subjectName || "you"} by ${payload.bookerName || "someone else"}.`,
+        payload.selfMinor
+          ? `${who}, ${payload.subjectName || "your child"} is under 18 and has booked this shoot, naming you as their parent or guardian.`
+          : `${who}, this shoot was booked for ${payload.subjectName || "you"} by ${payload.bookerName || "someone else"}.`,
         payload.isMinor
           ? "Because they are under 18, this permission is yours to give, not theirs."
           : "They have signed the booking contract. This part is yours, because it is about your pictures.",
@@ -2645,6 +2696,9 @@
       const releaseTo = subjectIsMinor ? guardianEmail : (bookerIsCompany ? "" : subjectEmail);
       const releaseSignedBy = subjectIsMinor ? guardianName : subjectName;
       const bookerAuthorised = !!$("#b_authorised")?.checked;
+      // The person photographed is the one booking (under 18, with a parent or guardian named): the same as a booking for someone
+      // under 18, except nobody else is the booker.
+      const selfMinorBooking = onBehalf && !!$("#b_selfminor")?.checked;
       // The person the contract's Participant clauses describe.
       const participantName = subjectName || name;
       const laterMode = dateToBeAgreed && bookingIsTestShoot();
@@ -3065,9 +3119,11 @@
               `Being photographed: ${subjectName}\n` +
               `Their email: ${subjectEmail || '—'}\n` +
               (subjectIsMinor
-                ? `Under 18: YES — release goes to ${guardianName || 'their guardian'} (${guardianEmail || '—'}), not to them\n`
+                ? `Under 18: YES — release goes to ${guardianName || 'their guardian'} (${guardianEmail || '—'}), not to them. Do not confirm until it comes back from that address; they are copied on the signed contract.\n`
                 : `Under 18: no\n`) +
-              `Booker confirmed they may book for them: ${bookerAuthorised ? "yes" : "NO — check before shooting"}\n` +
+              (selfMinorBooking
+                ? `Who is booking: the person being photographed, who is under 18 — they gave a parent or guardian's name and email\n`
+                : `Booker confirmed they may book for them: ${bookerAuthorised ? "yes" : "NO — check before shooting"}\n`) +
               `Release sent to: ${releaseTo || '—'} (separate from the contract; it comes back on its own)\n\n`
             : "") +
           `Email: ${email}\n` +
@@ -3124,9 +3180,11 @@
               `Being photographed: ${subjectName}\n` +
               `Their email: ${subjectEmail || '—'}\n` +
               (subjectIsMinor
-                ? `Under 18: YES — release goes to ${guardianName || 'their guardian'} (${guardianEmail || '—'}), not to them\n`
+                ? `Under 18: YES — release goes to ${guardianName || 'their guardian'} (${guardianEmail || '—'}), not to them. Do not confirm until it comes back from that address; they are copied on the signed contract.\n`
                 : `Under 18: no\n`) +
-              `Booker confirmed they may book for them: ${bookerAuthorised ? "yes" : "NO — check before shooting"}\n` +
+              (selfMinorBooking
+                ? `Who is booking: the person being photographed, who is under 18 — they gave a parent or guardian's name and email\n`
+                : `Booker confirmed they may book for them: ${bookerAuthorised ? "yes" : "NO — check before shooting"}\n`) +
               `Release sent to: ${releaseTo || '—'} (separate from the contract; it comes back on its own)\n\n`
             : "") +
           `Email: ${email}\n` +
@@ -3404,8 +3462,12 @@
             "Being photographed": subjectName || "—",
             "Their email": subjectEmail || "—",
             "Under 18": subjectIsMinor ? "Yes" : "No",
-            ...(subjectIsMinor ? { "Parent or guardian": `${guardianName || "—"} (${guardianEmail || "—"})` } : {}),
-            "Booker confirms they are authorised": bookerAuthorised ? "Yes" : "No"
+            ...(subjectIsMinor ? {
+              "Parent or guardian": `${guardianName || "—"} (${guardianEmail || "—"})`,
+              "⚠️ Under 18": `Do not confirm until the parent or guardian's signed release comes back from ${guardianEmail || "their address"}. They are copied on the signed contract. A parent or guardian should be at the shoot.`
+            } : {}),
+            ...(selfMinorBooking ? { "Who is booking": "The person being photographed, who is under 18. They gave a parent or guardian's name and email." } : {}),
+            "Booker confirms they are authorised": selfMinorBooking ? "n/a — they are booking for themselves" : (bookerAuthorised ? "Yes" : "No")
           } : { "Confirms 18 or over": $("#b_adult")?.checked ? "Yes" : "No" }),
           "Shoot Type": type,
           "Proposed Date": date,
@@ -3465,6 +3527,7 @@
               bookerName: name,
               bookerEmail: email,
               bookerRole: role,
+              selfMinor: selfMinorBooking,
               shootType: type,
               date,
               location: locationVal,
@@ -3861,7 +3924,7 @@
     // Open the terms modal for `partnerName` and `shootCategory` ("TFP" vs "Commercial").
     // The terms window names who the contract is with; booking for someone
     // else, it names the person photographed as well (Sep 2026 audit, B7).
-    const onBehalfName = (booker) => ($("#b_onbehalf")?.checked && val("b_subject_name"))
+    const onBehalfName = (booker) => ($("#b_onbehalf")?.checked && !$("#b_selfminor")?.checked && val("b_subject_name"))
       ? `${booker} — booking for ${val("b_subject_name")}` : booker;
 
     function openTermsModal(partnerName, shootCategory, onAccept, pinnedVersion) {
@@ -4108,6 +4171,27 @@
       // could not re-read what they had agreed to (Sep 2026 audit).
       openTermsModal("[Your name]", "Commercial");
     }
+
+    /* "I am under 18" (v622). Ticking it does what booking for someone under 18
+       does, with the child as the person photographed: the on-behalf and under-18 ticks go on, the booker's own name and
+       email are copied into the "photographed" fields (the child's own address, which the guardian's must differ from),
+       and the booker's confirmation is the tick itself. Unticking puts all of it back. */
+    const selfMinorBox = $("#b_selfminor");
+    const mirrorSelf = () => {
+      if (!selfMinorBox?.checked) return;
+      const n = $("#b_subject_name"), e = $("#b_subject_email");
+      if (n) n.value = val("b_name");
+      if (e) e.value = val("b_email");
+    };
+    selfMinorBox?.addEventListener("change", () => {
+      const on = selfMinorBox.checked;
+      ["b_onbehalf", "b_subject_minor", "b_authorised"].forEach((id) => { const el = $("#" + id); if (el) el.checked = on; });
+      if (on) { const adult = $("#b_adult"); if (adult) adult.checked = false; mirrorSelf(); }
+      else ["b_subject_name", "b_subject_email", "b_guardian_name", "b_guardian_email"].forEach((id) => { const el = $("#" + id); if (el) el.value = ""; });
+      ["b_adult", "b_authorised", "b_subject_name", "b_subject_email", "b_guardian_name", "b_guardian_email"].forEach(clearError);
+      updateFields();
+    });
+    ["b_name", "b_email"].forEach((id) => $("#" + id)?.addEventListener("input", mirrorSelf));
 
     // "Someone referred me" opens the optional box for who; any other answer, or none, puts it away.
     const syncHeard = () => { const f = $("#b_referrer_field"); if (f) f.hidden = $("#b_heard")?.value !== REFERRED; };

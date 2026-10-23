@@ -683,7 +683,7 @@ window.paintPromoRentalHint = function() {
   const val = Math.round(Number(raw));
   const rate = typeof window.getHomeStudioRate === "function" ? window.getHomeStudioRate(false) : 0;
   const inr = (n) => `₹${Math.max(0, Math.round(n)).toLocaleString("en-IN")}`;
-  let text = `Your standard home studio rental for paid shoots is ${inr(rate)} (Package rates panel).`, warn = false;
+  let text = `Your standard home studio rental for paid shoots is ${inr(rate)} (Package rates panel; a package with its own studio fee there uses that instead).`, warn = false;
   if (type !== "none" && (type === "free" || (raw !== "" && Number.isFinite(val)))) {
     const off = window.applyPromoHomeStudioDiscount({ homeStudioDiscount: type === "free" ? { type } : { type, value: val } }, rate);
     text += ` With this code the client pays ${inr(rate - off.amount)} for it.`;
@@ -2154,7 +2154,11 @@ window.saveAdminCustomPackages = async function() {
       const price = parseInt(row.querySelector(".pkg-edit-price")?.value, 10) || 10000;
       const specs = row.querySelector(".pkg-edit-specs")?.value || "Standard Deliverables";
       const delivery = (row.querySelector(".pkg-edit-delivery")?.value || "").trim();
-      updated.push({ id: `pkg_${i+1}`, name, price, specs, ...(delivery ? { delivery } : {}) });
+      // The studio fee for this package (v624): written only when the box has a number, so a package with the box empty
+      // is byte for byte what it was and follows the standard rate.
+      const feeRaw = (row.querySelector(".pkg-edit-studiofee")?.value || "").trim();
+      const studioFee = feeRaw === "" ? null : window.packageStudioFee({ studioFee: feeRaw });
+      updated.push({ id: `pkg_${i+1}`, name, price, specs, ...(studioFee !== null ? { studioFee } : {}), ...(delivery ? { delivery } : {}) });
     });
     localStorage.setItem("wps_custom_packages", JSON.stringify(updated));
     stampSetting("wps_custom_packages");
@@ -4166,6 +4170,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                 </div>
               </div>
               <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 8px 0 0 0; font-family: 'Archivo', sans-serif;">Leave the test-shoot box <strong>empty</strong> and collaborations pay the same as paid shoots.</p>
+              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 8px 0 0 0; font-family: 'Archivo', sans-serif;">Any package below can have <strong>its own studio fee</strong> in place of this one. Leave its box empty to follow this rate, or put <strong>0</strong> if the studio comes with that package.</p>
             </div>
             <div id="adminPackagesEditorGrid" style="display: flex; flex-direction: column; gap: 8px;"></div>
           </div>
@@ -4541,7 +4546,9 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     setRadio("pdf_venue", initialVenue);
     const locEl = q("pdf_location");
     if (initialVenue === "home" && (!initialLocation || initialLocation === HOME_STUDIO_NAME || initialLocation === window.studioLabel())) locEl.dataset.auto = "1";
-    const rateFor = (kind) => getHomeStudioRate(kind === "tfp");
+    // The package's own studio fee when it has one (v624), else the standard rate for the kind of shoot.
+    const chosenPackage = (kind) => { const sel = q("pdf_packageSelect"); return kind === "tfp" || !sel || sel.value === "custom" ? null : (packages.find((p) => pkgValue(p) === sel.value) || null); };
+    const rateFor = (kind) => window.getHomeStudioRateFor(chosenPackage(kind), kind === "tfp");
     let rentalTouched = initialRental !== null;
     q("pdf_rental").value = initialRental !== null ? initialRental : rateFor(initialKind);
 
@@ -4662,7 +4669,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           : `⏱️ ${hrs} hours · ${format12(q("pdf_timeStart").value || "10:30")} – ${format12(q("pdf_timeEnd").value || "17:30")}`;
       }
       q("pdf_rentalWrap").style.display = (venue === "home" && !free) ? "" : "none";
-      q("pdf_rentalHint").textContent = `Studio rate for ${kind === "tfp" ? "test shoots" : "paid shoots"}: ${inr(rateFor(kind))}. Change it for a special rate, or use a discount below.`;
+      q("pdf_rentalHint").textContent = `Studio ${kind === "tfp" ? "rate for test shoots" : (window.packageStudioFee(chosenPackage(kind)) !== null ? "fee for this package" : "rate for paid shoots")}: ${inr(rateFor(kind))}. Change it for a special rate, or use a discount below.`;
       // A test shoot with nothing to pay has nothing to discount.
       q("pdf_discountRow").style.display = (kind === "paid" || (venue === "home" && !free)) ? "" : "none";
       q("pdf_customDiscountWrap").style.display = q("pdf_discount").value === "custom" ? "" : "none";
@@ -4719,6 +4726,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     document.querySelectorAll('input[name="pdf_venue"]').forEach((r) => r.addEventListener("change", onVenueChange));
     locEl.addEventListener("input", () => { locEl.dataset.auto = ""; });
     q("pdf_rental").addEventListener("input", () => { rentalTouched = true; render(); });
+    // A package with its own studio fee brings it in (v624), unless the studio has typed a rental itself.
+    q("pdf_packageSelect")?.addEventListener("change", () => { if (!rentalTouched && kindOf() === "paid") q("pdf_rental").value = rateFor("paid"); render(); });
     ["pdf_venueByStudio", "pdf_packageSelect", "pdf_paymentMilestones", "pdf_customCloudRetention", "pdf_discount", "pdf_discountType", "pdf_duration", "pdf_invite"].forEach((id) => q(id)?.addEventListener("change", render));
     ["pdf_customPkgName", "pdf_customRetouchedCount", "pdf_customCloudRetentionInput", "pdf_discountValue", "pdf_discountReason", "pdf_timeStart", "pdf_timeEnd"].forEach((id) => q(id)?.addEventListener("input", render));
     render();
@@ -5479,7 +5488,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
 
       // Attach input change listener to flip status badge to UNSAVED CHANGES
       setTimeout(() => {
-        const editorInputs = document.querySelectorAll(".pkg-edit-name, .pkg-edit-price, .pkg-edit-specs");
+        const editorInputs = document.querySelectorAll(".pkg-edit-name, .pkg-edit-price, .pkg-edit-studiofee, .pkg-edit-specs");
         editorInputs.forEach(input => {
           input.addEventListener("input", () => markUnsavedChanges());
         });
@@ -5489,7 +5498,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       if (!pkgsGrid) return;
       const pkgs = getAdminPackages();
       pkgsGrid.innerHTML = pkgs.map((p, idx) => `
-        <div class="admin-pkg-editor-row" style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: grid; grid-template-columns: 1.4fr 0.9fr 2.2fr 110px; gap: 10px; align-items: end;">
+        <div class="admin-pkg-editor-row" style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: grid; grid-template-columns: 1.4fr 0.9fr 1fr 2fr 1.3fr; gap: 10px; align-items: end;">
           <div>
             <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Package Name #${idx+1}</span>
             <input type="text" class="pkg-edit-name" value="${esc(p.name)}" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); font-weight: 700; background: var(--bone); color: var(--ink);" />
@@ -5497,6 +5506,12 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           <div>
             <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Max Rate (INR ₹)</span>
             <input type="number" class="pkg-edit-price" value="${p.price}" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); font-weight: 800; color: #059669; background: var(--bone);" />
+          </div>
+          <!-- What the studio costs WITH this package (v624). Empty follows the standard rate set above; a number replaces
+               it; 0 means the studio comes with the package. -->
+          <div>
+            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">${esc(window.studioName ? window.studioName() : "Home studio")} fee (₹)</span>
+            <input type="number" min="0" step="500" class="pkg-edit-studiofee" value="${window.packageStudioFee(p) === null ? "" : window.packageStudioFee(p)}" placeholder="Standard ₹${Number(getHomeStudioRate(false)).toLocaleString("en-IN")}" title="Empty: this package uses the standard rate set above. A number: what this package pays for the studio. 0: the studio comes with the package." style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); font-weight: 800; color: #059669; background: var(--bone);" />
           </div>
           <div>
             <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Deliverable Specs</span>
@@ -5506,7 +5521,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Delivery time</span>
             <input type="text" class="pkg-edit-delivery" value="${esc(p.delivery || "")}" placeholder="Optional · e.g. 10 working days" title="Optional — shown on the quote" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
           </div>
-          <div style="display: flex; gap: 4px; justify-content: flex-end; padding-top: 14px;">
+          <div style="display: flex; gap: 4px; justify-content: flex-end; grid-column: 1 / -1;">
             <button type="button" class="admin-cal-btn" onclick="window.copyPackageBookingLink(${p.price})" title="Copy Shareable Booking Link" style="font-size: var(--font-xs); padding: 6px 8px; border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">🔗 Share Link</button>
             <button type="button" class="admin-cal-btn" onclick="window.moveAdminPackageRow(${idx}, -1)" title="Move Up" ${idx === 0 ? 'disabled style="opacity:0.3; cursor:not-allowed; padding:6px 8px; font-size: var(--font-xs);"' : 'style="padding:6px 8px; font-size: var(--font-xs);"'}>▲</button>
             <button type="button" class="admin-cal-btn" onclick="window.moveAdminPackageRow(${idx}, 1)" title="Move Down" ${idx === pkgs.length - 1 ? 'disabled style="opacity:0.3; cursor:not-allowed; padding:6px 8px; font-size: var(--font-xs);"' : 'style="padding:6px 8px; font-size: var(--font-xs);"'}>▼</button>
@@ -5520,14 +5535,18 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         // test-shoot notices, the terms modal and the quote.
         const tfp = getAdminTfpPackage();
         return `
-        <div class="admin-pkg-editor-row admin-pkg-editor-row--tfp" style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: grid; grid-template-columns: 1.4fr 0.9fr 2.2fr 110px; gap: 10px; align-items: end;">
+        <div class="admin-pkg-editor-row admin-pkg-editor-row--tfp" style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: grid; grid-template-columns: 1.4fr 0.9fr 1fr 2fr 1.3fr; gap: 10px; align-items: end;">
           <div>
             <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Test shoot / TFP</span>
             <input type="text" id="tfpPkgName" value="${esc(tfp.name)}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); font-weight: 700; background: var(--bone); color: var(--ink);" />
           </div>
           <div>
             <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Fee</span>
-            <div style="padding: 8px 10px; border: 1px dashed var(--line); border-radius: 6px; font-size: var(--font-xs); color: var(--ink-soft); background: transparent;">No fee · rental set above</div>
+            <div style="padding: 8px 10px; border: 1px dashed var(--line); border-radius: 6px; font-size: var(--font-xs); color: var(--ink-soft); background: transparent;">No fee</div>
+          </div>
+          <div>
+            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">${esc(window.studioName ? window.studioName() : "Home studio")} fee (₹)</span>
+            <div style="padding: 8px 10px; border: 1px dashed var(--line); border-radius: 6px; font-size: var(--font-xs); color: var(--ink-soft); background: transparent;">Test-shoot rate, set above</div>
           </div>
           <div>
             <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Deliverable Specs</span>
@@ -5537,7 +5556,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Delivery time</span>
             <input type="text" id="tfpPkgDelivery" value="${esc(tfp.delivery || "")}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" placeholder="Optional · e.g. 14 working days" title="Optional — shown on the quote" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
           </div>
-          <div style="display: flex; gap: 4px; justify-content: flex-end; padding-top: 14px;">
+          <div style="display: flex; gap: 4px; justify-content: flex-end; grid-column: 1 / -1;">
             <button type="button" class="admin-cal-btn" onclick="window.copyTfpBookingLink()" title="Copy a booking link that opens the test-shoot form with your primary invite code" style="font-size: var(--font-xs); padding: 6px 8px; border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">Share link</button>
           </div>
         </div>`;
