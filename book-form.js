@@ -13,6 +13,13 @@
     const studioEmail = window.STUDIO_CONFIG?.email || "prateeksaxenaphotography@gmail.com";
 
     const val = (id) => $("#" + id)?.value.trim() || "";
+    /* Who is booking, and for whom (v623, the owner: "agency or parents if they are filling … it should be someone who is
+       getting shot"). The age answer, "Is the talent 18 or over?", is about the talent, the person being photographed, whoever
+       fills the form in. "Under 18" with nobody else booking is a child filling the form in for themselves; with "I am
+       booking on behalf of someone else" ticked (an agency, a parent, anyone) it is the booking-for-someone-under-18 flow. */
+    const talentUnder18 = () => $("#b_age")?.value === "under18";
+    const talentOwnBooking = () => talentUnder18() && !$("#b_onbehalf")?.checked;
+    const isOnBehalf = () => !!$("#b_onbehalf")?.checked || talentOwnBooking();
     // What the studio costs with the package chosen in the budget box (v624): the package's own fee, else the standard rate.
     const studioRateNow = (forTest) => window.getHomeStudioRateFor(window.packageOfBudget($("#b_budget")?.value), forTest);
     /* How they found the studio (v621). Optional from end to end: nothing here ever blocks a send or asks twice. Only
@@ -287,7 +294,7 @@
       $("#" + id)?.addEventListener("input", () => clearError(id));
     });
     $("#b_authorised")?.addEventListener("change", () => clearError("b_authorised"));
-    $("#b_adult")?.addEventListener("change", () => clearError("b_adult"));
+    $("#b_age")?.addEventListener("change", () => clearError("b_age"));
     document.querySelectorAll('input[name="b_studio_arranger"]').forEach((r) => {
       r.addEventListener("change", () => clearError("b_studio_arranger_client"));
     });
@@ -909,7 +916,7 @@
          the person cannot see, which is a dead end with no explanation. */
       const subjectBlock = $("#b_subject_block");
       if (subjectBlock) {
-        const onBehalf = !!$("#b_onbehalf")?.checked;
+        const onBehalf = isOnBehalf();
         // An agency or a brand already has a contract with the model, and
         // some forbid approaching their talent directly — so they warrant the
         // rights in the contract instead of us emailing the model. Everyone
@@ -917,14 +924,8 @@
         // at all, and there the release has to come from the person.
         const bookerIsCompany = role === "Agency" || role === "Brand";
         subjectBlock.hidden = !onBehalf;
-        const adultLine = $("#b_adult_line");
-        if (adultLine) adultLine.hidden = onBehalf;
-        // "I am under 18": offered until someone says they are booking for someone else,
-        // and while it is ticked the "someone else" tick is put away (it would say the child is not the one photographed).
-        const selfMinor = !!$("#b_selfminor")?.checked;
-        const selfLine = $("#b_selfminor_line"); if (selfLine) selfLine.hidden = onBehalf && !selfMinor;
-        const behalfLine = $("#b_onbehalf_line"); if (behalfLine) behalfLine.hidden = selfMinor;
-        subjectBlock.classList.toggle("is-self", selfMinor);
+        // A child filling the form in for themselves: only the guardian's details are asked, the rest is them.
+        subjectBlock.classList.toggle("is-self", talentOwnBooking());
         const minor = !!$("#b_subject_minor")?.checked;
         const guardianBlock = $("#b_guardian_block");
         if (guardianBlock) guardianBlock.hidden = !(onBehalf && minor);
@@ -937,7 +938,7 @@
         need("b_subject_email", subjectEmailNeeded);
         const subjectEmailLabel = $("#b_subject_email_label");
         if (subjectEmailLabel) subjectEmailLabel.textContent = subjectEmailNeeded ? "Their email *" : "Their email (optional)";
-        need("b_authorised", onBehalf);
+        need("b_authorised", !!$("#b_onbehalf")?.checked);
         need("b_guardian_name", onBehalf && minor);
         need("b_guardian_email", onBehalf && minor);
 
@@ -2004,7 +2005,7 @@
        what they ticked themselves. */
     const onRoleChosen = () => {
       const box = $("#b_onbehalf"), r = $("#b_role")?.value;
-      if (box && !box.checked && (r === "Agency" || r === "Brand")) { box.checked = true; updateFields(); }
+      if (box && !box.checked && (r === "Agency" || r === "Brand")) { box.checked = true; syncAge(); }
     };
     $("#b_time_start")?.addEventListener("input", () => updateCustomTimeBadge());
     $("#b_time_end")?.addEventListener("input", () => updateCustomTimeBadge());
@@ -2399,7 +2400,7 @@
       // form skips the browser's own checks and nothing here looked at them,
       // so an agency booking with no model named, no guardian for a minor and
       // no "I am authorised" tick went straight through (Sep 2026 audit, B8).
-      const onBehalfNow = !!$("#b_onbehalf")?.checked;
+      const onBehalfNow = isOnBehalf();
       const minorNow = onBehalfNow && !!$("#b_subject_minor")?.checked;
       [["b_subject_name", onBehalfNow, "Please add the name of the person being photographed."],
        ["b_subject_email", onBehalfNow && !minorNow && !["Agency", "Brand"].includes(val("b_role")), "Their release goes to this address — please add it."],
@@ -2438,12 +2439,13 @@
       // Someone booking for themselves agrees to a contract, which in India
       // needs an adult; under 18, a parent or guardian books for them
       // (Sep 2026 audit, B24). The form still never asks an age.
-      if (!onBehalfNow && !$("#b_adult")?.checked) {
-        // Said plainly (the owner, Sep 29 2026: "this should tell them … that you need a guardian to book it").
-        setError("b_adult", "You need to be 18 or over to book on your own. If you are under 18, tick “I am under 18” and add a parent or guardian's name and email, or ask a parent or guardian to book for you.");
-        firstBad = firstBad || "b_adult";
-      } else clearError("b_adult");
-      if (onBehalfNow && !$("#b_authorised")?.checked) {
+      if (!$("#b_age")?.value) {
+        // Said plainly (the owner, Sep 29 2026: "this should tell them … that you need a guardian to book it"). Two answers
+        // to one question (v622): neither chosen is the only way to get here.
+        setError("b_age", "Please say whether the talent is 18 or over, or under 18. If they are under 18, add a parent or guardian's name and email, or ask them to book for you.");
+        firstBad = firstBad || "b_age";
+      } else clearError("b_age");
+      if ($("#b_onbehalf")?.checked && !$("#b_authorised")?.checked) {
         setError("b_authorised", "Please confirm you are authorised to book for them.");
         firstBad = firstBad || "b_authorised";
       } else clearError("b_authorised");
@@ -2684,7 +2686,7 @@
          they are the same person these are all empty and nothing downstream
          changes. A release for someone under 18 goes to their guardian — the
          child's own address is never used for it. */
-      const onBehalf = !!$("#b_onbehalf")?.checked;
+      const onBehalf = isOnBehalf();
       // See updateFields: a company warrants the rights, an individual does not.
       const bookerIsCompany = role === "Agency" || role === "Brand";
       const subjectName = onBehalf ? val("b_subject_name") : "";
@@ -2698,7 +2700,7 @@
       const bookerAuthorised = !!$("#b_authorised")?.checked;
       // The person photographed is the one booking (under 18, with a parent or guardian named): the same as a booking for someone
       // under 18, except nobody else is the booker.
-      const selfMinorBooking = onBehalf && !!$("#b_selfminor")?.checked;
+      const selfMinorBooking = talentOwnBooking();
       // The person the contract's Participant clauses describe.
       const participantName = subjectName || name;
       const laterMode = dateToBeAgreed && bookingIsTestShoot();
@@ -3468,7 +3470,7 @@
             } : {}),
             ...(selfMinorBooking ? { "Who is booking": "The person being photographed, who is under 18. They gave a parent or guardian's name and email." } : {}),
             "Booker confirms they are authorised": selfMinorBooking ? "n/a — they are booking for themselves" : (bookerAuthorised ? "Yes" : "No")
-          } : { "Confirms 18 or over": $("#b_adult")?.checked ? "Yes" : "No" }),
+          } : { "Confirms 18 or over": $("#b_age")?.value === "adult" ? "Yes" : "No" }),
           "Shoot Type": type,
           "Proposed Date": date,
           ...(laterMode ? { "Date Status": "⚠️ TO BE AGREED — the client has seen the costs, accepted the terms and signed. Agree a date with them by email, then add it to the calendar as a Test shoot." } : {}),
@@ -3924,7 +3926,7 @@
     // Open the terms modal for `partnerName` and `shootCategory` ("TFP" vs "Commercial").
     // The terms window names who the contract is with; booking for someone
     // else, it names the person photographed as well (Sep 2026 audit, B7).
-    const onBehalfName = (booker) => ($("#b_onbehalf")?.checked && !$("#b_selfminor")?.checked && val("b_subject_name"))
+    const onBehalfName = (booker) => (isOnBehalf() && !talentOwnBooking() && val("b_subject_name"))
       ? `${booker} — booking for ${val("b_subject_name")}` : booker;
 
     function openTermsModal(partnerName, shootCategory, onAccept, pinnedVersion) {
@@ -4172,25 +4174,32 @@
       openTermsModal("[Your name]", "Commercial");
     }
 
-    /* "I am under 18" (v622). Ticking it does what booking for someone under 18
-       does, with the child as the person photographed: the on-behalf and under-18 ticks go on, the booker's own name and
-       email are copied into the "photographed" fields (the child's own address, which the guardian's must differ from),
-       and the booker's confirmation is the tick itself. Unticking puts all of it back. */
-    const selfMinorBox = $("#b_selfminor");
-    const mirrorSelf = () => {
-      if (!selfMinorBox?.checked) return;
+    /* The age answer (v623; the first form was "I am under 18" in v622). One answer about the talent drives the rest:
+       - 18 or over: nothing more is asked of a child's side of the form;
+       - under 18, booking for themselves: it does what booking for someone under 18 does with the child as the person
+         photographed: the booker's own name and email are copied into the "photographed" fields (the address the guardian's
+         must differ from) and only the guardian's name and email are asked;
+       - under 18 with "on behalf of someone else" ticked: the same flow, for whoever they are booking for.
+       The old "They are under 18" box inside the on-behalf block is set from this answer and kept hidden. */
+    let wasOwn = false;
+    function mirrorSelf() {
+      if (!talentOwnBooking()) return;
       const n = $("#b_subject_name"), e = $("#b_subject_email");
       if (n) n.value = val("b_name");
       if (e) e.value = val("b_email");
-    };
-    selfMinorBox?.addEventListener("change", () => {
-      const on = selfMinorBox.checked;
-      ["b_onbehalf", "b_subject_minor", "b_authorised"].forEach((id) => { const el = $("#" + id); if (el) el.checked = on; });
-      if (on) { const adult = $("#b_adult"); if (adult) adult.checked = false; mirrorSelf(); }
-      else ["b_subject_name", "b_subject_email", "b_guardian_name", "b_guardian_email"].forEach((id) => { const el = $("#" + id); if (el) el.value = ""; });
-      ["b_adult", "b_authorised", "b_subject_name", "b_subject_email", "b_guardian_name", "b_guardian_email"].forEach(clearError);
+    }
+    function syncAge() {
+      const sm = $("#b_subject_minor"); if (sm) sm.checked = talentUnder18();
+      const own = talentOwnBooking();
+      if (own) mirrorSelf();
+      else if (wasOwn) ["b_subject_name", "b_subject_email"].forEach((id) => { const el = $("#" + id); if (el) el.value = ""; });
+      wasOwn = own;
+      const hint = $("#b_age_hint"); if (hint) hint.hidden = !talentUnder18();
+      ["b_age", "b_subject_name", "b_subject_email", "b_guardian_name", "b_guardian_email"].forEach(clearError);
       updateFields();
-    });
+    }
+    $("#b_age")?.addEventListener("change", syncAge);
+    $("#b_onbehalf")?.addEventListener("change", syncAge);
     ["b_name", "b_email"].forEach((id) => $("#" + id)?.addEventListener("input", mirrorSelf));
 
     // "Someone referred me" opens the optional box for who; any other answer, or none, puts it away.
@@ -4240,6 +4249,7 @@
       }
       ["b_name", "b_email", "b_date"].forEach(clearError);
       syncHeard();
+      syncAge();
       if (successPanel) successPanel.hidden = true;
       form.hidden = false;
       form.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "start" });

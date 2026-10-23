@@ -7146,12 +7146,19 @@ window.resolveContractArchive = function(version) {
                     inferred from your job. A makeup artist may well be booking
                     a shoot of themselves, and reading it off the Role dropdown
                     made the form demand a second person's details from them. -->
-               <label class="check-line" id="b_adult_line"><input type="checkbox" id="b_adult" /><span>I am 18 or over *<em class="check-hint">Under 18? Tick the box below instead, or ask a parent or guardian to book for you.</em></span></label>
-               <!-- A 16-year-old who fills the form in (the owner, Oct 2026: "or guardian asked the child to fill"; the tick says only
-                    "I am under 18", not that anyone knows). It drives the same machinery as booking for someone under 18: the child is the
-                    person photographed, the release goes to the guardian, who is copied on the signed contract and whose
-                    reply the studio waits for. Only the guardian's name and email are asked on top. -->
-               <label class="check-line" id="b_selfminor_line"><input type="checkbox" id="b_selfminor" /><span>I am under 18<em class="check-hint">Add a parent or guardian's name and their own email below. They get a copy of everything, and nothing is confirmed until they reply to say yes.</em></span></label>
+               <!-- The talent's age, one line (the owner, Oct 2026: "agency or parents if they are filling ... it should be someone who
+                    is getting shot", "can we have something like drop down", "i need one line"). One answer, so a drop-down
+                    like Role beside it. "Under 18" is the booking-for-someone-under-18 flow with the talent as the person
+                    photographed, the guardian copied on the signed contract and the studio waiting for the guardian's reply;
+                    only the guardian's name and email are asked on top, and the line below the box says so only then. -->
+               <label class="field" id="b_age_field"><span>Talent over 18 or under? *</span>
+                 <select id="b_age">
+                   <option value="">Choose one</option>
+                   <option value="adult">18 or over</option>
+                   <option value="under18">Under 18</option>
+                 </select>
+                 <small class="field-hint" id="b_age_hint" hidden>Add a parent or guardian's name and their own email below. They get a copy of everything, and nothing is confirmed until they reply to say yes.</small>
+               </label>
                <label class="check-line" id="b_onbehalf_line"><input type="checkbox" id="b_onbehalf" /><span>I am booking on behalf of someone else — they are being photographed, not me</span></label>
                <div class="field-row">
                  <label class="field"><span>Email Address *</span><input id="b_email" type="email" required autocomplete="email" placeholder="name@example.com" /></label>
@@ -7201,7 +7208,9 @@ window.resolveContractArchive = function(version) {
                       beside it, so the two fields read as stepped and the
                       ticks below started against an L-shaped gap. -->
                  <p class="field-hint subject-hint" id="b_subject_email_hint">Their release goes to their email address. It does not replace yours.</p>
-                 <label class="check-line"><input type="checkbox" id="b_subject_minor" /><span>They are under 18</span></label>
+                 <!-- Set by the age answer at the top ("Is the talent 18 or over?"), never asked twice (v623, the owner: the age is the
+                      talent's, whoever fills the form in). Kept as the box the rest of the form reads. -->
+                 <label class="check-line" id="b_subject_minor_line" hidden><input type="checkbox" id="b_subject_minor" /><span>They are under 18</span></label>
                  <div id="b_guardian_block" class="guardian-block" hidden>
                    <p class="subject-lede">Someone under 18 cannot give this permission themselves, so the release goes to their parent or guardian instead. They are copied on the signed contract, so this needs their own email address, not the child's.</p>
                    <div class="field-row">
