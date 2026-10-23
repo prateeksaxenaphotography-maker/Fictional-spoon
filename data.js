@@ -2952,33 +2952,6 @@ window.WPS_DATA = {
           "contractVersion": "Not Required",
           "updatedAt": 1791958253166
         }
-      ],
-      "2026-11-21": [
-        {
-          "id": "b_1791958261395_9sm3",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Selective Collaboration (TFP)",
-          "contractVersion": "Pending Agreement",
-          "updatedAt": 1791958261395
-        }
-      ],
-      "2026-11-28": [
-        {
-          "id": "b_1792480119303_3olm",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Selective Collaboration (TFP)",
-          "contractVersion": "TFP-LIABILITY-RELEASE-V4.3",
-          "updatedAt": 1792480119303
-        },
-        {
-          "id": "b_audit_NP-20261020-123839-YNUP",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Selective Collaboration (TFP)",
-          "contractVersion": "TFP-LIABILITY-RELEASE-V4.3"
-        }
       ]
     },
     "removedBookingIds": [
@@ -3074,18 +3047,19 @@ window.WPS_DATA = {
       "2026-11-28::prateek",
       "2026-10-21::b_1791805260731_y3a5",
       "2026-10-18::b_1791827047985_26i8",
-      "2026-10-20::b_1791805267974_bjr1"
+      "2026-10-20::b_1791805267974_bjr1",
+      "2026-11-28::b_audit_NP-20261020-123839-YNUP",
+      "2026-11-28::b_1792480119303_3olm",
+      "2026-11-21::b_1791958261395_9sm3"
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1792728500569,
-    "syncedAt": 1792728500569,
+    "updatedAt": 1792728559060,
+    "syncedAt": 1792728559060,
     "testShootLimits": {
       "default": 2,
-      "months": {
-        "2026-11": 3
-      },
-      "at": 1792178334619
+      "months": {},
+      "at": 1792728518934
     }
   },
   "INVITE_CODES": [
