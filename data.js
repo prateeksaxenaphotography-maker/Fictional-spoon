@@ -3054,8 +3054,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1792728778764,
-    "syncedAt": 1792728778764,
+    "updatedAt": 1792728852482,
+    "syncedAt": 1792728852482,
     "testShootLimits": {
       "default": 2,
       "months": {},
@@ -3292,18 +3292,18 @@ window.WPS_DATA = {
   "MEASURE_UNITS": {
     "display": "metric"
   },
-  "HOME_STUDIO_RATE_TFP": 4000,
+  "HOME_STUDIO_RATE_TFP": 3500,
   "SETTINGS_AT": {
     "INVITE_CODES": 1792655385942,
     "PROMO_CODES": 1792140537781,
-    "PACKAGES": 1792728776143,
-    "TFP_PACKAGE": 1792728776143,
-    "HOME_STUDIO_RATE": 1792728776143,
+    "PACKAGES": 1792728850036,
+    "TFP_PACKAGE": 1792728850037,
+    "HOME_STUDIO_RATE": 1792728850037,
     "PORTFOLIO_PDF": 1792305536741,
     "HOME_SLIDESHOW": 1791474369889,
     "STUDIO": 0,
     "MEASURE_UNITS": 1790269147688,
-    "HOME_STUDIO_RATE_TFP": 1792728776143
+    "HOME_STUDIO_RATE_TFP": 1792728850037
   },
   "TESTIMONIALS": {
     "items": [
