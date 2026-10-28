@@ -2903,16 +2903,6 @@ window.WPS_DATA = {
           "updatedAt": 1791442826445
         }
       ],
-      "2026-11-01": [
-        {
-          "id": "b_1791810259119_c2fb",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Selective Collaboration (TFP)",
-          "contractVersion": "V4.2-TFP",
-          "updatedAt": 1792479861208
-        }
-      ],
       "2026-10-25": [
         {
           "id": "b_1791826082744_l81g",
@@ -3050,12 +3040,13 @@ window.WPS_DATA = {
       "2026-10-20::b_1791805267974_bjr1",
       "2026-11-28::b_audit_NP-20261020-123839-YNUP",
       "2026-11-28::b_1792480119303_3olm",
-      "2026-11-21::b_1791958261395_9sm3"
+      "2026-11-21::b_1791958261395_9sm3",
+      "2026-11-01::b_1791810259119_c2fb"
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1792746522029,
-    "syncedAt": 1792746522029,
+    "updatedAt": 1793165391687,
+    "syncedAt": 1793165391687,
     "testShootLimits": {
       "default": 2,
       "months": {},
