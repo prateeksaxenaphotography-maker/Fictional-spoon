@@ -3045,8 +3045,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1793165442243,
-    "syncedAt": 1793165442243,
+    "updatedAt": 1793165452835,
+    "syncedAt": 1793165452835,
     "testShootLimits": {
       "default": 2,
       "months": {},
