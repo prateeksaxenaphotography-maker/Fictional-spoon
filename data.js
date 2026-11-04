@@ -2935,12 +2935,12 @@ window.WPS_DATA = {
       ],
       "2026-11-15": [
         {
-          "id": "b_1791958247602_jrx9",
+          "id": "b_1793793609327_cteb",
           "isTentative": false,
-          "status": "assisting",
-          "type": "Assisting Photographer",
-          "contractVersion": "Not Required",
-          "updatedAt": 1791958253166
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1793793635070
         }
       ]
     },
@@ -3041,12 +3041,13 @@ window.WPS_DATA = {
       "2026-11-28::b_audit_NP-20261020-123839-YNUP",
       "2026-11-28::b_1792480119303_3olm",
       "2026-11-21::b_1791958261395_9sm3",
-      "2026-11-01::b_1791810259119_c2fb"
+      "2026-11-01::b_1791810259119_c2fb",
+      "2026-11-15::b_1791958247602_jrx9"
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1793165452835,
-    "syncedAt": 1793165452835,
+    "updatedAt": 1793793644454,
+    "syncedAt": 1793793644454,
     "testShootLimits": {
       "default": 2,
       "months": {},
