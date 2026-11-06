@@ -3046,8 +3046,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1793989096875,
-    "syncedAt": 1793989096875,
+    "updatedAt": 1793989185137,
+    "syncedAt": 1793989185137,
     "testShootLimits": {
       "default": 2,
       "months": {},
@@ -3165,7 +3165,7 @@ window.WPS_DATA = {
     {
       "id": "pkg_1",
       "name": "Basic Test / Comp Card",
-      "price": 4000,
+      "price": 6000,
       "specs": "20 Proof Clicks + 0 Retouched (No RAW files delivered)",
       "studioFee": 2000
     },
@@ -3300,14 +3300,14 @@ window.WPS_DATA = {
   "SETTINGS_AT": {
     "INVITE_CODES": 1793165436463,
     "PROMO_CODES": 1793989088243,
-    "PACKAGES": 1792746510125,
-    "TFP_PACKAGE": 1792746510126,
-    "HOME_STUDIO_RATE": 1792746510126,
+    "PACKAGES": 1793989181767,
+    "TFP_PACKAGE": 1793989181767,
+    "HOME_STUDIO_RATE": 1793989181767,
     "PORTFOLIO_PDF": 1792305536741,
     "HOME_SLIDESHOW": 1791474369889,
     "STUDIO": 0,
     "MEASURE_UNITS": 1790269147688,
-    "HOME_STUDIO_RATE_TFP": 1792746510126
+    "HOME_STUDIO_RATE_TFP": 1793989181767
   },
   "TESTIMONIALS": {
     "items": [
