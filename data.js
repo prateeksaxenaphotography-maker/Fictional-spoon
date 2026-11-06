@@ -3046,8 +3046,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1793793644454,
-    "syncedAt": 1793793644454,
+    "updatedAt": 1793989096875,
+    "syncedAt": 1793989096875,
     "testShootLimits": {
       "default": 2,
       "months": {},
@@ -3150,6 +3150,15 @@ window.WPS_DATA = {
       "active": true,
       "startDate": "2026-09-21",
       "shootTo": "2026-12-31"
+    },
+    "#e9952faf1ac970c957df": {
+      "pct": 0,
+      "label": "Home Studio Discount Only",
+      "includeAddons": false,
+      "homeStudioDiscount": {
+        "type": "free"
+      },
+      "active": true
     }
   },
   "PACKAGES": [
@@ -3290,7 +3299,7 @@ window.WPS_DATA = {
   "HOME_STUDIO_RATE_TFP": 3500,
   "SETTINGS_AT": {
     "INVITE_CODES": 1793165436463,
-    "PROMO_CODES": 1792140537781,
+    "PROMO_CODES": 1793989088243,
     "PACKAGES": 1792746510125,
     "TFP_PACKAGE": 1792746510126,
     "HOME_STUDIO_RATE": 1792746510126,
