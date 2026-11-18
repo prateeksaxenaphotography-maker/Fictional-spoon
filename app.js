@@ -4107,6 +4107,15 @@ window.resolveContractArchive = function(version) {
       }).filter(Boolean);
       if (cleanNames.length) mentorText = `Mentors: ${cleanNames.join(", ")}`;
     }
+    /* The agency that represents the model, on the tile as well as in the viewer (v626: the owner had ticked the agency's
+       Instagram for the Homepage column and asked for it on the tile too, Nov 18 2026). The name answers to the "Agency" switch for
+       the homepage and album screens, each link to its own; with nothing ticked the tile shows no agency (names only,
+       v585). Links open the agency's page in a new tab and never the album: only the picture and "View Album" do that. */
+    let agencyLine = "";
+    if (s.agency && showRep(s, "Agency", "Home")) {
+      const agLinks = visibleAgencyLinks(s, "Home").map((l) => `<a href="${esc(safeHref(l.url))}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-text); font-weight: 600; margin-left: 6px;">${esc(l.label)}${l.kind === "email" ? "" : " ↗"}</a>`).join("");
+      agencyLine = `<div class="noth-work-agency" style="font-size: var(--font-xs); margin-top: 2px;">Agency: ${esc(s.agency)}${agLinks}</div>`;
+    }
     // getTalentCleanName on the location too: a venue saved as
     // "Tavish Studio (https://www.instagram.com/studiotavish/?hl=en)" printed
     // the whole address, in capitals, on the workshop card (Sep 2026 audit).
@@ -4144,6 +4153,7 @@ window.resolveContractArchive = function(version) {
             <div style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft);">
               ${meta ? `<span>${esc(meta)}</span>` : ""}
               ${mentorText ? `<div style="font-size: var(--font-xs); color: var(--accent-text); margin-top: 2px; font-weight: 600;">${esc(mentorText)}</div>` : ""}
+              ${agencyLine}
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
               <span class="noth-work-cta" style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text);">View Album →</span>
