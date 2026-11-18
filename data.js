@@ -2867,9 +2867,9 @@ window.WPS_DATA = {
       "showEmailOnCompCard": false,
       "showEmailOnHome": false,
       "showEmailOnPdf": false,
-      "showAgencyOnCompCard": false,
-      "showAgencyOnHome": false,
-      "showAgencyOnPdf": false,
+      "showAgencyOnCompCard": true,
+      "showAgencyOnHome": true,
+      "showAgencyOnPdf": true,
       "showAgencyInstagramOnCompCard": false,
       "showAgencyInstagramOnHome": false,
       "showAgencyInstagramOnPdf": false,
@@ -2890,7 +2890,7 @@ window.WPS_DATA = {
       "showAgencyEmailOnPdf": false,
       "showCrewSocials": false,
       "coverPhotoId": "mwlpt93e178f01",
-      "updatedAt": 1794982162684
+      "updatedAt": 1794982534660
     }
   ],
   "DELETED_IDS": [
@@ -3127,6 +3127,13 @@ window.WPS_DATA = {
           "type": "Selective Collaboration (TFP)",
           "contractVersion": "Pending Agreement",
           "updatedAt": 1793793635070
+        },
+        {
+          "id": "shoot-mwlq18u3l32nyg",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Test Shoot",
+          "shootId": "mwlq18u3l32nyg"
         }
       ]
     },
@@ -3232,8 +3239,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1794982198292,
-    "syncedAt": 1794982198292,
+    "updatedAt": 1794982537614,
+    "syncedAt": 1794982537614,
     "testShootLimits": {
       "default": 2,
       "months": {},
@@ -4093,7 +4100,7 @@ window.WPS_DATA = {
         ],
         "modelEmail": "",
         "modelTypes": [],
-        "updatedAt": 1794982162684,
+        "updatedAt": 1794982534661,
         "showModelInstagramOnCompCard": false,
         "showModelInstagramOnHome": false,
         "showModelInstagramOnPdf": false,
@@ -4112,9 +4119,9 @@ window.WPS_DATA = {
         "showEmailOnCompCard": false,
         "showEmailOnHome": false,
         "showEmailOnPdf": false,
-        "showAgencyOnCompCard": false,
-        "showAgencyOnHome": false,
-        "showAgencyOnPdf": false,
+        "showAgencyOnCompCard": true,
+        "showAgencyOnHome": true,
+        "showAgencyOnPdf": true,
         "showAgencyInstagramOnCompCard": false,
         "showAgencyInstagramOnHome": false,
         "showAgencyInstagramOnPdf": false,
