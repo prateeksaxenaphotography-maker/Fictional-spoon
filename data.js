@@ -2724,14 +2724,14 @@ window.WPS_DATA = {
       "videographer": "—",
       "talent": "Siddharth (https://www.instagram.com/__sidduuuu/?hl=en)",
       "location": "Noida",
-      "height": "",
-      "chest": "",
+      "height": "6'1\"",
+      "chest": "93 cm",
       "chestLabel": "Chest",
-      "waist": "",
-      "hips": "",
+      "waist": "75 cm",
+      "hips": "94 cm",
       "shoes": "",
-      "modelHair": "",
-      "modelEyes": "",
+      "modelHair": "Black",
+      "modelEyes": "Black",
       "agencyCredit": "KAD Modeling Agency(https://www.instagram.com/kadmodel/?hl=en)",
       "agency": "KAD Modeling Agency",
       "agencyHandle": "kadmodel",
@@ -2744,11 +2744,13 @@ window.WPS_DATA = {
         }
       ],
       "modelEmail": "",
-      "modelTypes": [],
+      "modelTypes": [
+        "Fashion"
+      ],
       "modelKeys": [
         "siddharth"
       ],
-      "feedsModelCards": true,
+      "feedsModelCards": false,
       "showStatsOnCompCard": true,
       "showStatsOnModelPortfolio": true,
       "showTestShootCategory": false,
@@ -2890,7 +2892,7 @@ window.WPS_DATA = {
       "showAgencyEmailOnPdf": false,
       "showCrewSocials": false,
       "coverPhotoId": "mwlpt93e178f01",
-      "updatedAt": 1794982613237
+      "updatedAt": 1794983081686
     }
   ],
   "DELETED_IDS": [
@@ -3239,8 +3241,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1794982617631,
-    "syncedAt": 1794982617631,
+    "updatedAt": 1794983097703,
+    "syncedAt": 1794983097703,
     "testShootLimits": {
       "default": 2,
       "months": {},
@@ -3487,7 +3489,7 @@ window.WPS_DATA = {
     "finishBy": "7:00 PM"
   },
   "MEASURE_UNITS": {
-    "display": "metric"
+    "display": "imperial"
   },
   "HOME_STUDIO_RATE_TFP": 3500,
   "SETTINGS_AT": {
@@ -3499,7 +3501,7 @@ window.WPS_DATA = {
     "PORTFOLIO_PDF": 1792305536741,
     "HOME_SLIDESHOW": 1791474369889,
     "STUDIO": 0,
-    "MEASURE_UNITS": 1790269147688,
+    "MEASURE_UNITS": 1794983078494,
     "HOME_STUDIO_RATE_TFP": 1793989181767
   },
   "TESTIMONIALS": {
@@ -4079,14 +4081,14 @@ window.WPS_DATA = {
         "key": "siddharth",
         "name": "Siddharth",
         "talent": "Siddharth (https://www.instagram.com/__sidduuuu/?hl=en)",
-        "height": "",
-        "chest": "",
+        "height": "6'1\"",
+        "chest": "93 cm",
         "chestLabel": "Chest",
-        "waist": "",
-        "hips": "",
+        "waist": "75 cm",
+        "hips": "94 cm",
         "shoes": "",
-        "modelHair": "",
-        "modelEyes": "",
+        "modelHair": "Black",
+        "modelEyes": "Black",
         "agencyCredit": "KAD Modeling Agency(https://www.instagram.com/kadmodel/?hl=en)",
         "agency": "KAD Modeling Agency",
         "agencyHandle": "kadmodel",
@@ -4099,8 +4101,10 @@ window.WPS_DATA = {
           }
         ],
         "modelEmail": "",
-        "modelTypes": [],
-        "updatedAt": 1794982613237,
+        "modelTypes": [
+          "Fashion"
+        ],
+        "updatedAt": 1794983081687,
         "showModelInstagramOnCompCard": false,
         "showModelInstagramOnHome": false,
         "showModelInstagramOnPdf": false,
