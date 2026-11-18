@@ -2782,7 +2782,7 @@ window.WPS_DATA = {
           "id": "mwlpt93e178f01-0",
           "url": "photos/mwlq18u3l32nyg/mwlpt93e178f01-0.jpg",
           "objectPosition": "top",
-          "usage": "comp",
+          "usage": "both",
           "small": "photos/mwlq18u3l32nyg/mwlpt93e178f01-0@480.jpg",
           "medium": "photos/mwlq18u3l32nyg/mwlpt93e178f01-0@960.jpg"
         },
@@ -2790,7 +2790,7 @@ window.WPS_DATA = {
           "id": "mwlpt98cpasfnh-1",
           "url": "photos/mwlq18u3l32nyg/mwlpt98cpasfnh-1.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "usage": "both",
           "small": "photos/mwlq18u3l32nyg/mwlpt98cpasfnh-1@480.jpg",
           "medium": "photos/mwlq18u3l32nyg/mwlpt98cpasfnh-1@960.jpg"
         },
@@ -2798,7 +2798,7 @@ window.WPS_DATA = {
           "id": "mwlpt9e4oatgh0-2",
           "url": "photos/mwlq18u3l32nyg/mwlpt9e4oatgh0-2.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "usage": "both",
           "small": "photos/mwlq18u3l32nyg/mwlpt9e4oatgh0-2@480.jpg",
           "medium": "photos/mwlq18u3l32nyg/mwlpt9e4oatgh0-2@960.jpg"
         },
@@ -2806,7 +2806,7 @@ window.WPS_DATA = {
           "id": "mwlpt9i33gl6cc-3",
           "url": "photos/mwlq18u3l32nyg/mwlpt9i33gl6cc-3.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "usage": "both",
           "small": "photos/mwlq18u3l32nyg/mwlpt9i33gl6cc-3@480.jpg",
           "medium": "photos/mwlq18u3l32nyg/mwlpt9i33gl6cc-3@960.jpg"
         },
@@ -2814,7 +2814,7 @@ window.WPS_DATA = {
           "id": "mwlpt9p8slod3e-4",
           "url": "photos/mwlq18u3l32nyg/mwlpt9p8slod3e-4.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "usage": "both",
           "small": "photos/mwlq18u3l32nyg/mwlpt9p8slod3e-4@480.jpg",
           "medium": "photos/mwlq18u3l32nyg/mwlpt9p8slod3e-4@960.jpg"
         },
@@ -2822,7 +2822,7 @@ window.WPS_DATA = {
           "id": "mwlpt9x738v0j6-5",
           "url": "photos/mwlq18u3l32nyg/mwlpt9x738v0j6-5.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "usage": "both",
           "small": "photos/mwlq18u3l32nyg/mwlpt9x738v0j6-5@480.jpg",
           "medium": "photos/mwlq18u3l32nyg/mwlpt9x738v0j6-5@960.jpg"
         },
@@ -2830,9 +2830,25 @@ window.WPS_DATA = {
           "id": "mwlpta3n861pe1-6",
           "url": "photos/mwlq18u3l32nyg/mwlpta3n861pe1-6.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "usage": "both",
           "small": "photos/mwlq18u3l32nyg/mwlpta3n861pe1-6@480.jpg",
           "medium": "photos/mwlq18u3l32nyg/mwlpta3n861pe1-6@960.jpg"
+        },
+        {
+          "id": "mwlsjrf5an6zg5-7",
+          "url": "photos/mwlq18u3l32nyg/mwlsjrf5an6zg5-7.jpg",
+          "objectPosition": "center",
+          "usage": "both",
+          "small": "photos/mwlq18u3l32nyg/mwlsjrf5an6zg5-7@480.jpg",
+          "medium": "photos/mwlq18u3l32nyg/mwlsjrf5an6zg5-7@960.jpg"
+        },
+        {
+          "id": "mwlsjrjs5y4lo6-8",
+          "url": "photos/mwlq18u3l32nyg/mwlsjrjs5y4lo6-8.jpg",
+          "objectPosition": "center",
+          "usage": "both",
+          "small": "photos/mwlq18u3l32nyg/mwlsjrjs5y4lo6-8@480.jpg",
+          "medium": "photos/mwlq18u3l32nyg/mwlsjrjs5y4lo6-8@960.jpg"
         }
       ],
       "featured": true,
@@ -2840,7 +2856,7 @@ window.WPS_DATA = {
       "hideFromCompCard": false,
       "showOnModelPortfolio": true,
       "disableCompCardDownload": false,
-      "showPolaroidsInAlbum": false,
+      "showPolaroidsInAlbum": true,
       "isPublic": true,
       "showCredits": true,
       "showPdf": true,
@@ -2892,7 +2908,7 @@ window.WPS_DATA = {
       "showAgencyEmailOnPdf": false,
       "showCrewSocials": false,
       "coverPhotoId": "mwlpt93e178f01",
-      "updatedAt": 1794983081686
+      "updatedAt": 1794986394254
     }
   ],
   "DELETED_IDS": [
@@ -3241,8 +3257,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1794983097703,
-    "syncedAt": 1794983097703,
+    "updatedAt": 1794986417957,
+    "syncedAt": 1794986417957,
     "testShootLimits": {
       "default": 2,
       "months": {},
@@ -4104,7 +4120,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1794983081687,
+        "updatedAt": 1794986394255,
         "showModelInstagramOnCompCard": false,
         "showModelInstagramOnHome": false,
         "showModelInstagramOnPdf": false,
