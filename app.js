@@ -4383,7 +4383,7 @@ window.resolveContractArchive = function(version) {
   //
   // The kicker names WHO THE PAGE IS FOR, and all five answer that same
   // question: two named after the client and two after the kind of photograph
-  // left a fitness model unable to tell which page was hers.
+  // left a fitness model unable to tell which page was theirs.
   const SERVICE_LINKS = [
     { slug: "model-portfolio-shoot-noida", kicker: "For models", title: "Model Portfolios & Comp Cards", phrase: "model portfolio", packageIds: ["pkg_1", "pkg_2", "pkg_3"], match: { clients: ["model", "agency"], modelWork: true }, blurb: "Agency-ready portfolio shoots and comp cards for new and working models, male and female.", cta: "Model portfolio shoots" },
     { slug: "fashion-editorial-photographer-delhi-ncr", kicker: "For magazines & editorial stories", title: "Fashion & Editorial", phrase: "fashion or editorial", packageIds: ["pkg_3", "pkg_4"], match: { look: "fashion" }, blurb: "Concept-led fashion, beauty and editorial stories for designers, stylists and magazine submissions.", cta: "Fashion & editorial" },
@@ -5750,7 +5750,7 @@ window.resolveContractArchive = function(version) {
         // A model's record answers for the model; their albums answer for the
         // shoot. Asking the record first and the albums newest-first after it
         // is what lets a model tagged only on a brand's job still have
-        // measurements, an agency and a handle of her own — and it is also
+        // measurements, an agency and a handle of their own — and it is also
         // exactly what every card did before the registry existed, for a
         // model who has no record yet.
         const rec = roster.find((r) => r && r.key === modelKey) || null;
@@ -5772,9 +5772,9 @@ window.resolveContractArchive = function(version) {
         // Failing a record, an album whose OWN credit line is this model
         // answers instead — handles in parentheses and all, which is what
         // compCardOwnHandles reads back out. It matches only when that line
-        // names her and nobody else, so a brand album crediting six models
+        // names them and nobody else, so a brand album crediting six models
         // can never hand its whole crew to one card. Last resort, the key
-        // itself, which at least prints her name rather than a crew list.
+        // itself, which at least prints their name rather than a crew list.
         const fromOwnAlbum = shootsInGroup
           .map((gs) => String(gs.talent || "").trim())
           .find((t) => t && modelKeyOf(t) === modelKey);
@@ -5837,8 +5837,8 @@ window.resolveContractArchive = function(version) {
              this function has something named to carry forward.
              Since a card is built from the photographs a model is tagged in
              rather than from whole albums, this is the set of albums those
-             photographs came from — a brand's campaign she appears in counts,
-             and one she does not appear in never enters the list. */
+             photographs came from — a brand's campaign they appear in counts,
+             and one they do not appear in never enters the list. */
           sourceShootIds: shootsInGroup.map((gs) => gs.id).filter(Boolean),
           // Display title is cleaned; `talent` below stays raw on purpose,
           // because compCardOwnHandles parses its parentheses to pick the
@@ -5857,7 +5857,7 @@ window.resolveContractArchive = function(version) {
           modelHair: findStat("modelHair"),
           modelEyes: findStat("modelEyes"),
           // The model's own record first, then their newest album — so this is
-          // her current agency even when older shoots were booked through a
+          // their current agency even when older shoots were booked through a
           // different one.
           agency: findStat("agency"),
           agencyHandle: cleanIgHandle(agencySrc ? agencySrc.agencyHandle : ""),

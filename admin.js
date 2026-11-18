@@ -1850,7 +1850,7 @@ window.TESTIMONIAL_STORE_LIMITS = TESTIMONIAL_STORE_LIMITS;
    agency representing them. Albums and individual photographs point at a
    record by `key` — a slug of the name — so the same model tagged on a test
    shoot in March and on a brand's campaign in September is one person with
-   one card, however her name happened to be typed the second time.
+   one card, however their name happened to be typed the second time.
 
    Why this exists at all: a comp card used to be assembled by grouping albums
    on the raw text of the "Model / talent" credit. That works while every
@@ -6708,7 +6708,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                    model tagged in March and in September is one card. -->
               <div class="field" id="f_models_field" style="margin-top: 14px;">
                 <span>Who's in this album <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft);">— tick everyone who appears</span></span>
-                <p style="margin: 6px 0 0; font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5;">One model needs nothing more — every photo is hers. Tick two or more and a "Who's in it" row appears on each photo below, so a frame with two models reaches both their cards.</p>
+                <p style="margin: 6px 0 0; font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5;">One model needs nothing more — every photo is theirs. Tick two or more and a "Who's in it" row appears on each photo below, so a frame with two models reaches both their cards.</p>
                 <div id="f_models" style="display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px;"></div>
                 <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
                   <input id="f_model_new" type="text" placeholder="Add someone — Name (@handle)" style="flex: 1 1 260px; min-width: 0; height: 38px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 6px; padding: 0 12px; box-sizing: border-box; font-size: var(--font-sm); outline: none;" />
@@ -6716,7 +6716,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                 </div>
                 <!-- One person's details, opened from their chip above. These
                      belong to the person, not to this shoot, so they follow
-                     her onto every card built from any album she is in. -->
+                     them onto every card built from any album they are in. -->
                 <div id="f_model_detail" style="display: none; margin-top: 12px; padding: 14px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--bone-2);"></div>
                 <label id="f_feeds_row" style="display: none; align-items: flex-start; gap: 10px; margin-top: 14px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
                   <input id="f_feeds_model_cards" type="checkbox" style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent-text); flex: 0 0 auto;" />
@@ -7208,12 +7208,14 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     }
 
     /* One person's own details. They belong to the person and not to this
-       shoot, so they follow her onto every card built from any album she is
-       in — which is the whole point of the list: a model tagged only on a
-       brand's job still has measurements and an agency to print. */
+       shoot, so they follow them onto every card built from any album they
+       are in — which is the whole point of the list: a model tagged only on a
+       brand's job still has measurements and an agency to print. (The words
+       the studio reads here say "their", never "her" or "his": a model may be
+       anyone.) */
     const MODEL_DETAIL_FIELDS = [
       ["name", "Name", "e.g. Aisha Khan"],
-      ["talent", "Name with her own links", "e.g. Aisha Khan (@aishak; aishakhan.com)"],
+      ["talent", "Name with their own links", "e.g. Aisha Khan (@aishak; aishakhan.com)"],
       ["height", "Height", "e.g. 5'9 or 175"],
       ["chest", "Chest or bust", "e.g. 32 or 30-32"],
       ["waist", "Waist", "e.g. 26"],
@@ -7231,15 +7233,15 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       const m = rosterFind(openModelKey) || { key: openModelKey, name: modelNameFromKey(openModelKey) };
       box.style.display = "block";
       box.innerHTML = `
-        <p style="margin: 0 0 10px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft);">${esc(m.name)} — her own details</p>
-        <p style="margin: 0 0 12px; font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5;">These belong to her, not to this shoot, so they show on her card wherever her photographs came from. Leave anything blank and her albums answer for it instead.</p>
+        <p style="margin: 0 0 10px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft);">${esc(m.name)} — their own details</p>
+        <p style="margin: 0 0 12px; font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5;">These belong to them, not to this shoot, so they show on their card wherever their photographs came from. Leave anything blank and their albums answer for it instead.</p>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
           ${MODEL_DETAIL_FIELDS.map(([f, label, ph]) => f === "height" ? `
             <div class="field" style="margin: 0;"><span>${esc(label)}</span>${heightGroup({ ft: 'data-md="h-ft"', inch: 'data-md="h-in"', cm: 'data-md="h-cm"', unit: 'data-md="h-unit"' }, m.height)}</div>` : UNIT_CHOICES[f] ? `
             <label class="field" style="margin: 0;"><span>${esc(label)}</span><span style="display: flex; gap: 6px;"><input class="model-detail-in" data-f="${esc(f)}" type="text" value="${esc(bareValue(f, m[f]))}" placeholder="${esc(ph)}" style="flex: 1 1 auto; min-width: 0;" />${unitSelect(f, `class="model-detail-unit" data-f="${esc(f)}"`, m[f])}</span></label>` : f === "shoes" ? `
             <label class="field" style="margin: 0;"><span>${esc(label)}</span><span style="display: flex; gap: 6px;">${shoeSelect(`class="model-detail-shoesys"`, m.shoes)}<input class="model-detail-in" data-f="shoes" type="text" value="${esc(splitShoe(m.shoes).size)}" placeholder="e.g. 9" style="flex: 1 1 auto; min-width: 0;" /></span></label>` : `
             <label class="field" style="margin: 0;"><span>${esc(label)}</span><input class="model-detail-in" data-f="${esc(f)}" type="text" value="${esc(m[f] || "")}" placeholder="${esc(ph)}" /></label>`).join("")}
-          <label class="field" style="margin: 0;"><span>Chest or bust — the word her card uses</span>
+          <label class="field" style="margin: 0;"><span>Chest or bust — the word their card uses</span>
             <select class="model-detail-in" data-f="chestLabel">${CHEST_LABELS.map((l) => `<option value="${esc(l)}" ${chestLabelOf(m) === l ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>
           </label>
           <label class="field" style="margin: 0;"><span>Model type <em class="label-hint">up to ${MODEL_TYPES_MAX}, comma separated</em></span><input class="model-detail-in" data-f="modelTypes" type="text" value="${esc(modelTypesOf(m).join(", "))}" placeholder="e.g. Fashion, Fitness" /></label>
@@ -7251,7 +7253,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           <span><strong>Under 18</strong> — keeps their measurements and email off the site, the comp card and every PDF. Book only with a parent or guardian signing the contract.</span>
         </label>
         <div style="display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; align-items: center;">
-          <button type="button" id="f_model_detail_save" class="btn btn-ghost" style="height: 36px; padding: 0 16px; font-size: var(--font-xs); font-family: var(--mono-font); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">Save her details</button>
+          <button type="button" id="f_model_detail_save" class="btn btn-ghost" style="height: 36px; padding: 0 16px; font-size: var(--font-xs); font-family: var(--mono-font); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">Save their details</button>
           <span style="font-size: var(--font-xs); color: var(--ink-soft);">Saved on this device until you publish the album.</span>
         </div>`;
       box.querySelectorAll(".model-detail-in").forEach((el) => {
@@ -7324,17 +7326,17 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       }
       input.value = "";
       pickedModels.add(key);
-      // Straight into her details when she is new: a model added from a brand
-      // shoot has no album of her own to carry her measurements, and a comp
+      // Straight into their details when they are new: a model added from a brand
+      // shoot has no album of their own to carry their measurements, and a comp
       // card with no measurements is not a comp card.
       openModelKey = existing ? openModelKey : key;
       renderModelPicker();
       syncModelsUi();
-      toast(existing ? `${existing.name} is in this album.` : `Added ${name}. Fill in her details below.`);
+      toast(existing ? `${existing.name} is in this album.` : `Added ${name}. Fill in their details below.`);
     }
 
     /* What the rest of the form does about who is in the album.
-       One model: her own stats live on her record, and the album's Model
+       One model: their own stats live on their record, and the album's Model
        stats fieldset edits them — the studio should not have to know there
        are two places. Several: those fields cannot mean anything, so they are
        replaced by a line pointing at each person's own details. */
@@ -7346,7 +7348,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       if (hint) {
         hint.textContent = n
           ? ($("#f_feeds_model_cards")?.checked
-              ? (n === 1 ? "On. Every photo here shows on her card." : `On. Each photo shows on the cards of whoever is ticked in it below.`)
+              ? (n === 1 ? "On. Every photo here shows on their card." : `On. Each photo shows on the cards of whoever is ticked in it below.`)
               : "Off. Nothing from this album reaches anyone's card — tick this once the work is the model's to show.")
           : "";
       }
@@ -8349,11 +8351,11 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         const m = String(now.getMonth() + 1).padStart(2, "0");
         dateVal = `${y}-${m}-01`;
       }
-      /* One model in this album means the Model stats fieldset above IS her
+      /* One model in this album means the Model stats fieldset above IS their
          record: the studio should not have to learn that a height lives in
          two places. Only non-empty values are carried over, so an album whose
-         stats were never filled in cannot blank what her other albums know.
-         Her name is only rewritten when the credit line still names HER —
+         stats were never filled in cannot blank what their other albums know.
+         Their name is only rewritten when the credit line still names THEM —
          otherwise a mistyped talent field would quietly rename somebody. */
       if (pickedModels.size === 1) {
         const soleKey = [...pickedModels][0];
@@ -8474,8 +8476,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           // publish step fills in from the live copy (see syncToGitHub).
           look: lookByKey.has(f.look) ? f.look : "",
           // Who is in this frame, kept only to people actually in the album.
-          // Untagging someone in the picker must not leave her tagged on the
-          // photographs, or her card would keep collecting them.
+          // Untagging someone in the picker must not leave them tagged on the
+          // photographs, or their card would keep collecting them.
           models: Array.isArray(f.models) ? f.models.filter((k) => pickedModels.has(k)) : [],
           // Carried back out of the staging list — see the note where staged
           // is built. Kept by value: a photo's id is re-derived from its
