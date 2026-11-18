@@ -3327,6 +3327,15 @@ window.resolveContractArchive = function(version) {
     // "Talent" everywhere, the owner's word (Sep 25 2026, audit L17): the cards
     // and credits already said it; this viewer said "Model".
     if (hasTalent) addGroup("Talent", shoot.talent, { plural: "Talent", attachIg: true, allow: modelHandleOk(shoot, viewSurface) });
+    /* The agency that represents the model, credited here as it is on a model's own card (v625, the owner, looking at a
+       test shoot's viewer: "why is the modeling agency name and link not coming … this screen should show credit to
+       everyone"). The viewer only ever drew it on the comp card view, so an album's agency was never shown whatever the
+       studio ticked. Each part answers to its own switch for this surface (names only until the studio ticks a detail
+       on, v585): the name to "Agency", each link to its own. A comp card view still draws it above, with the stats. */
+    if (!isCc && shoot.agency && showRep(shoot, "Agency", viewSurface)) {
+      const agLinks = visibleAgencyLinks(shoot, viewSurface).map(l => `<a href="${esc(safeHref(l.url))}" target="_blank" rel="noopener noreferrer">${esc(l.label)}${l.kind === "email" ? "" : " ↗"}</a>`).join("");
+      groups.push({ label: "Agency", rendered: [`<span class="lb-person">${esc(shoot.agency)}</span>`, ...(agLinks ? [`<span class="lb-person lb-person-sub">${agLinks}</span>`] : [])] });
+    }
     if (shoot.photographer || shoot.secondaryPhotographers) addGroup("Photography", [photographerCredit(shoot.photographer), shoot.secondaryPhotographers].filter(Boolean).join(", "));
     if (shoot.mentor) addGroup("Mentor", shoot.mentor, { plural: "Mentors" });
     if (shoot.artDirector) addGroup("Art direction", shoot.artDirector);
@@ -4206,6 +4215,8 @@ window.resolveContractArchive = function(version) {
       // and s.instagram won't necessarily carry them. This strips the
       // parentheses AND renders each handle as a link, so no link is lost.
       if (s.talent && s.talent !== "—") creditsList.push(`Talent <strong>${renderCreditLinks(s.talent, ";", false, modelHandleOk(s, repSurface))}</strong>`);
+      // The agency, name only on a card (v625): the album's own screen carries its links. Answers to the "Agency" switch.
+      if (s.agency && showRep(s, "Agency", repSurface)) creditsList.push(`Agency <strong>${esc(s.agency)}</strong>`);
       // The talent line already links the handle when it carries one; the
       // Socials line printed the same @handle again (V12).
       if (igHtml && showRep(s, "ModelInstagram", repSurface) && !/@|https?:/i.test(String(s.talent || ""))) creditsList.push(`Socials ${igHtml}`);
@@ -6016,9 +6027,13 @@ window.resolveContractArchive = function(version) {
     const place = albumPlace(album);
     const season = (album.season || "").replace(/^—$/, "");
     const eyebrow = [album.activity && `${album.activity} photography`, place, season].filter(Boolean).join(" · ") || "Album";
+    // The model's agency too (v625), as far as its switches for album pages allow: its name, then each link it ticked on.
+    const agencyHere = album.agency && showRep(album, "Agency", "Home");
+    const agencyLinks = agencyHere ? visibleAgencyLinks(album, "Home").map((l) => `<a href="${esc(safeHref(l.url))}" target="_blank" rel="noopener noreferrer">${esc(l.label)}${l.kind === "email" ? "" : " ↗"}</a>`).join(" ") : "";
     const credits = album.showCredits === false ? [] : [
       ["Photographer", photographerCredit(getTalentCleanName(album.photographer))], ["Art direction", getTalentCleanName(album.artDirector)],
-      ["Styling", getTalentCleanName(album.stylist)], ["Hair", getTalentCleanName(album.hair)], ["Make-up", getTalentCleanName(album.mua)]
+      ["Styling", getTalentCleanName(album.stylist)], ["Hair", getTalentCleanName(album.hair)], ["Make-up", getTalentCleanName(album.mua)],
+      ["Agency", agencyHere ? album.agency : "", agencyLinks]
     ].filter(([, v]) => v && v !== "—");
     const others = albumPageList().filter((s) => s.id !== album.id)
       .sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).slice(0, 3);
@@ -6048,7 +6063,7 @@ window.resolveContractArchive = function(version) {
             </button>`;
           }).join("")}
         </div>
-        ${credits.length ? `<p class="album-page-credits">${credits.map(([k, v]) => `<span><strong>${esc(k)}</strong> ${esc(v)}</span>`).join("")}</p>` : ""}
+        ${credits.length ? `<p class="album-page-credits">${credits.map(([k, v, links]) => `<span><strong>${esc(k)}</strong> ${esc(v)}${links ? ` ${links}` : ""}</span>`).join("")}</p>` : ""}
         ${(() => {
           // The service pages this album's photographs appear on — the same
           // rule as partOfHtml in build-seo.mjs (Sep 2026 audit, G11).
