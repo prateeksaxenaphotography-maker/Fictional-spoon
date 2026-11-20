@@ -160,7 +160,7 @@ body:has(.prerender, [data-static-path]) .loader { display: none; }
    header, light or dark theme) without a copy per colour. */
 .brand-logo { display: block; flex: none; width: 214px; aspect-ratio: 228.06 / 25; background-color: currentColor; -webkit-mask: url("/logo-header.svg") no-repeat left center / contain; mask: url("/logo-header.svg") no-repeat left center / contain; transition: opacity .3s var(--ease); }
 .brand:hover .brand-logo { opacity: .78; }
-.footer-logo { display: block; width: min(250px, 100%); aspect-ratio: 454.45 / 191; color: var(--band-text); background-color: currentColor; -webkit-mask: url("/logo-stacked.svg") no-repeat left center / contain; mask: url("/logo-stacked.svg") no-repeat left center / contain; }
+.footer-logo { display: block; width: min(240px, 100%); aspect-ratio: 457.73 / 263.23; color: var(--band-text); background-color: currentColor; -webkit-mask: url("/logo-stacked.svg") no-repeat left center / contain; mask: url("/logo-stacked.svg") no-repeat left center / contain; }
 .brand-text { font-weight: 900; font-size: var(--font-sm); letter-spacing: .04em; line-height: 1; }
 .brand-sub { display: block; font-size: var(--font-xs); font-weight: 600; letter-spacing: .22em; color: var(--accent-text); margin-top: 3px; }
 .header-actions { display: flex; align-items: center; gap: 14px; }
