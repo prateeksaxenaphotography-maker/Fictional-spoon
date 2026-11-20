@@ -138,7 +138,8 @@ a { color: inherit; text-decoration: none; }
 .loader { animation: loaderFailsafe .4s ease 1.2s forwards; }
 @keyframes loaderFailsafe { to { opacity: 0; visibility: hidden; } }
 body:has(.prerender, [data-static-path]) .loader { display: none; }
-.loader-logo { width: 64px; height: 64px; object-fit: contain; animation: mp 1.6s var(--ease) infinite; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5)); }
+.loader-logo { width: min(300px, 70vw); height: auto; animation: mp 1.6s var(--ease) infinite; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5)); }
+.loader-label { display: none; } /* the stacked logo already carries the name */
 .loader-bar { width: 170px; height: 2px; background: rgba(255,255,255,.18); overflow: hidden; }
 .loader-bar span { display: block; height: 100%; width: 0; background: var(--accent); animation: load 1.3s var(--ease) forwards; }
 .loader-label { font-family: var(--mono-font); font-size: var(--font-xs); letter-spacing: .34em; color: rgba(255,255,255,.7) !important; margin: 0; }
@@ -154,6 +155,12 @@ body:has(.prerender, [data-static-path]) .loader { display: none; }
 .brand { display: flex; align-items: center; gap: 11px; color: inherit; }
 .brand-mark { width: 28px; height: 28px; object-fit: contain; transition: transform .4s var(--ease); }
 .brand:hover .brand-mark { transform: rotate(-8deg) scale(1.08); }
+/* The logo (Nov 2026): the camera-glasses with the name beside it in the header, stacked in the footer and the loader.
+   Both are drawn as a mask and filled with currentColor, so they take the ink of wherever they sit (light or dark
+   header, light or dark theme) without a copy per colour. */
+.brand-logo { display: block; flex: none; width: 214px; aspect-ratio: 228.06 / 25; background-color: currentColor; -webkit-mask: url("/logo-header.svg") no-repeat left center / contain; mask: url("/logo-header.svg") no-repeat left center / contain; transition: opacity .3s var(--ease); }
+.brand:hover .brand-logo { opacity: .78; }
+.footer-logo { display: block; width: min(250px, 100%); aspect-ratio: 454.45 / 191; color: var(--band-text); background-color: currentColor; -webkit-mask: url("/logo-stacked.svg") no-repeat left center / contain; mask: url("/logo-stacked.svg") no-repeat left center / contain; }
 .brand-text { font-weight: 900; font-size: var(--font-sm); letter-spacing: .04em; line-height: 1; }
 .brand-sub { display: block; font-size: var(--font-xs); font-weight: 600; letter-spacing: .22em; color: var(--accent-text); margin-top: 3px; }
 .header-actions { display: flex; align-items: center; gap: 14px; }
@@ -1104,6 +1111,7 @@ body.menu-open .upload-sticky-bar { display: none; }
   .nav-overlay-inner { padding: 120px 20px 40px; }
   .site-header { padding: 18px 20px; }
   .site-header.scrolled { padding: 12px 20px; }
+  .brand-logo { width: 178px; }
 }
 /* Very small phones — prevent hero headline clipping */
 @media (max-width: 380px) {
@@ -1118,6 +1126,7 @@ body.menu-open .upload-sticky-bar { display: none; }
   .site-header.scrolled { padding: 11px 14px; }
   .site-header .brand { min-width: 0; overflow: hidden; }
   .brand-text { font-size: var(--font-xs); }
+  .brand-logo { width: 150px; }
   .header-actions { gap: 8px; flex: none; }
   .menu-btn > span { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .menu-btn { gap: 0; padding: 4px; }
