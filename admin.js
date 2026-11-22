@@ -4423,7 +4423,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           <section class="pdfgen-card">
             <h4>Shoot</h4>
             <div class="pdfgen-grid">
-              <label class="pdfgen-field">Shoot date / timeline *<input type="text" id="pdf_date" value="${esc(dVal)}" placeholder="YYYY-MM-DD or Mid-August" /></label>
+              <label class="pdfgen-field"><span id="pdf_dateLabel">Shoot date / timeline *</span><input type="text" id="pdf_date" value="${esc(dVal)}" placeholder="YYYY-MM-DD or Mid-August" /></label>
               <label class="pdfgen-field">Session<select id="pdf_duration">
                 ${durationOpt("Full Day (10:30 AM – 5:30 PM)", "Full Day Shoot (10:30 AM – 5:30 PM · 7 Hours)", dur.includes("Full Day") || (!dur && initialKind !== "tfp"))}
                 ${durationOpt("Half Day Morning (10:30 AM – 2:30 PM)", "Half Day Morning (10:30 AM – 2:30 PM · 4 Hours)", dur.includes("Morning") || (!dur && initialKind === "tfp"))}
@@ -4436,6 +4436,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               <label class="pdfgen-field">Call time<input type="time" id="pdf_timeStart" value="${esc(initialStart)}" /></label>
               <label class="pdfgen-field">Wrap time<input type="time" id="pdf_timeEnd" value="${esc(initialEnd)}" /><span class="pdfgen-hint" id="pdf_customTimeBadge"></span></label>
             </div>
+            <label class="pdfgen-check"><input type="checkbox" id="pdf_dateTba" /><span><strong>Date to be decided.</strong> The PDF prints <strong>To be agreed</strong> as the shoot date, the same words the booking page uses, and the date is fixed with the client by email. Anything typed in the date box is printed as their preferred dates. Nothing is held on the calendar.</span></label>
             <div class="pdfgen-field">Venue
               <div class="pdfgen-seg" role="radiogroup" aria-label="Venue">
                 <label><input type="radio" name="pdf_venue" value="home" /><span>Home studio</span></label>
@@ -4732,12 +4733,39 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     ["pdf_customPkgName", "pdf_customRetouchedCount", "pdf_customCloudRetentionInput", "pdf_discountValue", "pdf_discountReason", "pdf_timeStart", "pdf_timeEnd"].forEach((id) => q(id)?.addEventListener("input", render));
     render();
 
+    /* "Date to be decided": ticked, the PDF prints "To be agreed" — the words the
+       booking page records and contracts V4.3 refer to — and whatever is typed in
+       the date box becomes the client's preferred dates. A date still to be fixed
+       cannot be held on the calendar, so the hold tick is switched off with it. */
+    const dateEl = q("pdf_date"), tbaEl = q("pdf_dateTba"), holdEl = q("pdf_holdDate");
+    let dateBeforeTba = dateEl.value, holdBeforeTba = holdEl ? holdEl.checked : false;
+    const shootDateText = () => {
+      const typed = dateEl.value.trim();
+      return !tbaEl.checked ? typed : (typed ? `To be agreed (preferred: ${typed})` : "To be agreed");
+    };
+    tbaEl.addEventListener("change", () => {
+      const on = tbaEl.checked;
+      q("pdf_dateLabel").textContent = on ? "Dates you would like (optional)" : "Shoot date / timeline *";
+      dateEl.placeholder = on ? "e.g. Mid-December, weekdays only" : "YYYY-MM-DD or Mid-August";
+      if (on) {
+        dateBeforeTba = dateEl.value;
+        if (dateEl.value.trim() === dVal) dateEl.value = "";
+      } else if (!dateEl.value.trim()) {
+        dateEl.value = dateBeforeTba;
+      }
+      if (holdEl) {
+        if (on) holdBeforeTba = holdEl.checked;
+        holdEl.checked = on ? false : holdBeforeTba;
+        holdEl.disabled = on;
+      }
+    });
+
     $("#closePdfGenModal")?.addEventListener("click", () => modal.style.display = "none");
     $("#cancelPdfGenBtn")?.addEventListener("click", () => modal.style.display = "none");
 
     $("#copyApprovalMsgBtn")?.addEventListener("click", () => {
       const name = $("#pdf_clientName").value.trim() || "Client";
-      const date = $("#pdf_date").value.trim() || "scheduled date";
+      const date = tbaEl.checked ? "a date to be agreed" : ($("#pdf_date").value.trim() || "scheduled date");
       const ver = $("#pdf_contractVersion").value;
       const docName = kindOf() === "tfp" ? "Test Shoot Agreement & Model Release" : "Studio Booking Contract & Production Agreement";
       const msg = `Hi ${name}! Please find attached your ${docName} for ${date}.\n\n${paySummaryText()}\n\nPlease review the PDF document and reply to this email / DM with: "I approve and agree to Studio Contract Terms ${ver} for ${date}" to confirm your session.\n\nStudio Operations · nerdyphotographer.in`;
@@ -4752,7 +4780,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       const kind = kindOf(), m = computeMoney(), pkgLabel = currentPackageLabel();
       // Hold the date before printing: printContractPdf hands the browser off
       // to a print window, and anything queued after that is easy to miss.
-      if ($("#pdf_holdDate")?.checked) {
+      if (!tbaEl.checked && $("#pdf_holdDate")?.checked) {
         createHoldFromContract({
           date: $("#pdf_date").value.trim(),
           clientName: $("#pdf_clientName").value.trim(),
@@ -4776,7 +4804,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         instagram: $("#pdf_instagram").value.trim(),
         email: $("#pdf_email").value.trim(),
         phone: $("#pdf_phone").value.trim(),
-        date: $("#pdf_date").value.trim(),
+        date: shootDateText(),
+        dateToBeAgreed: tbaEl.checked,
         duration: sessionLabel(),
         location: $("#pdf_location").value.trim(),
         studioProvidedByPhotographer: !!$("#pdf_venueByStudio")?.checked,
@@ -4879,7 +4908,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <div style="font-size: 11px; color: #555; margin-top: 2px;">Web: www.nerdyphotographer.in · Email: ${window.STUDIO_CONFIG?.email || "prateeksaxenaphotography@gmail.com"}</div>
           </div>
           <div style="text-align: right;">
-            <div style="font-family: monospace; font-size: 11px; font-weight: 700; background: #f0f0f0; border: 1px solid #ccc; padding: 4px 10px; border-radius: 4px;">REF: NP-CONTRACT-${esc(cVer)}-${esc(data.date || 'BLANK')}</div>
+            <div style="font-family: monospace; font-size: 11px; font-weight: 700; background: #f0f0f0; border: 1px solid #ccc; padding: 4px 10px; border-radius: 4px;">REF: NP-CONTRACT-${esc(cVer)}-${esc(data.dateToBeAgreed ? 'TBA' : (data.date || 'BLANK'))}</div>
             <div style="font-size: 10px; color: #666; margin-top: 4px;">Issued: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
           </div>
         </div>
