@@ -3171,7 +3171,7 @@ window.WPS_DATA = {
           "status": "confirmed",
           "type": "Selective Collaboration (TFP)",
           "contractVersion": "Pending Agreement",
-          "updatedAt": 1795415705868
+          "updatedAt": 1795415790508
         }
       ]
     },
@@ -3277,8 +3277,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1795415716766,
-    "syncedAt": 1795415716766,
+    "updatedAt": 1795415804683,
+    "syncedAt": 1795415804683,
     "testShootLimits": {
       "default": 3,
       "months": {},
