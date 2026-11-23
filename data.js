@@ -3153,6 +3153,26 @@ window.WPS_DATA = {
           "type": "Test Shoot",
           "shootId": "mwlq18u3l32nyg"
         }
+      ],
+      "2026-11-28": [
+        {
+          "id": "b_1795415702393_wz2u",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1795415702393
+        }
+      ],
+      "2026-11-29": [
+        {
+          "id": "b_1795415705868_3w1n",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1795415705868
+        }
       ]
     },
     "removedBookingIds": [
@@ -3257,8 +3277,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1795413449777,
-    "syncedAt": 1795413449777,
+    "updatedAt": 1795415716766,
+    "syncedAt": 1795415716766,
     "testShootLimits": {
       "default": 3,
       "months": {},
