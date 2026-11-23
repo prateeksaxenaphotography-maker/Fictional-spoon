@@ -3257,12 +3257,12 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1794986417957,
-    "syncedAt": 1794986417957,
+    "updatedAt": 1795413449777,
+    "syncedAt": 1795413449777,
     "testShootLimits": {
-      "default": 2,
+      "default": 3,
       "months": {},
-      "at": 1792728518934
+      "at": 1795413442724
     }
   },
   "INVITE_CODES": [
