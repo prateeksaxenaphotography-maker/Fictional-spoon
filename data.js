@@ -2929,7 +2929,8 @@ window.WPS_DATA = {
       "2026-12-05": true,
       "2026-12-06": true,
       "2027-01-09": true,
-      "2027-01-10": true
+      "2027-01-10": true,
+      "2027-01-03": true
     },
     "customOpenedDates": {
       "2026-09-07": true,
@@ -2961,6 +2962,7 @@ window.WPS_DATA = {
       "2026-12-30": 1792479748381,
       "2026-12-31": 1792479750314,
       "2026-10-23": 1792728494816,
+      "2027-01-03": 1795522651298,
       "2026-10-14": 1791805280172,
       "2026-10-19": 1791537733322,
       "2026-10-21": 1791537735330,
@@ -3168,26 +3170,6 @@ window.WPS_DATA = {
           "updatedAt": 1795521758150
         }
       ],
-      "2027-01-02": [
-        {
-          "id": "b_1795519555596_rson",
-          "isTentative": false,
-          "status": "assisting",
-          "type": "Assisting Photographer",
-          "contractVersion": "Not Required",
-          "updatedAt": 1795519555596
-        }
-      ],
-      "2027-01-03": [
-        {
-          "id": "b_1795519565332_3sng",
-          "isTentative": false,
-          "status": "workshop",
-          "type": "Workshop Attended",
-          "contractVersion": "Not Required",
-          "updatedAt": 1795519565332
-        }
-      ],
       "2026-11-29": [
         {
           "id": "b_1795521701022_9hwj",
@@ -3323,12 +3305,14 @@ window.WPS_DATA = {
       "2026-12-29::b_1795519542113_hadx",
       "2026-12-30::b_1795519533430_v0kx",
       "2026-12-31::b_1795519537309_pmkq",
-      "2026-11-29::b_1795415705868_3w1n"
+      "2026-11-29::b_1795415705868_3w1n",
+      "2027-01-02::b_1795519555596_rson",
+      "2027-01-03::b_1795519565332_3sng"
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1795521926882,
-    "syncedAt": 1795521926882,
+    "updatedAt": 1795522668794,
+    "syncedAt": 1795522668794,
     "testShootLimits": {
       "default": 3,
       "months": {},
