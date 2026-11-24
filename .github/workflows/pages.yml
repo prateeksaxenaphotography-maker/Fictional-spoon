@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -123,6 +123,26 @@ jobs:
         with:
           path: .
 
+      # GitHub takes a moment to register the artifact the step above uploaded.
+      # Asking for it in the same second sometimes fails with "No artifacts
+      # named github-pages were found" even though the upload worked: three
+      # deploys in a row on 24 Nov 2026 (v632), each failing one second after a
+      # good upload, with githubstatus.com showing no incident. A short wait
+      # first, and one more try if it still fails, so a publish does not sit
+      # unpublished waiting for someone to push an empty commit.
+      - name: Let GitHub register the upload
+        run: sleep 20
+
       - name: Deploy to GitHub Pages
         id: deployment
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      - name: Wait, then try the deploy once more
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 30
+
+      - name: Deploy to GitHub Pages (second try)
+        if: steps.deployment.outcome == 'failure'
+        id: deployment_retry
         uses: actions/deploy-pages@v4
