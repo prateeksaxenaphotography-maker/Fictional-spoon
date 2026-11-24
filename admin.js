@@ -3648,7 +3648,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       }
       banner.style.display = "flex";
       const firstDue = dueDates[0] || null;
-      const dueLabel = firstDue ? (dueDates.length === 1 ? `${REM_KINDS[firstDue.kind].icon} ${esc(remTitle(firstDue))} · ${esc(firstDue.whenText)}` : `🎂 ${dueDates.length} dates coming up`) : "";
+      const dueLabel = firstDue ? (dueDates.length === 1 ? `${remIcon(firstDue)} ${esc(remTitle(firstDue))} · ${esc(firstDue.whenText)}` : `🎂 ${dueDates.length} dates coming up`) : "";
       banner.innerHTML = `
         <div class="reminder-text">
           ${nextShoot ? `<span class="reminder-badge">${esc(nextShoot.dayLabel)}</span>
@@ -4043,7 +4043,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     birthday: { label: "Birthday", icon: "🎂", color: "#B23A5A" },
     anniversary: { label: "Anniversary", icon: "💍", color: "#6B5BD2" },
     milestone: { label: "Milestone", icon: "🏁", color: "#2A8C82" },
-    other: { label: "Other", icon: "⭐", color: "#6B7280" }
+    other: { label: "Custom", icon: "⭐", color: "#6B7280" }
   };
   const REM_WHO = {
     client: { label: "Client", plural: "Clients", color: "#2C6BB5" },
@@ -4059,6 +4059,11 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
   const remDaysIn = (y, m) => new Date(y, m, 0).getDate();
   const remId = () => "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const remLeadLabel = (n) => (REM_LEADS.find(([d]) => d === Number(n)) || REM_LEADS[3])[1];
+  // A "Custom" date (kind "other", the key older records already use) carries
+  // the studio's own words and an icon; the three named kinds keep theirs.
+  const REM_ICONS = ["⭐", "🎉", "📌", "🔔", "📷", "🎁", "❤️", "🏆", "🎓", "✈️"];
+  const remKindLabel = (x) => x.kind === "other" ? (x.label || "Custom") : REM_KINDS[x.kind].label;
+  const remIcon = (x) => x.kind === "other" && x.icon ? x.icon : REM_KINDS[x.kind].icon;
 
   // One stored record, made safe: whatever is in storage, or in a file the
   // studio imports, only ever comes out in this shape.
@@ -4074,10 +4079,13 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     if (!repeat && year === null) repeat = true;
     const ymdRe = /^\d{4}-\d{2}-\d{2}$/;
     const lead = REM_LEADS.some(([n]) => n === Number(raw.lead)) ? Number(raw.lead) : 7;
+    const kind = REM_KINDS[raw.kind] ? raw.kind : "other";
     return {
       id: /^[A-Za-z0-9_-]{4,40}$/.test(String(raw.id || "")) ? String(raw.id) : remId(),
       name,
-      kind: REM_KINDS[raw.kind] ? raw.kind : "other",
+      kind,
+      label: kind === "other" ? String(raw.label || "").replace(/\s+/g, " ").trim().slice(0, 40) : "",
+      icon: kind === "other" && REM_ICONS.includes(raw.icon) ? raw.icon : "",
       who: REM_WHO[raw.who] ? raw.who : "client",
       month, day, year, repeat, lead,
       note: String(raw.note || "").trim().slice(0, 300),
@@ -4127,6 +4135,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
   function remTitle(x) {
     if (x.kind === "birthday") return `${x.name}’s birthday`;
     if (x.kind === "anniversary") return x.who === "me" ? `${x.name} anniversary` : `${x.name}’s anniversary`;
+    if (x.kind === "other" && x.label) return `${x.name} — ${x.label}`;
     return x.name;
   }
   function remAll() {
@@ -4143,7 +4152,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     return items.filter((it) => it.repeat
       ? (remOn(it, y).getMonth() + 1 === mo && remOn(it, y).getDate() === d)
       : (it.year === y && it.month === mo && it.day === d))
-      .map((it) => `<div class="rem-mark" style="color: ${REM_KINDS[it.kind].color};" title="${esc(remTitle(it))} · private, only you see this">${REM_KINDS[it.kind].icon} ${esc(it.name)}</div>`).join("");
+      .map((it) => `<div class="rem-mark" style="color: ${REM_KINDS[it.kind].color};" title="${esc(remTitle(it))} · private, only you see this">${remIcon(it)} ${esc(it.name)}</div>`).join("");
   }
 
   // A message the studio can edit, copy and send. No age is ever mentioned.
@@ -4154,7 +4163,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       ? `${x.name} anniversary${/year/.test(x.yearsText) ? " — " + x.yearsText : ""}! 🎉\nThank you for being part of the journey.${sign}`
       : `Happy anniversary, ${x.name}! 💍\nWishing you many more happy years together.${sign}`;
     if (x.kind === "milestone") return `${x.name} — a milestone worth celebrating! 🎉\nThank you for being part of it.${sign}`;
-    return `${x.name} 🙂${sign}`;
+    return `${x.label ? `${x.name} — ${x.label}` : x.name} ${remIcon(x)}${sign}`;
   }
 
   // The phone calendar file. Repeating dates carry RRULE YEARLY so one import
@@ -4176,7 +4185,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     const ymdc = (d) => `${d.getFullYear()}${remPad(d.getMonth() + 1)}${remPad(d.getDate())}`;
     const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//nerdyphotographer.in//Dates to remember//EN", "CALSCALE:GREGORIAN"];
     list.filter((x) => x.next).forEach((x) => {
-      const summary = `${REM_KINDS[x.kind].icon} ${remTitle(x)}`;
+      const summary = `${remIcon(x)} ${remTitle(x)}`;
       const end = new Date(x.next); end.setDate(end.getDate() + 1);
       L.push("BEGIN:VEVENT", `UID:${x.id}@dates.nerdyphotographer.in`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${ymdc(x.next)}`, `DTEND;VALUE=DATE:${ymdc(end)}`);
       if (x.repeat) L.push(x.month === 2 && x.day === 29 ? "RRULE:FREQ=YEARLY;BYMONTH=2;BYMONTHDAY=-1" : "RRULE:FREQ=YEARLY");
@@ -4240,11 +4249,13 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     if (!name) return { ok: false, why: "no name" };
     if (parts.length < 2 || !parts[1]) return { ok: false, why: "no date" };
     if (!dt) return { ok: false, why: `date not understood (try 28 Nov or 28/11)` };
-    let kind = "", who = "";
+    let kind = "", who = "", label = "";
     const notes = [];
     parts.slice(at + span).filter(Boolean).forEach((p) => {
       const w = p.toLowerCase();
-      if (/birth|bday|b'day/.test(w)) kind = kind || "birthday";
+      const cm = /^custom\s*[:=-]\s*(.+)$/i.exec(p);   // "custom: Wedding day" is a custom kind with its own name
+      if (cm) { if (!kind) { kind = "other"; label = cm[1].trim().slice(0, 40); } }
+      else if (/birth|bday|b'day/.test(w)) kind = kind || "birthday";
       else if (/anniv/.test(w)) kind = kind || "anniversary";
       else if (/mile|stone/.test(w)) kind = kind || "milestone";
       else if (/^client/.test(w)) who = who || "client";
@@ -4256,7 +4267,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     who = who || (kind === "milestone" ? "me" : "client");
     const repeat = kind !== "milestone";
     const year = !repeat && dt.year === null ? remFillYear(dt.month, dt.day) : dt.year;
-    return { ok: true, rec: { name, kind, who, month: dt.month, day: dt.day, year, repeat, lead: 7, note: notes.join(", ") } };
+    return { ok: true, rec: { name, kind, label, who, month: dt.month, day: dt.day, year, repeat, lead: 7, note: notes.join(", ") } };
   }
 
   // A small window over the page (the message and the pasted list).
@@ -4290,7 +4301,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       <div class="rem-strip-body">
         <div class="rem-strip-title">Coming up</div>
         ${due.map((x) => `<div class="rem-strip-row" data-id="${esc(x.id)}">
-          <div class="rem-strip-text"><strong>${REM_KINDS[x.kind].icon} ${esc(remTitle(x))}</strong> · ${esc(x.dateText)} · <strong>${esc(x.whenText)}</strong>${/^(turns|\d)/.test(x.yearsText) ? ` · ${esc(x.yearsText)}` : ""}</div>
+          <div class="rem-strip-text"><strong>${remIcon(x)} ${esc(remTitle(x))}</strong> · ${esc(x.dateText)} · <strong>${esc(x.whenText)}</strong>${/^(turns|\d)/.test(x.yearsText) ? ` · ${esc(x.yearsText)}` : ""}</div>
           <div class="rem-acts">${remActs(x, true)}</div>
         </div>`).join("")}
       </div></div>`;
@@ -4299,9 +4310,9 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     const k = REM_KINDS[x.kind], w = REM_WHO[x.who];
     const dateText = `${x.day} ${REM_MONTHS[x.month - 1].slice(0, 3)}${!x.repeat ? ` ${x.year}` : ""}`;
     return `<div class="rem-row${x.due ? " is-due" : ""}${x.days === null ? " is-past" : ""}" data-id="${esc(x.id)}">
-      <div class="rem-ic" aria-hidden="true">${k.icon}</div>
+      <div class="rem-ic" aria-hidden="true">${remIcon(x)}</div>
       <div class="rem-name"><strong>${esc(x.name)}</strong>${x.note ? `<div class="rem-sub">${esc(x.note)}</div>` : ""}</div>
-      <div class="rem-pills"><span class="rem-pill" style="background: ${k.color};">${esc(k.label)}</span><span class="rem-pill" style="background: ${w.color};">${esc(w.label)}</span></div>
+      <div class="rem-pills"><span class="rem-pill" style="background: ${k.color};">${esc(remKindLabel(x))}</span><span class="rem-pill" style="background: ${w.color};">${esc(w.label)}</span></div>
       <div class="rem-date">${esc(dateText)}<div class="rem-sub">${esc(x.yearsText)}</div></div>
       <div class="rem-when${x.due ? " due" : ""}">${esc(x.whenText)}${x.due ? " · reminder due" : x.snoozed ? " · snoozed" : ""}${x.days === null ? "" : `<div class="rem-sub">remind ${esc(remLeadLabel(x.lead).toLowerCase())}</div>`}${x.due ? `<div class="rem-acts rem-due-acts">${remDueActs(x)}</div>` : ""}</div>
       <div class="rem-acts">${remActs(x, false)}</div>
@@ -4321,6 +4332,10 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               <div class="rem-dm"><select id="remDay" aria-label="Day">${Array.from({ length: 31 }, (_, i) => opt(i + 1, i + 1)).join("")}</select><select id="remMonth" aria-label="Month">${REM_MONTHS.map((m, i) => opt(i + 1, m)).join("")}</select></div>
             </div>
             <label class="rem-field">Year (optional)<input id="remYear" type="number" inputmode="numeric" min="1900" max="2100" placeholder="1996" /></label>
+          </div>
+          <div class="rem-grid rem-grid-custom" id="remCustomWrap" hidden>
+            <label class="rem-field">What is it called?<input id="remLabel" type="text" maxlength="40" autocomplete="off" placeholder="e.g. Wedding day, Renewal, First shoot together" /></label>
+            <label class="rem-field">Icon<select id="remIcon"><option value="">⭐ Star (default)</option>${REM_ICONS.filter((i) => i !== "⭐").map((i) => `<option value="${i}">${i}</option>`).join("")}</select></label>
           </div>
           <div class="rem-grid rem-grid-3">
             <label class="rem-field">Remind me<select id="remLead">${REM_LEADS.map(([n, t]) => opt(n, t, n === 7)).join("")}</select></label>
@@ -4389,16 +4404,19 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     const hint = (msg, bad) => { const h = f("remHint"); if (h) { h.textContent = msg; h.classList.toggle("bad", !!bad); } };
     const leadHint = () => { hint(`Shows on this screen ${remLeadLabel(f("remLead").value).toLowerCase()}, and in your phone calendar if you add it there.`, false); };
     const setDefaults = () => { if (!repeatTouched) f("remRepeat").checked = f("remKind").value !== "milestone"; };
+    // The "what is it called?" row and the icon belong to a Custom date only.
+    const syncCustom = () => { f("remCustomWrap").hidden = f("remKind").value !== "other"; };
     const resetForm = () => {
       editingId = ""; repeatTouched = false;
       f("remForm").reset();
       f("remRepeat").checked = true;
+      syncCustom();
       f("remFormTitle").textContent = "Add a date to remember";
       f("remSave").textContent = "Save date";
       f("remCancel").hidden = true;
       leadHint();
     };
-    f("remKind").addEventListener("change", setDefaults);
+    f("remKind").addEventListener("change", () => { setDefaults(); syncCustom(); if (f("remKind").value === "other") f("remLabel").focus(); });
     f("remRepeat").addEventListener("change", () => { repeatTouched = true; });
     f("remLead").addEventListener("change", leadHint);
     f("remCancel").addEventListener("click", resetForm);
@@ -4417,7 +4435,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       if (!repeat && year === null) year = remFillYear(month, day);   // a one-off with no year: the next time that day comes round
       const items = remRead();
       const old = editingId ? items.find((i) => i.id === editingId) : null;
-      const rec = remClean({ id: old ? old.id : undefined, name, kind: f("remKind").value, who: f("remWho").value, month, day, year, repeat, lead: Number(f("remLead").value), note: f("remNote").value, done: old ? old.done : [] });
+      const rec = remClean({ id: old ? old.id : undefined, name, kind: f("remKind").value, label: f("remLabel").value, icon: f("remIcon").value, who: f("remWho").value, month, day, year, repeat, lead: Number(f("remLead").value), note: f("remNote").value, done: old ? old.done : [] });
       if (!rec) { hint("That date does not look right.", true); return; }
       const next = old ? items.map((i) => (i.id === old.id ? rec : i)) : items.concat(rec);
       if (!remWrite(next)) return;
@@ -4429,6 +4447,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     const startEdit = (x) => {
       editingId = x.id; repeatTouched = true;
       f("remName").value = x.name; f("remWho").value = x.who; f("remKind").value = x.kind;
+      f("remLabel").value = x.label || ""; f("remIcon").value = x.icon || ""; syncCustom();
       f("remDay").value = x.day; f("remMonth").value = x.month; f("remYear").value = x.year || "";
       f("remLead").value = x.lead; f("remNote").value = x.note; f("remRepeat").checked = x.repeat;
       f("remFormTitle").textContent = `Editing ${x.name}`;
@@ -4503,7 +4522,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       if (act === "edit") return startEdit(x);
       if (act === "ics") { if (!x.next) { toast("That date has already gone by."); return; } if (remDownload(`date-to-remember-${remSlug(x.name)}.ics`, remIcs([x]), "text/calendar;charset=utf-8")) toast("File saved. Open it to add this date to your phone calendar."); return; }
       if (act === "delete") {
-        if (!confirm(`Delete ${x.name} (${REM_KINDS[x.kind].label.toLowerCase()}) from your dates?`)) return;
+        if (!confirm(`Delete ${x.name} (${remKindLabel(x).toLowerCase()}) from your dates?`)) return;
         if (remWrite(remRead().filter((i) => i.id !== x.id))) { toast("Deleted."); repaint(); }
         return;
       }

@@ -4614,6 +4614,8 @@ html.theme-dark .cx-live.is-going { color: #7aa7ff; background: rgba(122, 167, 2
 .rem-grid { display: grid; gap: 12px; align-items: end; margin-top: 12px; }
 .rem-grid-5 { grid-template-columns: 1.4fr 1fr 1fr 1.3fr .8fr; margin-top: 0; }
 .rem-grid-3 { grid-template-columns: 1fr 2fr auto; }
+.rem-grid-custom { grid-template-columns: 2fr 1fr; }
+#remCustomWrap[hidden] { display: none !important; }
 .rem-field { display: grid; gap: 5px; font-size: 12px; font-weight: 700; color: var(--ink-soft); min-width: 0; }
 .rem-field input, .rem-field select, .rem-modal textarea { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 14px; font-weight: 400; font-family: inherit; background: var(--paper); color: var(--ink); }
 .rem-field input:focus-visible, .rem-field select:focus-visible, .rem-modal textarea:focus-visible, .rem-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -4662,4 +4664,4 @@ html.theme-dark .cx-live.is-going { color: #7aa7ff; background: rgba(122, 167, 2
   .rem-row > :nth-child(n+3) { grid-column: 2; }
   .rem-row .rem-acts { justify-content: flex-start; }
 }
-@media (max-width: 520px) { .rem-grid-5, .rem-grid-3 { grid-template-columns: 1fr; } .rem-strip { padding: 10px 12px; } }
+@media (max-width: 520px) { .rem-grid-5, .rem-grid-3, .rem-grid-custom { grid-template-columns: 1fr; } .rem-strip { padding: 10px 12px; } }
