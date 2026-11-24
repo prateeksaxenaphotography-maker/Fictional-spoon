@@ -3197,6 +3197,16 @@ window.WPS_DATA = {
           "contractVersion": "V4.3-TFP",
           "updatedAt": 1795521723350
         }
+      ],
+      "2026-11-24": [
+        {
+          "id": "b_1795521917819_0wnf",
+          "isTentative": true,
+          "status": "tentative",
+          "type": "Fashion Editorial",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1795521920070
+        }
       ]
     },
     "removedBookingIds": [
@@ -3317,8 +3327,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1795521765294,
-    "syncedAt": 1795521765294,
+    "updatedAt": 1795521926882,
+    "syncedAt": 1795521926882,
     "testShootLimits": {
       "default": 3,
       "months": {},
