@@ -2927,7 +2927,9 @@ window.WPS_DATA = {
       "2026-11-08": true,
       "2026-11-07": true,
       "2026-12-05": true,
-      "2026-12-06": true
+      "2026-12-06": true,
+      "2027-01-09": true,
+      "2027-01-10": true
     },
     "customOpenedDates": {
       "2026-09-07": true,
@@ -2957,6 +2959,8 @@ window.WPS_DATA = {
       "2026-12-30": 1792479748381,
       "2026-12-31": 1792479750314,
       "2026-10-23": 1792728494816,
+      "2027-01-09": 1795519572972,
+      "2027-01-10": 1795519575021,
       "2026-10-14": 1791805280172,
       "2026-10-19": 1791537733322,
       "2026-10-21": 1791537735330,
@@ -3173,6 +3177,144 @@ window.WPS_DATA = {
           "contractVersion": "V4.3-TFP",
           "updatedAt": 1795424256135
         }
+      ],
+      "2026-12-12": [
+        {
+          "id": "b_1795519511753_j5xw",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1795519511753
+        }
+      ],
+      "2026-12-13": [
+        {
+          "id": "b_1795519514243_mkqc",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1795519514243
+        }
+      ],
+      "2026-12-19": [
+        {
+          "id": "b_1795519516634_b8uc",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1795519516634
+        }
+      ],
+      "2026-12-20": [
+        {
+          "id": "b_1795519519963_baax",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1795519519963
+        }
+      ],
+      "2026-12-27": [
+        {
+          "id": "b_1795519521959_bqhg",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1795519521959
+        }
+      ],
+      "2026-12-26": [
+        {
+          "id": "b_1795519524406_9hv9",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1795519524406
+        }
+      ],
+      "2026-12-25": [
+        {
+          "id": "b_1795519526164_zp4y",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1795519526164
+        }
+      ],
+      "2026-12-23": [
+        {
+          "id": "b_1795519529001_gjwm",
+          "isTentative": false,
+          "status": "busy",
+          "updatedAt": 1795519529001
+        }
+      ],
+      "2026-12-30": [
+        {
+          "id": "b_1795519533430_v0kx",
+          "isTentative": true,
+          "status": "tentative",
+          "type": "Fashion Editorial",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1795519535304
+        }
+      ],
+      "2026-12-31": [
+        {
+          "id": "b_1795519537309_pmkq",
+          "isTentative": true,
+          "status": "tentative",
+          "type": "Fashion Editorial",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1795519538798
+        }
+      ],
+      "2026-12-29": [
+        {
+          "id": "b_1795519542113_hadx",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1795519542113
+        }
+      ],
+      "2026-12-28": [
+        {
+          "id": "b_1795519544442_6jsu",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1795519544442
+        }
+      ],
+      "2027-01-02": [
+        {
+          "id": "b_1795519555596_rson",
+          "isTentative": false,
+          "status": "assisting",
+          "type": "Assisting Photographer",
+          "contractVersion": "Not Required",
+          "updatedAt": 1795519555596
+        }
+      ],
+      "2027-01-03": [
+        {
+          "id": "b_1795519565332_3sng",
+          "isTentative": false,
+          "status": "workshop",
+          "type": "Workshop Attended",
+          "contractVersion": "Not Required",
+          "updatedAt": 1795519565332
+        }
       ]
     },
     "removedBookingIds": [
@@ -3273,12 +3415,14 @@ window.WPS_DATA = {
       "2026-11-28::b_1792480119303_3olm",
       "2026-11-21::b_1791958261395_9sm3",
       "2026-11-01::b_1791810259119_c2fb",
-      "2026-11-15::b_1791958247602_jrx9"
+      "2026-11-15::b_1791958247602_jrx9",
+      "2026-11-23::b_1795424346749_3vbl",
+      "2026-11-23::Amar Kumar Sharma"
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1795424265625,
-    "syncedAt": 1795424265625,
+    "updatedAt": 1795519682682,
+    "syncedAt": 1795519682682,
     "testShootLimits": {
       "default": 3,
       "months": {},
@@ -3339,6 +3483,18 @@ window.WPS_DATA = {
       "shootTo": "2026-12-30",
       "allowFullMonth": true,
       "deliverables": "Full gallery + 3 clicks retouched per look"
+    },
+    {
+      "code": "#a4b2e7e3f958c518814b",
+      "desc": "Photographer direct unlock code",
+      "location": "Noida, sector 46",
+      "venueCost": null,
+      "homeStudioDiscount": {
+        "type": "free"
+      },
+      "shootFrom": "2027-01-01",
+      "shootTo": "2027-12-31",
+      "allowFullMonth": true
     }
   ],
   "PROMO_CODES": {
@@ -3529,7 +3685,7 @@ window.WPS_DATA = {
   },
   "HOME_STUDIO_RATE_TFP": 3500,
   "SETTINGS_AT": {
-    "INVITE_CODES": 1793165436463,
+    "INVITE_CODES": 1795519672632,
     "PROMO_CODES": 1793989088243,
     "PACKAGES": 1793989181767,
     "TFP_PACKAGE": 1793989181767,
