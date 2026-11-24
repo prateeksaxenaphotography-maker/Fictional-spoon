@@ -3168,134 +3168,6 @@ window.WPS_DATA = {
           "updatedAt": 1795415702393
         }
       ],
-      "2026-11-29": [
-        {
-          "id": "b_1795415705868_3w1n",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Selective Collaboration (TFP)",
-          "contractVersion": "V4.3-TFP",
-          "updatedAt": 1795424256135
-        }
-      ],
-      "2026-12-12": [
-        {
-          "id": "b_1795519511753_j5xw",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Selective Collaboration (TFP)",
-          "contractVersion": "Pending Agreement",
-          "updatedAt": 1795519511753
-        }
-      ],
-      "2026-12-13": [
-        {
-          "id": "b_1795519514243_mkqc",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Selective Collaboration (TFP)",
-          "contractVersion": "Pending Agreement",
-          "updatedAt": 1795519514243
-        }
-      ],
-      "2026-12-19": [
-        {
-          "id": "b_1795519516634_b8uc",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Selective Collaboration (TFP)",
-          "contractVersion": "Pending Agreement",
-          "updatedAt": 1795519516634
-        }
-      ],
-      "2026-12-20": [
-        {
-          "id": "b_1795519519963_baax",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Selective Collaboration (TFP)",
-          "contractVersion": "Pending Agreement",
-          "updatedAt": 1795519519963
-        }
-      ],
-      "2026-12-27": [
-        {
-          "id": "b_1795519521959_bqhg",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Selective Collaboration (TFP)",
-          "contractVersion": "Pending Agreement",
-          "updatedAt": 1795519521959
-        }
-      ],
-      "2026-12-26": [
-        {
-          "id": "b_1795519524406_9hv9",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Selective Collaboration (TFP)",
-          "contractVersion": "Pending Agreement",
-          "updatedAt": 1795519524406
-        }
-      ],
-      "2026-12-25": [
-        {
-          "id": "b_1795519526164_zp4y",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Selective Collaboration (TFP)",
-          "contractVersion": "Pending Agreement",
-          "updatedAt": 1795519526164
-        }
-      ],
-      "2026-12-23": [
-        {
-          "id": "b_1795519529001_gjwm",
-          "isTentative": false,
-          "status": "busy",
-          "updatedAt": 1795519529001
-        }
-      ],
-      "2026-12-30": [
-        {
-          "id": "b_1795519533430_v0kx",
-          "isTentative": true,
-          "status": "tentative",
-          "type": "Fashion Editorial",
-          "contractVersion": "Pending Agreement",
-          "updatedAt": 1795519535304
-        }
-      ],
-      "2026-12-31": [
-        {
-          "id": "b_1795519537309_pmkq",
-          "isTentative": true,
-          "status": "tentative",
-          "type": "Fashion Editorial",
-          "contractVersion": "Pending Agreement",
-          "updatedAt": 1795519538798
-        }
-      ],
-      "2026-12-29": [
-        {
-          "id": "b_1795519542113_hadx",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Selective Collaboration (TFP)",
-          "contractVersion": "Pending Agreement",
-          "updatedAt": 1795519542113
-        }
-      ],
-      "2026-12-28": [
-        {
-          "id": "b_1795519544442_6jsu",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Selective Collaboration (TFP)",
-          "contractVersion": "Pending Agreement",
-          "updatedAt": 1795519544442
-        }
-      ],
       "2027-01-02": [
         {
           "id": "b_1795519555596_rson",
@@ -3316,14 +3188,14 @@ window.WPS_DATA = {
           "updatedAt": 1795519565332
         }
       ],
-      "2026-12-24": [
+      "2026-11-29": [
         {
-          "id": "b_1795520103413_kdb2",
-          "isTentative": true,
-          "status": "tentative",
-          "type": "Fashion Editorial",
-          "contractVersion": "Pending Agreement",
-          "updatedAt": 1795520105579
+          "id": "b_1795521701022_9hwj",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "V4.3-TFP",
+          "updatedAt": 1795521723350
         }
       ]
     },
@@ -3427,12 +3299,26 @@ window.WPS_DATA = {
       "2026-11-01::b_1791810259119_c2fb",
       "2026-11-15::b_1791958247602_jrx9",
       "2026-11-23::b_1795424346749_3vbl",
-      "2026-11-23::Amar Kumar Sharma"
+      "2026-11-23::Amar Kumar Sharma",
+      "2026-12-12::b_1795519511753_j5xw",
+      "2026-12-13::b_1795519514243_mkqc",
+      "2026-12-19::b_1795519516634_b8uc",
+      "2026-12-20::b_1795519519963_baax",
+      "2026-12-23::b_1795519529001_gjwm",
+      "2026-12-24::b_1795520103413_kdb2",
+      "2026-12-25::b_1795519526164_zp4y",
+      "2026-12-26::b_1795519524406_9hv9",
+      "2026-12-27::b_1795519521959_bqhg",
+      "2026-12-28::b_1795519544442_6jsu",
+      "2026-12-29::b_1795519542113_hadx",
+      "2026-12-30::b_1795519533430_v0kx",
+      "2026-12-31::b_1795519537309_pmkq",
+      "2026-11-29::b_1795415705868_3w1n"
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1795520113270,
-    "syncedAt": 1795520113270,
+    "updatedAt": 1795521736129,
+    "syncedAt": 1795521736129,
     "testShootLimits": {
       "default": 3,
       "months": {},
