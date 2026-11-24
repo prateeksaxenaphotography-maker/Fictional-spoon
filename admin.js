@@ -3633,10 +3633,13 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     }
 
     const upcoming = getUpcomingBookings();
+    // Birthdays, anniversaries and milestones that have reached their reminder
+    // (v631): they share this banner, so they are seen on every admin screen.
+    const dueDates = remDueList();
 
     // 1. Sticky Banner
-    if (upcoming.length) {
-      const nextShoot = upcoming[0];
+    if (upcoming.length || dueDates.length) {
+      const nextShoot = upcoming[0] || null;
       if (!banner) {
         banner = document.createElement("div");
         banner.id = "adminStickyReminderBar";
@@ -3644,18 +3647,24 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         document.body.insertBefore(banner, document.body.firstChild);
       }
       banner.style.display = "flex";
+      const firstDue = dueDates[0] || null;
+      const dueLabel = firstDue ? (dueDates.length === 1 ? `${REM_KINDS[firstDue.kind].icon} ${esc(remTitle(firstDue))} · ${esc(firstDue.whenText)}` : `🎂 ${dueDates.length} dates coming up`) : "";
       banner.innerHTML = `
         <div class="reminder-text">
-          <span class="reminder-badge">${esc(nextShoot.dayLabel)}</span>
+          ${nextShoot ? `<span class="reminder-badge">${esc(nextShoot.dayLabel)}</span>
           <!-- Split so the phone layout can keep just the badge + name on one
                line and drop the rest (it is one tap away behind Details);
                at full width the banner wrapped to three lines and took a
                fifth of every admin screen. -->
           <span class="reminder-main"><strong>${esc(nextShoot.name)}</strong></span>
-          <span class="reminder-detail">· ${esc(nextShoot.dateKey)} · ${esc(nextShoot.type || "Shoot")} · ⏱️ ${esc(nextShoot.duration || "Full Day")}${nextShoot.phone ? ` · 📞 ${esc(nextShoot.phone)}` : ""}</span>
+          <span class="reminder-detail">· ${esc(nextShoot.dateKey)} · ${esc(nextShoot.type || "Shoot")} · ⏱️ ${esc(nextShoot.duration || "Full Day")}${nextShoot.phone ? ` · 📞 ${esc(nextShoot.phone)}` : ""}</span>`
+          : `<span class="reminder-badge">${esc(firstDue.whenText.toUpperCase())}</span>
+          <span class="reminder-main"><strong>${esc(remTitle(firstDue))}</strong></span>
+          <span class="reminder-detail">${dueDates.length > 1 ? `· and ${dueDates.length - 1} more` : ""}</span>`}
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
-          <button type="button" class="reminder-btn" id="viewNextShootBtn">👁 Details</button>
+          ${nextShoot ? `<button type="button" class="reminder-btn" id="viewNextShootBtn">👁 Details</button>` : ""}
+          ${firstDue ? `<a href="/calendar" data-link class="reminder-btn" id="viewDueDatesBtn" title="Birthdays, anniversaries and milestones coming up">${nextShoot ? dueLabel : "Open"}</a>` : ""}
           <button type="button" class="reminder-btn" id="dismissReminderBtn" title="Dismiss banner">&times;</button>
         </div>
       `;
@@ -3674,6 +3683,17 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       banner.querySelector("#dismissReminderBtn")?.addEventListener("click", () => {
         banner.style.display = "none";
         syncAdminBannerOffset();
+      });
+      // On the Calendar page the link just opens the Dates tab; from any other
+      // screen it goes to the calendar and asks for that tab once.
+      banner.querySelector("#viewDueDatesBtn")?.addEventListener("click", (e) => {
+        if (typeof window.rememberShowTab === "function" && document.getElementById("remPane")) {
+          e.preventDefault(); e.stopPropagation();
+          window.rememberShowTab("dates");
+          document.getElementById("remPane").scrollIntoView({ block: "start", behavior: "smooth" });
+        } else {
+          try { sessionStorage.setItem("wps-cal-tab-once", "dates"); } catch (err) { /* private mode: the calendar opens on Shoots */ }
+        }
       });
     } else if (banner) {
       banner.style.display = "none";
@@ -4004,6 +4024,535 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     }
   } catch (e) { /* older browsers: nothing to ask */ }
 
+  /* ---- Dates to remember (v631) ---------------------------------------
+     Birthdays, anniversaries and milestones, for clients, models and the
+     studio itself, with a reminder before each one (a week by default).
+
+     PRIVATE ON PURPOSE. The site's repository is public, so a client's
+     birthday must never reach it: these live only in this browser's
+     localStorage, are never part of WPS_DATA, and are never published. The
+     Export button is the backup, and the Import button the way to a second
+     computer.
+
+     There is no server, so a reminder can only reach the studio in two ways:
+     on screen (the strip on the Calendar page and the admin banner, whenever
+     the site is open) and in the phone's own calendar, through the .ics file
+     (which repeats every year and carries an alert before and on the day). */
+  const REM_KEY = "wps-remember-dates";
+  const REM_KINDS = {
+    birthday: { label: "Birthday", icon: "🎂", color: "#B23A5A" },
+    anniversary: { label: "Anniversary", icon: "💍", color: "#6B5BD2" },
+    milestone: { label: "Milestone", icon: "🏁", color: "#2A8C82" },
+    other: { label: "Other", icon: "⭐", color: "#6B7280" }
+  };
+  const REM_WHO = {
+    client: { label: "Client", plural: "Clients", color: "#2C6BB5" },
+    model: { label: "Model", plural: "Models", color: "#B7791F" },
+    me: { label: "Me & studio", plural: "Me & studio", color: "#555555" }
+  };
+  const REM_LEADS = [[0, "On the day"], [1, "1 day before"], [3, "3 days before"], [7, "1 week before"], [14, "2 weeks before"], [30, "1 month before"]];
+  const REM_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const remPad = (n) => String(n).padStart(2, "0");
+  const remYmd = (d) => `${d.getFullYear()}-${remPad(d.getMonth() + 1)}-${remPad(d.getDate())}`;
+  const remToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+  const remLeap = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const remDaysIn = (y, m) => new Date(y, m, 0).getDate();
+  const remId = () => "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const remLeadLabel = (n) => (REM_LEADS.find(([d]) => d === Number(n)) || REM_LEADS[3])[1];
+
+  // One stored record, made safe: whatever is in storage, or in a file the
+  // studio imports, only ever comes out in this shape.
+  function remClean(raw) {
+    if (!raw || typeof raw !== "object") return null;
+    const name = String(raw.name || "").replace(/\s+/g, " ").trim().slice(0, 80);
+    const month = Math.round(Number(raw.month)), day = Math.round(Number(raw.day));
+    if (!name || !(month >= 1 && month <= 12) || !(day >= 1 && day <= remDaysIn(2024, month))) return null;
+    let year = raw.year === null || raw.year === undefined || raw.year === "" ? null : Math.round(Number(raw.year));
+    if (year !== null && !(year >= 1900 && year <= 2100)) year = null;
+    if (year !== null && day > remDaysIn(year, month)) return null;
+    let repeat = raw.repeat !== false;
+    if (!repeat && year === null) repeat = true;
+    const ymdRe = /^\d{4}-\d{2}-\d{2}$/;
+    const lead = REM_LEADS.some(([n]) => n === Number(raw.lead)) ? Number(raw.lead) : 7;
+    return {
+      id: /^[A-Za-z0-9_-]{4,40}$/.test(String(raw.id || "")) ? String(raw.id) : remId(),
+      name,
+      kind: REM_KINDS[raw.kind] ? raw.kind : "other",
+      who: REM_WHO[raw.who] ? raw.who : "client",
+      month, day, year, repeat, lead,
+      note: String(raw.note || "").trim().slice(0, 300),
+      done: (Array.isArray(raw.done) ? raw.done : []).map(String).filter((s) => ymdRe.test(s)).slice(-6),
+      snoozeUntil: ymdRe.test(String(raw.snoozeUntil || "")) ? String(raw.snoozeUntil) : ""
+    };
+  }
+  function remRead() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(REM_KEY) || "null");
+      return (raw && Array.isArray(raw.items) ? raw.items : []).map(remClean).filter(Boolean);
+    } catch (e) { return []; }
+  }
+  function remWrite(items) {
+    try { localStorage.setItem(REM_KEY, JSON.stringify({ v: 1, items })); return true; }
+    catch (e) { toast("Not saved: this browser has no room left, or is blocking storage."); return false; }
+  }
+
+  // The date of a record in year y (29 February is the 28th in a common year).
+  function remOn(it, y) {
+    return new Date(y, it.month - 1, it.month === 2 && it.day === 29 && !remLeap(y) ? 28 : it.day);
+  }
+  // The next time it falls on or after `from`; null for a one-off that has gone by.
+  function remNext(it, from) {
+    if (!it.repeat) { const d = new Date(it.year, it.month - 1, it.day); return d >= from ? d : null; }
+    let d = remOn(it, from.getFullYear());
+    if (d < from) d = remOn(it, from.getFullYear() + 1);
+    return d;
+  }
+  function remInfo(it, today) {
+    const next = remNext(it, today);
+    const out = Object.assign({}, it, { next, days: null, occ: "", due: false, snoozed: false, whenText: "past", dateText: "", yearsText: "" });
+    if (!it.repeat) out.yearsText = "one-off";
+    else if (it.year && next) {
+      const n = next.getFullYear() - it.year;
+      out.yearsText = n > 0 ? (it.kind === "birthday" ? `turns ${n}` : `${n} year${n === 1 ? "" : "s"}`) : "";
+    } else out.yearsText = (it.kind === "birthday" || it.kind === "anniversary") ? "year not added" : "every year";
+    if (!next) return out;
+    out.days = Math.round((next - today) / 86400000);
+    out.occ = remYmd(next);
+    out.whenText = out.days === 0 ? "today" : out.days === 1 ? "tomorrow" : `in ${out.days} days`;
+    out.snoozed = !!it.snoozeUntil && remYmd(today) < it.snoozeUntil;
+    out.due = out.days <= it.lead && !it.done.includes(out.occ) && !out.snoozed;
+    out.dateText = next.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+    return out;
+  }
+  function remTitle(x) {
+    if (x.kind === "birthday") return `${x.name}’s birthday`;
+    if (x.kind === "anniversary") return x.who === "me" ? `${x.name} anniversary` : `${x.name}’s anniversary`;
+    return x.name;
+  }
+  function remAll() {
+    const t = remToday();
+    return remRead().map((it) => remInfo(it, t)).sort((a, b) => ((a.days === null) - (b.days === null)) || (a.days - b.days) || a.name.localeCompare(b.name));
+  }
+  const remDueList = () => remAll().filter((x) => x.due);
+
+  // What sits on a day of the month grid (one read of storage per paint).
+  function remMarks(dateKey, items) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey || "");
+    if (!m || !items || !items.length) return "";
+    const y = +m[1], mo = +m[2], d = +m[3];
+    return items.filter((it) => it.repeat
+      ? (remOn(it, y).getMonth() + 1 === mo && remOn(it, y).getDate() === d)
+      : (it.year === y && it.month === mo && it.day === d))
+      .map((it) => `<div class="rem-mark" style="color: ${REM_KINDS[it.kind].color};" title="${esc(remTitle(it))} · private, only you see this">${REM_KINDS[it.kind].icon} ${esc(it.name)}</div>`).join("");
+  }
+
+  // A message the studio can edit, copy and send. No age is ever mentioned.
+  function remMessage(x) {
+    const sign = "\n\n— nerdyphotographer.in";
+    if (x.kind === "birthday") return `Happy birthday, ${x.name}! 🎂\nWishing you a wonderful year ahead, with lots to celebrate.${sign}`;
+    if (x.kind === "anniversary") return x.who === "me"
+      ? `${x.name} anniversary${/year/.test(x.yearsText) ? " — " + x.yearsText : ""}! 🎉\nThank you for being part of the journey.${sign}`
+      : `Happy anniversary, ${x.name}! 💍\nWishing you many more happy years together.${sign}`;
+    if (x.kind === "milestone") return `${x.name} — a milestone worth celebrating! 🎉\nThank you for being part of it.${sign}`;
+    return `${x.name} 🙂${sign}`;
+  }
+
+  // The phone calendar file. Repeating dates carry RRULE YEARLY so one import
+  // covers every year; each event has an alert before (at 9 am) and on the
+  // morning of the day (9 am).
+  const remIcsEsc = (s) => String(s).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  function remIcsFold(line) {
+    const enc = new TextEncoder();
+    let out = "", cur = 0;
+    for (const ch of line) {
+      const n = enc.encode(ch).length;
+      if (cur + n > 75) { out += "\r\n "; cur = 1; }
+      out += ch; cur += n;
+    }
+    return out;
+  }
+  function remIcs(list) {
+    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    const ymdc = (d) => `${d.getFullYear()}${remPad(d.getMonth() + 1)}${remPad(d.getDate())}`;
+    const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//nerdyphotographer.in//Dates to remember//EN", "CALSCALE:GREGORIAN"];
+    list.filter((x) => x.next).forEach((x) => {
+      const summary = `${REM_KINDS[x.kind].icon} ${remTitle(x)}`;
+      const end = new Date(x.next); end.setDate(end.getDate() + 1);
+      L.push("BEGIN:VEVENT", `UID:${x.id}@dates.nerdyphotographer.in`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${ymdc(x.next)}`, `DTEND;VALUE=DATE:${ymdc(end)}`);
+      if (x.repeat) L.push(x.month === 2 && x.day === 29 ? "RRULE:FREQ=YEARLY;BYMONTH=2;BYMONTHDAY=-1" : "RRULE:FREQ=YEARLY");
+      L.push(`SUMMARY:${remIcsEsc(summary)}`);
+      if (x.note) L.push(`DESCRIPTION:${remIcsEsc(x.note)}`);
+      L.push("TRANSP:TRANSPARENT");
+      if (x.lead > 0) L.push("BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${remIcsEsc(`${summary} — in ${x.lead === 1 ? "1 day" : x.lead + " days"}`)}`, `TRIGGER:-P${x.lead - 1 > 0 ? (x.lead - 1) + "D" : ""}T15H`, "END:VALARM");
+      L.push("BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${remIcsEsc(`${summary} — today`)}`, "TRIGGER:PT9H", "END:VALARM", "END:VEVENT");
+    });
+    L.push("END:VCALENDAR");
+    return L.map(remIcsFold).join("\r\n") + "\r\n";
+  }
+  function remDownload(name, text, type) {
+    try {
+      const url = URL.createObjectURL(new Blob([text], { type }));
+      const a = document.createElement("a");
+      a.href = url; a.download = name; a.style.display = "none";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      return true;
+    } catch (e) { toast("This browser would not make the file."); return false; }
+  }
+  const remSlug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30) || "date";
+
+  // The next year a one-off with no year given will happen in.
+  function remFillYear(month, day) {
+    const t = remToday();
+    let y = t.getFullYear();
+    for (let i = 0; i < 9; i++, y++) if (day <= remDaysIn(y, month) && new Date(y, month - 1, day) >= t) return y;
+    return t.getFullYear();
+  }
+
+  // "28 Nov", "28 Nov 1996", "Nov 28", "28/11", "28/11/1996", "1996-11-28".
+  function remParseDate(s) {
+    s = String(s || "").trim().replace(/\s+/g, " ");
+    let m, day, month, year = null;
+    const monthOf = (w) => { w = String(w).toLowerCase(); if (w.length < 3) return 0; const i = REM_MONTHS.findIndex((n) => n.toLowerCase().startsWith(w)); return i + 1; };
+    if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s))) { year = +m[1]; month = +m[2]; day = +m[3]; }
+    else if ((m = /^(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{4}))?$/.exec(s))) { day = +m[1]; month = +m[2]; year = m[3] ? +m[3] : null; }
+    else if ((m = /^(\d{1,2})(?:st|nd|rd|th)?[ -]([A-Za-z]{3,9})\.?(?:,?[ -](\d{4}))?$/.exec(s))) { day = +m[1]; month = monthOf(m[2]); year = m[3] ? +m[3] : null; }
+    else if ((m = /^([A-Za-z]{3,9})\.? (\d{1,2})(?:st|nd|rd|th)?(?:,? (\d{4}))?$/.exec(s))) { month = monthOf(m[1]); day = +m[2]; year = m[3] ? +m[3] : null; }
+    else return null;
+    if (!(month >= 1 && month <= 12) || !(day >= 1)) return null;
+    if (year !== null && !(year >= 1900 && year <= 2100)) return null;
+    if (day > remDaysIn(year || 2024, month)) return null;
+    return { day, month, year };
+  }
+  // One pasted line: name, date, then any of a kind word, "client" / "model" / "me", or a note.
+  function remParseLine(line) {
+    // The date is the first piece after the name that reads as one, so a name
+    // with a comma in it ("10,000 followers") still works, and so does a date
+    // written "November 28, 1996".
+    const raw = line.split(/\t|,/), parts = raw.map((p) => p.trim());
+    let at = -1, span = 1, dt = null;
+    for (let i = 1; i < parts.length; i++) {
+      dt = remParseDate(parts[i]);
+      if (dt) { at = i; break; }
+      if (/^\d{4}$/.test(parts[i + 1] || "") && /[A-Za-z]/.test(parts[i])) { dt = remParseDate(`${parts[i]}, ${parts[i + 1]}`); if (dt) { at = i; span = 2; break; } }
+    }
+    const name = (at > 0 ? raw.slice(0, at) : raw.slice(0, 1)).join(",").trim();
+    if (!name) return { ok: false, why: "no name" };
+    if (parts.length < 2 || !parts[1]) return { ok: false, why: "no date" };
+    if (!dt) return { ok: false, why: `date not understood (try 28 Nov or 28/11)` };
+    let kind = "", who = "";
+    const notes = [];
+    parts.slice(at + span).filter(Boolean).forEach((p) => {
+      const w = p.toLowerCase();
+      if (/birth|bday|b'day/.test(w)) kind = kind || "birthday";
+      else if (/anniv/.test(w)) kind = kind || "anniversary";
+      else if (/mile|stone/.test(w)) kind = kind || "milestone";
+      else if (/^client/.test(w)) who = who || "client";
+      else if (/^model/.test(w)) who = who || "model";
+      else if (/^(me|mine|my|studio|own)\b/.test(w)) who = who || "me";
+      else notes.push(p);
+    });
+    kind = kind || "birthday";
+    who = who || (kind === "milestone" ? "me" : "client");
+    const repeat = kind !== "milestone";
+    const year = !repeat && dt.year === null ? remFillYear(dt.month, dt.day) : dt.year;
+    return { ok: true, rec: { name, kind, who, month: dt.month, day: dt.day, year, repeat, lead: 7, note: notes.join(", ") } };
+  }
+
+  // A small window over the page (the message and the pasted list).
+  function remModal(titleHtml, bodyHtml) {
+    const prev = document.activeElement;
+    const ov = document.createElement("div");
+    ov.className = "rem-modal-overlay";
+    ov.innerHTML = `<div class="rem-modal" role="dialog" aria-modal="true" aria-labelledby="remModalTitle"><h3 id="remModalTitle" class="rem-modal-title">${titleHtml}</h3>${bodyHtml}</div>`;
+    const onKey = (e) => { if (e.key === "Escape") close(); };
+    function close() { ov.remove(); document.removeEventListener("keydown", onKey); if (prev && prev.focus) try { prev.focus(); } catch (e) { /* gone */ } }
+    document.addEventListener("keydown", onKey);
+    ov.addEventListener("mousedown", (e) => { if (e.target === ov) close(); });
+    document.body.appendChild(ov);
+    return { ov, close };
+  }
+
+  const remBtn = (act, label, title) => `<button type="button" class="admin-cal-btn rem-btn" data-rem="${act}"${title ? ` title="${esc(title)}" aria-label="${esc(title)}"` : ""}>${label}</button>`;
+  // Done and Snooze belong to a reminder that is due. In the list they sit under
+  // the "reminder due" words, so every row's own buttons are the same width and
+  // the columns line up from one row to the next.
+  const remDueActs = (x) => x.due ? remBtn("done", "✓ Done", x.repeat ? "Done for this year. It comes back next year." : "Done. This clears the reminder.") + (x.days > 0 ? remBtn("snooze", "Snooze", "Hide this until tomorrow") : "") : "";
+  function remActs(x, strip) {
+    return (strip ? remDueActs(x) : "")
+      + remBtn("message", "💬 Message", "A message you can edit, copy and send")
+      + (strip ? "" : remBtn("ics", "📅", "Add this date to my phone calendar") + remBtn("edit", "Edit", `Edit ${x.name}`) + remBtn("delete", "Delete", `Delete ${x.name}`));
+  }
+  function remStripHtml(due) {
+    if (!due.length) return "";
+    return `<div class="rem-strip" role="region" aria-label="Dates coming up">
+      <div class="rem-strip-icon" aria-hidden="true">⏰</div>
+      <div class="rem-strip-body">
+        <div class="rem-strip-title">Coming up</div>
+        ${due.map((x) => `<div class="rem-strip-row" data-id="${esc(x.id)}">
+          <div class="rem-strip-text"><strong>${REM_KINDS[x.kind].icon} ${esc(remTitle(x))}</strong> · ${esc(x.dateText)} · <strong>${esc(x.whenText)}</strong>${/^(turns|\d)/.test(x.yearsText) ? ` · ${esc(x.yearsText)}` : ""}</div>
+          <div class="rem-acts">${remActs(x, true)}</div>
+        </div>`).join("")}
+      </div></div>`;
+  }
+  function remRowHtml(x) {
+    const k = REM_KINDS[x.kind], w = REM_WHO[x.who];
+    const dateText = `${x.day} ${REM_MONTHS[x.month - 1].slice(0, 3)}${!x.repeat ? ` ${x.year}` : ""}`;
+    return `<div class="rem-row${x.due ? " is-due" : ""}${x.days === null ? " is-past" : ""}" data-id="${esc(x.id)}">
+      <div class="rem-ic" aria-hidden="true">${k.icon}</div>
+      <div class="rem-name"><strong>${esc(x.name)}</strong>${x.note ? `<div class="rem-sub">${esc(x.note)}</div>` : ""}</div>
+      <div class="rem-pills"><span class="rem-pill" style="background: ${k.color};">${esc(k.label)}</span><span class="rem-pill" style="background: ${w.color};">${esc(w.label)}</span></div>
+      <div class="rem-date">${esc(dateText)}<div class="rem-sub">${esc(x.yearsText)}</div></div>
+      <div class="rem-when${x.due ? " due" : ""}">${esc(x.whenText)}${x.due ? " · reminder due" : x.snoozed ? " · snoozed" : ""}${x.days === null ? "" : `<div class="rem-sub">remind ${esc(remLeadLabel(x.lead).toLowerCase())}</div>`}${x.due ? `<div class="rem-acts rem-due-acts">${remDueActs(x)}</div>` : ""}</div>
+      <div class="rem-acts">${remActs(x, false)}</div>
+    </div>`;
+  }
+  function remPaneHtml() {
+    const opt = (v, t, sel) => `<option value="${v}"${sel ? " selected" : ""}>${esc(t)}</option>`;
+    return `
+      <div class="admin-cal-card rem-card">
+        <div class="rem-eyebrow" id="remFormTitle">Add a date to remember</div>
+        <form id="remForm" novalidate>
+          <div class="rem-grid rem-grid-5">
+            <label class="rem-field">Name<input id="remName" type="text" maxlength="80" autocomplete="off" placeholder="e.g. Sample client, Studio" /></label>
+            <label class="rem-field">For<select id="remWho">${Object.keys(REM_WHO).map((k) => opt(k, REM_WHO[k].label)).join("")}</select></label>
+            <label class="rem-field">Kind<select id="remKind">${Object.keys(REM_KINDS).map((k) => opt(k, REM_KINDS[k].label)).join("")}</select></label>
+            <div class="rem-field" role="group" aria-label="Day and month"><span>Day and month</span>
+              <div class="rem-dm"><select id="remDay" aria-label="Day">${Array.from({ length: 31 }, (_, i) => opt(i + 1, i + 1)).join("")}</select><select id="remMonth" aria-label="Month">${REM_MONTHS.map((m, i) => opt(i + 1, m)).join("")}</select></div>
+            </div>
+            <label class="rem-field">Year (optional)<input id="remYear" type="number" inputmode="numeric" min="1900" max="2100" placeholder="1996" /></label>
+          </div>
+          <div class="rem-grid rem-grid-3">
+            <label class="rem-field">Remind me<select id="remLead">${REM_LEADS.map(([n, t]) => opt(n, t, n === 7)).join("")}</select></label>
+            <label class="rem-field">Note (optional)<input id="remNote" type="text" maxlength="300" autocomplete="off" placeholder="e.g. likes red roses, send a message" /></label>
+            <label class="rem-check"><input id="remRepeat" type="checkbox" checked /> Repeats every year</label>
+          </div>
+          <div class="rem-formfoot">
+            <button type="submit" class="admin-cal-btn primary" id="remSave">Save date</button>
+            <button type="button" class="admin-cal-btn" id="remCancel" hidden>Cancel</button>
+            <span class="rem-hint" id="remHint" role="status" aria-live="polite"></span>
+          </div>
+        </form>
+      </div>
+      <div class="admin-cal-card rem-card rem-listcard">
+        <div class="rem-listhead">
+          <div class="admin-roster-title" style="margin: 0;">Your dates · next first</div>
+          <div class="rem-tools">
+            <button type="button" class="admin-cal-btn rem-btn" id="remIcsAll" title="Download one file with every date, to open in Google or iPhone Calendar">📅 Add all to my phone calendar (.ics)</button>
+            <button type="button" class="admin-cal-btn rem-btn" id="remPaste">Paste a list</button>
+            <button type="button" class="admin-cal-btn rem-btn" id="remExport">Export backup</button>
+            <button type="button" class="admin-cal-btn rem-btn" id="remImportBtn">Import backup</button>
+            <input type="file" id="remImport" accept=".json,application/json" hidden />
+          </div>
+        </div>
+        <div class="rem-chips" id="remChips" role="group" aria-label="Show"></div>
+        <div id="remList"></div>
+        <div class="rem-foot">🔒 Kept on this computer only. These dates are never published to the website. Use Export backup to keep a copy.</div>
+      </div>`;
+  }
+
+  function wireRememberDates(repaintGrid) {
+    const tabs = $("#remTabs"), pane = $("#remPane"), shoots = $("#calShootsPane"), stripHost = $("#remStrip");
+    if (!tabs || !pane || !shoots || !stripHost) return;
+    pane.innerHTML = remPaneHtml();
+    const f = (id) => document.getElementById(id);
+    let filter = "all", editingId = "", repeatTouched = false;
+
+    const showTab = (name) => {
+      const dates = name === "dates";
+      shoots.hidden = dates; pane.hidden = !dates;
+      tabs.querySelectorAll("[data-rem-tab]").forEach((b) => { const on = b.dataset.remTab === (dates ? "dates" : "shoots"); b.classList.toggle("on", on); b.setAttribute("aria-selected", String(on)); });
+    };
+    window.rememberShowTab = showTab;
+    tabs.addEventListener("click", (e) => { const b = e.target.closest("[data-rem-tab]"); if (b) showTab(b.dataset.remTab); });
+
+    const paintStrip = () => { stripHost.innerHTML = remStripHtml(remDueList()); };
+    const paintTabs = () => {
+      const n = remDueList().length, badge = f("remTabBadge");
+      if (badge) { badge.textContent = String(n); badge.hidden = !n; }
+    };
+    const paintList = () => {
+      const all = remAll();
+      const counts = { all: all.length, client: 0, model: 0, me: 0 };
+      all.forEach((x) => { counts[x.who]++; });
+      f("remChips").innerHTML = [["all", "All"], ["client", REM_WHO.client.plural], ["model", REM_WHO.model.plural], ["me", REM_WHO.me.plural]]
+        .map(([k, t]) => `<button type="button" class="rem-chip${filter === k ? " on" : ""}" data-rem-filter="${k}" aria-pressed="${filter === k}">${esc(t)} ${counts[k]}</button>`).join("");
+      const shown = all.filter((x) => filter === "all" || x.who === filter);
+      f("remList").innerHTML = shown.length ? shown.map(remRowHtml).join("") : `<div class="rem-empty">${all.length ? "Nothing under this filter." : "No dates yet. Add the first one above, or use Paste a list."}</div>`;
+    };
+    const repaint = () => {
+      paintStrip(); paintTabs(); paintList();
+      if (typeof repaintGrid === "function") repaintGrid();
+      updateAdminReminders();
+    };
+
+    const hint = (msg, bad) => { const h = f("remHint"); if (h) { h.textContent = msg; h.classList.toggle("bad", !!bad); } };
+    const leadHint = () => { hint(`Shows on this screen ${remLeadLabel(f("remLead").value).toLowerCase()}, and in your phone calendar if you add it there.`, false); };
+    const setDefaults = () => { if (!repeatTouched) f("remRepeat").checked = f("remKind").value !== "milestone"; };
+    const resetForm = () => {
+      editingId = ""; repeatTouched = false;
+      f("remForm").reset();
+      f("remRepeat").checked = true;
+      f("remFormTitle").textContent = "Add a date to remember";
+      f("remSave").textContent = "Save date";
+      f("remCancel").hidden = true;
+      leadHint();
+    };
+    f("remKind").addEventListener("change", setDefaults);
+    f("remRepeat").addEventListener("change", () => { repeatTouched = true; });
+    f("remLead").addEventListener("change", leadHint);
+    f("remCancel").addEventListener("click", resetForm);
+    leadHint();
+
+    f("remForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const name = f("remName").value.replace(/\s+/g, " ").trim();
+      const month = Number(f("remMonth").value), day = Number(f("remDay").value);
+      const yRaw = f("remYear").value.trim();
+      let year = yRaw === "" ? null : Number(yRaw);
+      const repeat = f("remRepeat").checked;
+      if (!name) { hint("Type a name first.", true); f("remName").focus(); return; }
+      if (year !== null && !(Number.isInteger(year) && year >= 1900 && year <= 2100)) { hint("The year should be four digits, like 1996. Or leave it empty.", true); f("remYear").focus(); return; }
+      if (day > remDaysIn(year || 2024, month)) { hint(`${REM_MONTHS[month - 1]}${year ? " " + year : ""} has only ${remDaysIn(year || 2024, month)} days.`, true); f("remDay").focus(); return; }
+      if (!repeat && year === null) year = remFillYear(month, day);   // a one-off with no year: the next time that day comes round
+      const items = remRead();
+      const old = editingId ? items.find((i) => i.id === editingId) : null;
+      const rec = remClean({ id: old ? old.id : undefined, name, kind: f("remKind").value, who: f("remWho").value, month, day, year, repeat, lead: Number(f("remLead").value), note: f("remNote").value, done: old ? old.done : [] });
+      if (!rec) { hint("That date does not look right.", true); return; }
+      const next = old ? items.map((i) => (i.id === old.id ? rec : i)) : items.concat(rec);
+      if (!remWrite(next)) return;
+      resetForm();
+      toast(old ? "Saved." : `Saved. It will show ${remLeadLabel(rec.lead).toLowerCase()}.`);
+      repaint();
+    });
+
+    const startEdit = (x) => {
+      editingId = x.id; repeatTouched = true;
+      f("remName").value = x.name; f("remWho").value = x.who; f("remKind").value = x.kind;
+      f("remDay").value = x.day; f("remMonth").value = x.month; f("remYear").value = x.year || "";
+      f("remLead").value = x.lead; f("remNote").value = x.note; f("remRepeat").checked = x.repeat;
+      f("remFormTitle").textContent = `Editing ${x.name}`;
+      f("remSave").textContent = "Save changes";
+      f("remCancel").hidden = false;
+      leadHint();
+      f("remName").scrollIntoView({ block: "center", behavior: "smooth" });
+      f("remName").focus();
+    };
+
+    const openMessage = (x) => {
+      const { ov, close } = remModal(`💬 Message for ${esc(remTitle(x))}`, `
+        <p class="rem-sub" style="margin: 0 0 10px;">Edit it if you like, then copy it into WhatsApp, Instagram or email. The site sends nothing itself.</p>
+        <textarea id="remMsgText" rows="6" aria-label="Message">${esc(remMessage(x))}</textarea>
+        ${x.note ? `<p class="rem-sub" style="margin: 8px 0 0;">Your note: ${esc(x.note)}</p>` : ""}
+        <div class="rem-modal-foot"><button type="button" class="admin-cal-btn primary" id="remMsgCopy">Copy message</button><button type="button" class="admin-cal-btn" id="remMsgClose">Close</button></div>`);
+      const ta = ov.querySelector("#remMsgText");
+      ov.querySelector("#remMsgClose").addEventListener("click", close);
+      ov.querySelector("#remMsgCopy").addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(ta.value); toast("Copied. Paste it into WhatsApp, Instagram or email."); }
+        catch (err) {
+          ta.focus(); ta.select();
+          let ok = false; try { ok = document.execCommand("copy"); } catch (e2) { /* nothing */ }
+          toast(ok ? "Copied. Paste it into WhatsApp, Instagram or email." : "Select the text and copy it by hand.");
+        }
+      });
+      ta.focus();
+    };
+
+    const openPaste = () => {
+      const { ov, close } = remModal("Paste a list", `
+        <p class="rem-sub" style="margin: 0 0 10px;">One date per line: name, date, then the kind (birthday, anniversary or milestone) and who it is for (client, model or me), if you like. The year is optional.</p>
+        <textarea id="remPasteText" rows="7" class="rem-mono" aria-label="Dates to add" placeholder="Sample client, 28 Nov 1996, birthday, client&#10;Sample model, 14/12, birthday, model&#10;Studio, 30 Nov 2021, anniversary"></textarea>
+        <div id="remPasteView" class="rem-pastecheck" aria-live="polite"></div>
+        <div class="rem-modal-foot"><button type="button" class="admin-cal-btn primary" id="remPasteAdd" disabled>Add dates</button><button type="button" class="admin-cal-btn" id="remPasteClose">Close</button></div>`);
+      const ta = ov.querySelector("#remPasteText"), view = ov.querySelector("#remPasteView"), add = ov.querySelector("#remPasteAdd");
+      let good = [];
+      const check = () => {
+        const lines = ta.value.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+        const have = new Set(remRead().map((i) => `${i.name.toLowerCase()}|${i.kind}|${i.month}|${i.day}`));
+        good = []; const bad = []; let dup = 0;
+        lines.forEach((line, i) => {
+          const r = remParseLine(line);
+          if (!r.ok) { bad.push(`Line ${i + 1}: “${line}” — ${r.why}`); return; }
+          const key = `${r.rec.name.toLowerCase()}|${r.rec.kind}|${r.rec.month}|${r.rec.day}`;
+          if (have.has(key)) { dup++; return; }
+          have.add(key); good.push(r.rec);
+        });
+        view.innerHTML = lines.length ? `<div class="ok">✓ ${good.length} understood</div>${dup ? `<div class="rem-sub">${dup} already in your list, skipped</div>` : ""}${bad.length ? `<div class="bad">✕ ${bad.length} not understood</div>${bad.slice(0, 6).map((b) => `<div class="rem-sub">${esc(b)}</div>`).join("")}` : ""}` : "";
+        add.disabled = !good.length;
+        add.textContent = good.length ? `Add ${good.length} date${good.length === 1 ? "" : "s"}` : "Add dates";
+      };
+      ta.addEventListener("input", check);
+      ov.querySelector("#remPasteClose").addEventListener("click", close);
+      add.addEventListener("click", () => {
+        const items = remRead().concat(good.map((r) => remClean(r)).filter(Boolean));
+        if (!remWrite(items)) return;
+        toast(`Added ${good.length} date${good.length === 1 ? "" : "s"}.`);
+        close(); repaint();
+      });
+      ta.focus();
+    };
+
+    const onAct = (e) => {
+      const b = e.target.closest("[data-rem]");
+      if (!b) return;
+      const row = b.closest("[data-id]");
+      const x = row ? remAll().find((y) => y.id === row.dataset.id) : null;
+      if (!x) return;
+      const act = b.dataset.rem;
+      if (act === "message") return openMessage(x);
+      if (act === "edit") return startEdit(x);
+      if (act === "ics") { if (!x.next) { toast("That date has already gone by."); return; } if (remDownload(`date-to-remember-${remSlug(x.name)}.ics`, remIcs([x]), "text/calendar;charset=utf-8")) toast("File saved. Open it to add this date to your phone calendar."); return; }
+      if (act === "delete") {
+        if (!confirm(`Delete ${x.name} (${REM_KINDS[x.kind].label.toLowerCase()}) from your dates?`)) return;
+        if (remWrite(remRead().filter((i) => i.id !== x.id))) { toast("Deleted."); repaint(); }
+        return;
+      }
+      const items = remRead(), it = items.find((i) => i.id === x.id);
+      if (!it) return;
+      if (act === "done") { it.done = it.done.concat(x.occ).slice(-6); it.snoozeUntil = ""; if (remWrite(items)) { toast(x.repeat ? "Done. It comes back next year." : "Done."); repaint(); } }
+      else if (act === "snooze") { const t = remToday(); t.setDate(t.getDate() + 1); it.snoozeUntil = remYmd(t); if (remWrite(items)) { toast("Hidden until tomorrow."); repaint(); } }
+    };
+    stripHost.addEventListener("click", onAct);
+    f("remList").addEventListener("click", onAct);
+    f("remChips").addEventListener("click", (e) => { const b = e.target.closest("[data-rem-filter]"); if (b) { filter = b.dataset.remFilter; paintList(); } });
+
+    f("remIcsAll").addEventListener("click", () => {
+      const list = remAll().filter((x) => x.next);
+      if (!list.length) { toast("Nothing to add yet."); return; }
+      if (remDownload("dates-to-remember.ics", remIcs(list), "text/calendar;charset=utf-8")) toast(`${list.length} date${list.length === 1 ? "" : "s"} saved in a file. Open it to add them to your phone calendar.`);
+    });
+    f("remPaste").addEventListener("click", openPaste);
+    f("remExport").addEventListener("click", () => {
+      const items = remRead();
+      if (!items.length) { toast("Nothing to back up yet."); return; }
+      if (remDownload("dates-to-remember-backup.json", JSON.stringify({ v: 1, exportedAt: new Date().toISOString(), items }, null, 2), "application/json")) toast("Backup saved. Keep it somewhere safe: it has names in it.");
+    });
+    f("remImportBtn").addEventListener("click", () => f("remImport").click());
+    f("remImport").addEventListener("change", () => {
+      const file = f("remImport").files && f("remImport").files[0];
+      f("remImport").value = "";
+      if (!file) return;
+      const rd = new FileReader();
+      rd.onerror = () => toast("That file could not be read.");
+      rd.onload = () => {
+        let data;
+        try { data = JSON.parse(String(rd.result || "")); } catch (e) { toast("That is not a backup file from this page."); return; }
+        const incoming = (Array.isArray(data) ? data : (data && Array.isArray(data.items) ? data.items : [])).map(remClean).filter(Boolean);
+        if (!incoming.length) { toast("No dates found in that file."); return; }
+        const items = remRead(); let added = 0, updated = 0;
+        incoming.forEach((r) => { const i = items.findIndex((x) => x.id === r.id); if (i >= 0) { items[i] = r; updated++; } else { items.push(r); added++; } });
+        if (!remWrite(items)) return;
+        toast(`Imported: ${added} added${updated ? `, ${updated} updated` : ""}.`);
+        repaint();
+      };
+      rd.readAsText(file);
+    });
+
+    paintStrip(); paintTabs(); paintList();
+    let once = ""; try { once = sessionStorage.getItem("wps-cal-tab-once") || ""; sessionStorage.removeItem("wps-cal-tab-once"); } catch (e) { /* private mode */ }
+    showTab(once === "dates" ? "dates" : "shoots");
+  }
+
   function viewCalendar() {
     return `
       <section class="page-head admin-page-head">
@@ -4026,6 +4575,16 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         ${bookingBackupNote()}
       </section>
       <section class="section container admin-calendar-wrap">
+        <!-- Two tabs (v631): Shoots is the calendar and settings exactly as they
+             were; Dates to remember is the studio's private list of birthdays,
+             anniversaries and milestones. The strip above both says what is
+             coming up, so a reminder is seen whichever tab is open. -->
+        <div class="rem-tabs" id="remTabs" role="tablist" aria-label="Calendar sections">
+          <button type="button" class="admin-cal-btn rem-tab on" role="tab" id="remTabShoots" data-rem-tab="shoots" aria-selected="true" aria-controls="calShootsPane">Shoots</button>
+          <button type="button" class="admin-cal-btn rem-tab" role="tab" id="remTabDates" data-rem-tab="dates" aria-selected="false" aria-controls="remPane">Dates to remember<span class="rem-badge" id="remTabBadge" hidden></span></button>
+        </div>
+        <div id="remStrip"></div>
+        <div id="calShootsPane" role="tabpanel" aria-labelledby="remTabShoots">
         <div class="admin-cal-card">
         <div class="admin-calendar-header">
           <div class="admin-cal-nav">
@@ -4064,6 +4623,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           <span><i style="background: #B7791F;"></i>Workshop</span>
           <span><i style="background: #B23A5A;"></i>Assisting</span>
           <span><i style="background: #2A8C82;"></i>Meeting (shown as busy)</span>
+          <span>🎂 Date to remember</span>
         </div>
 
         <div id="adminCalGridContainer"></div>
@@ -4269,6 +4829,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         </div>
 
         </div>
+        </div>
+        <div id="remPane" role="tabpanel" aria-labelledby="remTabDates" hidden></div>
 
         <div style="margin-top: 32px; border-top: 1px solid var(--line); padding-top: 20px; text-align: center;">
           <a href="/contracts" data-link class="admin-cal-btn">Contract vault &rarr;</a>
@@ -5652,6 +6214,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       const today = new Date();
       today.setHours(0,0,0,0);
 
+      const remItems = remRead();   // the studio's private dates, read once for the whole month
       let html = `<div class="admin-cal-grid">`;
       DAYS.forEach(d => {
         html += `<div class="admin-cal-day-label">${d}</div>`;
@@ -5708,6 +6271,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <div>
               ${window.privateNotesFor(status.key).map((n) => `<div class="admin-cal-note" title="Private note — only you see this: ${esc(n.text)}">📝 ${esc(n.text)}</div>`).join("")}
               ${status.bookings.map(b => `<div class="admin-cal-client-item" title="${esc(window.bookingWho(b))} - ${esc(b.type)}">${esc(window.bookingWho(b))}</div>`).join("")}
+              ${remMarks(status.key, remItems)}
             </div>
           </div>
         `;
@@ -6567,6 +7131,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     renderAdminPackagesEditor();
     renderAdminGrid();
     renderRoster();
+    wireRememberDates(() => renderAdminGrid());
     // The per-line type rows, and the way back if a choice turns out wrong.
     if (typeof window.renderPdfTypeEditor === "function") window.renderPdfTypeEditor();
     if (typeof window.renderPdfBorderEditor === "function") window.renderPdfBorderEditor();
