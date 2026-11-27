@@ -2370,6 +2370,8 @@ window.moveAdminPackageRow = function(index, dir) {
     wireView,
     // The "Where it shows" preview (v635).
     asVisitor, renderLbSidebar, buildCompCardDisplayList, qualifiesAsCompCard, cardShoots, visibleModelLinks, visibleAgencyLinks, statText,
+    // Per-person choices (v636).
+    CREW_ROLES,
   } = A;
   // SHOOTS is reassigned on every load, so it is read live rather than
   // captured once: a snapshot here would leave the studio editing the album
@@ -7934,11 +7936,14 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                 </table>
                   </div>
                 </div>
+                <!-- One row per other person credited in this album (v636), built by paintPeople. -->
+                <div id="wisPeople"></div>
+                <input id="f_crew_show" type="hidden" value="{}" />
                 <div class="wis-person">
                   <div class="wis-row">
-                    <strong>Crew</strong>
-                    <select id="wisCrew" aria-label="What shows about the crew"><option value="names">Names only</option><option value="all">Names + their links</option></select>
-                    <span class="wis-note">Make-up, hair, styling, mentor, location</span>
+                    <strong>Location &amp; other</strong>
+                    <select id="wisCrew" aria-label="Links for the location and other credits"><option value="names">Names only</option><option value="all">Names + their links</option></select>
+                    <span class="wis-note">Location, "Also" credits, and where the crew above start</span>
                   </div>
                   <input id="f_show_crew_socials" type="checkbox" hidden />
                 </div>
@@ -8657,6 +8662,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         // Agency defaults to shown, the email to hidden: it is personal data.
         REP_SWITCHES.forEach(([id, what]) => REP_SURFACES.forEach(([sfx, sf]) => { const el = $(`#f_show_${id}_${sfx}`); if (el) el.checked = showRep(editingShoot, what, sf); }));
         { const el = $("#f_show_crew_socials"); if (el) el.checked = editingShoot.showCrewSocials === true; }
+        { const el = $("#f_crew_show"); if (el) el.value = JSON.stringify(editingShoot.crewShow || {}); }
 
         staged = editingShoot.photos.map(p => {
           const isCover = editingShoot.coverPhotoId ? (p.id.split("-")[0] === editingShoot.coverPhotoId) : false;
@@ -8875,13 +8881,57 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         }));
       };
       const setCrew = (v) => tick($("#f_show_crew_socials"), v);
+      /* Each other person credited (v636): their choice is kept in #f_crew_show
+         as album.crewShow, only where it differs from where they start (the
+         crew-links tick; a brand starts not credited). */
+      const ROLE_INPUT = { secondaryPhotographers: "f_photographer2", artDirector: "f_ad", stylist: "f_stylist", hair: "f_hair", mua: "f_mua", videographer: "f_video", mentor: "f_mentor", client: "f_client" };
+      const typed = (role) => { const v = (($("#" + ROLE_INPUT[role]) || {}).value || "").trim(); return v === "—" ? "" : v; };
+      const startOf = (role) => (role === "client" ? "hidden" : $("#f_show_crew_socials")?.checked ? "all" : "names");
+      const readPick = () => { try { const o = JSON.parse($("#f_crew_show")?.value || "{}"); return o && typeof o === "object" && !Array.isArray(o) ? o : {}; } catch (e) { return {}; } };
+      const writePick = (o) => { const el = $("#f_crew_show"); if (el) el.value = JSON.stringify(o); };
+      const choiceOf = (role) => readPick()[role] || startOf(role);
+      const setChoice = (role, v) => { const pick = readPick(); if (v === startOf(role)) delete pick[role]; else pick[role] = v; writePick(pick); };
+      const peopleHere = () => (CREW_ROLES || []).filter(([role]) => typed(role));
+      const paintPeople = () => {
+        const host = $("#wisPeople");
+        if (!host) return;
+        const rows = peopleHere();
+        // Rebuilt only when who is credited changes, so a drop-down is never replaced under the pointer.
+        const sig = rows.map(([r]) => `${r}:${typed(r)}`).join("|");
+        if (host.dataset.sig !== sig) {
+          host.dataset.sig = sig;
+          host.innerHTML = rows.map(([role, label]) => {
+            const names = typed(role).split(",").map((x) => getTalentCleanName(x.trim())).filter(Boolean).join(", ");
+            const opts = (role === "client"
+              ? [["hidden", "Not credited"], ["names", "Credit by name"], ["ig", "Name + Instagram"], ["all", "Name + all links"]]
+              : [["hidden", "Hidden"], ["names", "Name only"], ["ig", "Name + Instagram"], ["all", "Name + all links"]])
+              .map(([v, t]) => `<option value="${v}">${t}</option>`).join("");
+            return `<div class="wis-person"><div class="wis-row"><strong>${esc(label)}</strong><select data-role="${role}" aria-label="What shows about ${esc(label)}">${opts}</select><span class="wis-note wis-who">${esc(names)}</span></div><p class="wis-missing" data-miss="${role}" hidden></p></div>`;
+          }).join("");
+        }
+        host.querySelectorAll("select[data-role]").forEach((sel) => {
+          const role = sel.dataset.role;
+          sel.value = choiceOf(role);
+          const miss = host.querySelector(`[data-miss="${role}"]`);
+          if (!miss) return;
+          const text = typed(role), ig = /@|instagram\.com/i.test(text), any = ig || /\(/.test(text);
+          const where = role === "client" ? "in the Client box under Details & links" : "under Credits";
+          const msg = sel.value === "ig" && !ig ? `No Instagram is saved for them. Add it ${where}, like Name (@handle).`
+            : sel.value === "all" && !any ? `No links are saved for them. Add them ${where}, like Name (@handle; website).` : "";
+          miss.textContent = msg;
+          miss.hidden = !msg;
+        });
+      };
       const paint = () => {
         const m = $("#wisModel"), a = $("#wisAgency"), c = $("#wisCrew");
         if (!m || !a || !c) return;
         m.value = stateOf("model");
         a.value = stateOf("agency");
         c.value = $("#f_show_crew_socials")?.checked ? "all" : "names";
-        const preset = ["names", "ig", "all"].find((p) => m.value === p && a.value === p && c.value === (p === "all" ? "all" : "names")) || "";
+        paintPeople();
+        // A brand is not part of the presets: crediting one is its own decision.
+        const crewAre = (p) => peopleHere().every(([r]) => r === "client" || choiceOf(r) === p);
+        const preset = ["names", "ig", "all"].find((p) => m.value === p && a.value === p && c.value === (p === "all" ? "all" : "names") && crewAre(p)) || "";
         form.querySelectorAll("#repVisibility [data-preset]").forEach((b) => { const on = b.dataset.preset === preset; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
         // With the website off, the other places do nothing, and look it.
         const site = !!$("#f_is_public")?.checked;
@@ -8899,8 +8949,13 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       form.querySelectorAll("#repVisibility [data-preset]").forEach((b) => b.addEventListener("click", () => {
         const p = b.dataset.preset;
         apply("model", p); apply("agency", p); setCrew(p === "all");
+        peopleHere().forEach(([role]) => { if (role !== "client") setChoice(role, p); });
         paint();
       }));
+      $("#wisPeople")?.addEventListener("change", (e) => {
+        const sel = e.target.closest && e.target.closest("select[data-role]");
+        if (sel) { setChoice(sel.dataset.role, sel.value); paint(); }
+      });
       form.querySelectorAll(".wis-fine").forEach((b) => b.addEventListener("click", () => {
         const d = document.getElementById(b.dataset.fine);
         if (!d) return;
@@ -8939,6 +8994,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             ...(picked.length ? { modelKeys: picked, feedsModelCards: C("f_feeds_model_cards", false) } : {}),
             ...repSwitchValues(),
             showCrewSocials: C("f_show_crew_socials", false), showStatsOnCompCard: C("f_show_stats_comp", true), showStatsOnModelPortfolio: C("f_show_stats_port", true),
+            crewShow: readPick(), client: V("f_client"),
             showTestShootCategory: C("f_show_test_shoot_cat", false), showCredits: C("f_show_credits", true), showPdf: C("f_show_pdf", true), showInstagram: C("f_show_instagram", true), showKavyar: C("f_show_kavyar", true), showLocation: C("f_show_location", true),
             isPublic: C("f_is_public", true), showAsCompCard: C("f_on_compcards", false), hideFromCompCard: !C("f_on_compcards", false), showOnModelPortfolio: C("f_on_portfolio", false), disableCompCardDownload: C("f_disable_download", false), showPolaroidsInAlbum: C("f_show_polaroids", false),
             lightingDiagramVisibility: V("f_diagram_visibility") || base.lightingDiagramVisibility,
@@ -9812,6 +9868,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         showLocation: $("#f_show_location")?.checked ?? true,
         ...repSwitchValues(),
         showCrewSocials: $("#f_show_crew_socials")?.checked === true,
+        // Per-person choices (v636). Always written, even empty, so a publish from an older copy can't undo one.
+        crewShow: (() => { try { const o = JSON.parse($("#f_crew_show")?.value || "{}"); return o && typeof o === "object" && !Array.isArray(o) ? o : {}; } catch (e) { return {}; } })(),
         coverPhotoId: (coverItem ? coverItem.id : null),
         // When this copy was last changed, and which photos were taken out of
         // it: the two things that let a publish from another device tell a

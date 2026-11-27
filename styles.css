@@ -4735,4 +4735,5 @@ html.theme-dark .cx-live.is-going { color: #7aa7ff; background: rgba(122, 167, 2
 .wis-missing { margin: 6px 0 0 88px; font-size: 12px; line-height: 1.45; color: #8A5A10; }
 .theme-dark .wis-missing { color: #E3B25A; }
 .wis-missing[hidden] { display: none; }
+.wis-who { overflow-wrap: anywhere; }
 @media (max-width: 560px) { .wis-missing { margin-left: 0; } }

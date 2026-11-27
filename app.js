@@ -1663,6 +1663,26 @@ window.resolveContractArchive = function(version) {
   // A credit's handles allowed on a surface: the model's under their switches; the crew's under "Crew's socials".
   const modelHandleOk = (shoot, surface) => (h) => showRep(shoot, MODEL_SOCIAL[(classifySocial(h) || {}).kind] || "ModelWebsite", surface);
   const crewHandleOk = (shoot) => () => !!shoot && shoot.showCrewSocials === true;
+  /* What the pages say about each other person credited (v636, "Where it
+     shows" stage 3): album.crewShow = { mua: "ig", stylist: "hidden", … }.
+     A role with no entry stays as before: crew names show, with their links
+     only if the crew-links tick is on; a brand (the Client field) is not
+     credited at all. "All links" never includes an email address.
+     build-seo.mjs mirrors the hidden rule for the search-engine pages. */
+  const CREW_ROLES = [["secondaryPhotographers", "Second photographer"], ["artDirector", "Art direction"], ["stylist", "Styling"], ["hair", "Hair"], ["mua", "Make-up"], ["videographer", "Video"], ["mentor", "Mentor"], ["client", "Brand"]];
+  const CREW_CHOICES = ["hidden", "names", "ig", "all"];
+  const crewDefault = (shoot, role) => (role === "client" ? "hidden" : shoot && shoot.showCrewSocials === true ? "all" : "names");
+  const crewChoice = (shoot, role) => {
+    const v = shoot && shoot.crewShow && shoot.crewShow[role];
+    return CREW_CHOICES.includes(v) ? v : crewDefault(shoot, role);
+  };
+  const crewShown = (shoot, role) => crewChoice(shoot, role) !== "hidden";
+  const crewLinkOk = (shoot, role) => {
+    const c = crewChoice(shoot, role);
+    return (h) => { const kind = (classifySocial(h) || {}).kind; return c === "ig" ? kind === "instagram" : c === "all" ? kind !== "email" : false; };
+  };
+  // A credit's names, or "" where the studio keeps that role off.
+  const crewNames = (shoot, role) => (crewShown(shoot, role) ? shoot[role] : "");
   // The agency is typed like every other credit — "Name (@handle; site.com)" —
   // and stored split, because comp cards and PDFs print the name and link
   // the handle separately.
@@ -2059,6 +2079,12 @@ window.resolveContractArchive = function(version) {
     }
     if (local.feedsModelCards === undefined && typeof published.feedsModelCards === "boolean") {
       local.feedsModelCards = published.feedsModelCards;
+    }
+    // What each credited person shows (v636). A copy saved before it has no
+    // field at all; one saved since always has it, even empty, so publishing
+    // from an old copy or an old tab never undoes a "Hidden".
+    if (local.crewShow === undefined && published.crewShow) {
+      local.crewShow = published.crewShow;
     }
     // Whether the album shows its Polaroids. A copy saved before the switch
     // existed has no field; publishing from it must not hide them again.
@@ -3328,7 +3354,7 @@ window.resolveContractArchive = function(version) {
       const items = String(val).split(",").map(x => x.trim()).filter(Boolean);
       if (!items.length) return;
       const rendered = items.map(item => {
-        let html = isCcPage ? esc(getTalentCleanName(item)) : renderCreditLinks(item, ";", !!opts.plain, opts.allow || crewHandleOk(shoot));
+        let html = isCcPage ? esc(getTalentCleanName(item)) : renderCreditLinks(item, ";", !!opts.plain, (opts.allowFor && opts.allowFor(item)) || opts.allow || crewHandleOk(shoot));
         // A model line with no link of its own borrows the album's handle.
         if (opts.attachIg && igHtml && !html.includes("href=") && !html.includes("@")) html += ` <span class="lb-ig">${igHtml}</span>`;
         return `<span class="lb-person">${html}</span>`;
@@ -3348,13 +3374,16 @@ window.resolveContractArchive = function(version) {
       const agLinks = visibleAgencyLinks(shoot, viewSurface).map(l => `<a href="${esc(safeHref(l.url))}" target="_blank" rel="noopener noreferrer">${esc(l.label)}${l.kind === "email" ? "" : " ↗"}</a>`).join("");
       groups.push({ label: "Agency", rendered: [`<span class="lb-person">${esc(shoot.agency)}</span>`, ...(agLinks ? [`<span class="lb-person lb-person-sub">${agLinks}</span>`] : [])] });
     }
-    if (shoot.photographer || shoot.secondaryPhotographers) addGroup("Photography", [photographerCredit(shoot.photographer), shoot.secondaryPhotographers].filter(Boolean).join(", "));
-    if (shoot.mentor) addGroup("Mentor", shoot.mentor, { plural: "Mentors" });
-    if (shoot.artDirector) addGroup("Art direction", shoot.artDirector);
-    if (shoot.stylist) addGroup("Styling", shoot.stylist);
-    if (shoot.hair) addGroup("Hair", shoot.hair);
-    if (shoot.mua) addGroup("Make-up", shoot.mua);
-    if (shoot.videographer) addGroup("Video", shoot.videographer);
+    // Each credited person answers to their own choice on "Where it shows" (crewShow).
+    if (shoot.client && crewShown(shoot, "client")) addGroup("Brand", shoot.client, { allow: crewLinkOk(shoot, "client") });
+    if (shoot.photographer || shoot.secondaryPhotographers) {
+      const second = crewNames(shoot, "secondaryPhotographers");
+      const seconds = String(second || "").split(",").map((x) => x.trim()).filter(Boolean);
+      addGroup("Photography", [photographerCredit(shoot.photographer), second].filter(Boolean).join(", "),
+        { allowFor: (item) => (seconds.includes(item) ? crewLinkOk(shoot, "secondaryPhotographers") : null) });
+    }
+    [["mentor", "Mentor", { plural: "Mentors" }], ["artDirector", "Art direction"], ["stylist", "Styling"], ["hair", "Hair"], ["mua", "Make-up"], ["videographer", "Video"]]
+      .forEach(([role, label, extra]) => { if (shoot[role]) addGroup(label, crewNames(shoot, role), { ...(extra || {}), allow: crewLinkOk(shoot, role) }); });
     if (shoot.credits && shouldShowField(shoot, "Credits")) addGroup("Also", shoot.credits, { plain: true });
     // Where it was shot. The studio's own profiles used to ride along on this
     // row, and unlabelled under a location — two rows below the model's name,
@@ -4226,14 +4255,15 @@ window.resolveContractArchive = function(version) {
       // Socials line printed the same @handle again (V12).
       if (igHtml && showRep(s, "ModelInstagram", repSurface) && !/@|https?:/i.test(String(s.talent || ""))) creditsList.push(`Socials ${igHtml}`);
     } else {
+      if (s.client && crewShown(s, "client")) creditsList.push(`Brand <strong>${esc(getTalentCleanName(s.client))}</strong>`);
       if (s.photographer || s.secondaryPhotographers) {
-        const extra = (s.secondaryPhotographers || "").split(",").map(x => getTalentCleanName(x.trim())).filter(Boolean);
+        const extra = (crewNames(s, "secondaryPhotographers") || "").split(",").map(x => getTalentCleanName(x.trim())).filter(Boolean);
         creditsList.push(`Photo <strong>${esc([photographerCredit(s.photographer), ...extra].filter(Boolean).join(", "))}</strong>`);
       }
-      if (s.artDirector) creditsList.push(`AD <strong>${esc(s.artDirector)}</strong>`);
-      if (s.stylist && s.stylist !== "—") creditsList.push(`Style <strong>${esc(getTalentCleanName(s.stylist))}</strong>`);
-      if (s.hair && s.hair !== "—") creditsList.push(`Hair <strong>${esc(getTalentCleanName(s.hair))}</strong>`);
-      if (s.mua && s.mua !== "—") creditsList.push(`Make-up <strong>${esc(getTalentCleanName(s.mua))}</strong>`);
+      if (s.artDirector && crewShown(s, "artDirector")) creditsList.push(`AD <strong>${esc(s.artDirector)}</strong>`);
+      if (crewNames(s, "stylist") && s.stylist !== "—") creditsList.push(`Style <strong>${esc(getTalentCleanName(s.stylist))}</strong>`);
+      if (crewNames(s, "hair") && s.hair !== "—") creditsList.push(`Hair <strong>${esc(getTalentCleanName(s.hair))}</strong>`);
+      if (crewNames(s, "mua") && s.mua !== "—") creditsList.push(`Make-up <strong>${esc(getTalentCleanName(s.mua))}</strong>`);
       // renderCreditValue (not getTalentCleanName) on this branch: a regular
       // album can list several models, each with their own handle inlined,
       // and s.instagram won't necessarily carry them. This strips the
@@ -6055,8 +6085,9 @@ window.resolveContractArchive = function(version) {
     const agencyHere = album.agency && showRep(album, "Agency", "Home");
     const agencyLinks = agencyHere ? visibleAgencyLinks(album, "Home").map((l) => `<a href="${esc(safeHref(l.url))}" target="_blank" rel="noopener noreferrer">${esc(l.label)}${l.kind === "email" ? "" : " ↗"}</a>`).join(" ") : "";
     const credits = album.showCredits === false ? [] : [
-      ["Photographer", photographerCredit(getTalentCleanName(album.photographer))], ["Art direction", getTalentCleanName(album.artDirector)],
-      ["Styling", getTalentCleanName(album.stylist)], ["Hair", getTalentCleanName(album.hair)], ["Make-up", getTalentCleanName(album.mua)],
+      ["Brand", album.client && crewShown(album, "client") ? getTalentCleanName(album.client) : ""],
+      ["Photographer", photographerCredit(getTalentCleanName(album.photographer))], ["Art direction", getTalentCleanName(crewNames(album, "artDirector"))],
+      ["Styling", getTalentCleanName(crewNames(album, "stylist"))], ["Hair", getTalentCleanName(crewNames(album, "hair"))], ["Make-up", getTalentCleanName(crewNames(album, "mua"))],
       ["Agency", agencyHere ? album.agency : "", agencyLinks]
     ].filter(([, v]) => v && v !== "—");
     const others = albumPageList().filter((s) => s.id !== album.id)
@@ -9721,6 +9752,8 @@ window.resolveContractArchive = function(version) {
     updateCalBooking, view, wireView,
     // The "Where it shows" preview (v635): the viewer, the comp card builder and the visibility rules themselves.
     asVisitor, renderLbSidebar, buildCompCardDisplayList, qualifiesAsCompCard, cardShoots, visibleModelLinks, visibleAgencyLinks, statText,
+    // Per-person choices (v636).
+    CREW_ROLES,
   };
 
   (async function boot() {

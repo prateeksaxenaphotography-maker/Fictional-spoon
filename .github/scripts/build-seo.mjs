@@ -247,7 +247,11 @@ const albumLooks = (s) => {
   return out;
 };
 const realName = (x) => { const v = cleanName(x).replace(/^[—–-]+$/, "").trim(); return /[a-z]/i.test(v) ? v : ""; };
-const albumTeam = (s) => [...new Set([s.stylist, s.mua, s.hair, s.artDirector].map(realName).filter(Boolean))];
+// A role the studio keeps off ("Where it shows", album.crewShow) is not named here either; mirrors app.js crewShown.
+// A brand (the Client field) is only credited when the studio chose to.
+const crewName = (s, role) => (s.crewShow && s.crewShow[role] === "hidden" ? "" : s[role]);
+const brandCredit = (s) => (s.client && ["names", "ig", "all"].includes(s.crewShow && s.crewShow.client) ? s.client : "");
+const albumTeam = (s) => [...new Set(["stylist", "mua", "hair", "artDirector"].map((r) => realName(crewName(s, r))).filter(Boolean))];
 const albumLookCounts = (s) => {
   const n = new Map();
   for (const p of s.photos || []) {
@@ -428,8 +432,9 @@ function buildAlbumPage(s) {
   const description = String(s.description || "").trim() || albumSentence(s);
   const urlPath = albumUrl(s);
   const credits = s.showCredits === false ? [] : [
-    ["Photographer", (CONFIG.photographerName && cleanName(s.photographer) === BRAND) ? `${CONFIG.photographerName} (${BRAND})` : cleanName(s.photographer)], ["Art direction", cleanName(s.artDirector)], ["Styling", cleanName(s.stylist)],
-    ["Hair", cleanName(s.hair)], ["Make-up", cleanName(s.mua)]
+    ["Brand", cleanName(brandCredit(s))],
+    ["Photographer", (CONFIG.photographerName && cleanName(s.photographer) === BRAND) ? `${CONFIG.photographerName} (${BRAND})` : cleanName(s.photographer)], ["Art direction", cleanName(crewName(s, "artDirector"))], ["Styling", cleanName(crewName(s, "stylist"))],
+    ["Hair", cleanName(crewName(s, "hair"))], ["Make-up", cleanName(crewName(s, "mua"))]
   ].filter(([, v]) => v && v !== "—");
   const others = newestFirst.filter((o) => o.id !== s.id).slice(0, 6);
 

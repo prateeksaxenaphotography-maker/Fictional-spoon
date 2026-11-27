@@ -951,6 +951,11 @@ for (const s of shoots) {
   }
   if (s.forClient !== undefined && s.forClient !== "" && !CLIENT_KEYS.has(s.forClient)) fail(`album "${name}" is for an unknown client ${JSON.stringify(s.forClient)} — config.js clients are ${[...CLIENT_KEYS].join(", ")}`);
   if (s.alsoFor !== undefined && (!Array.isArray(s.alsoFor) || s.alsoFor.some((k) => !CLIENT_KEYS.has(k) || k === s.forClient))) fail(`album "${name}" has an alsoFor that is not a list of other known clients: ${JSON.stringify(s.alsoFor)}`);
+  // Per-person choices ("Where it shows", v636): an unknown role or choice would be read as "not set", silently.
+  if (s.crewShow !== undefined) {
+    const roles = ["secondaryPhotographers", "artDirector", "stylist", "hair", "mua", "videographer", "mentor", "client"], choices = ["hidden", "names", "ig", "all"];
+    if (!s.crewShow || typeof s.crewShow !== "object" || Array.isArray(s.crewShow) || Object.entries(s.crewShow).some(([k, v]) => !roles.includes(k) || !choices.includes(v))) fail(`album "${name}" has a crewShow the site cannot read: ${JSON.stringify(s.crewShow)}`);
+  }
 }
 
 // ── 10. a publish must not strip what the previous one carried ─────────────
