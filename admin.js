@@ -2368,6 +2368,8 @@ window.moveAdminPackageRow = function(index, dir) {
     saveCalendarSettings, showRep, showsOnModelPage, siteFromCredit, socialsFromCredit, syncCalendarWithAudits,
     syncCalendarWithShoots, toast, toggleCalDateBlock, uid, updateCalBooking, view,
     wireView,
+    // The "Where it shows" preview (v635).
+    asVisitor, renderLbSidebar, buildCompCardDisplayList, qualifiesAsCompCard, cardShoots, visibleModelLinks, visibleAgencyLinks, statText,
   } = A;
   // SHOOTS is reassigned on every load, so it is read live rather than
   // captured once: a snapshot here would leave the studio editing the album
@@ -7873,6 +7875,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                   <input id="f_feeds_model_cards" type="checkbox" style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent-text); flex: 0 0 auto;" />
                   <span>These photographs may appear on the models' own comp cards<br /><em id="f_feeds_hint" style="font-style: normal; font-weight: 400; font-size: var(--font-xs); color: var(--ink-soft);"></em></span>
                 </label>
+                <!-- The two settings together surprise: the switch off, the photos still reach the model's card. -->
+                <p class="wis-warn" id="wisFeedsNote" hidden>Comp cards is off, but these photos still reach the models' own comp cards because the tick above is on. Untick it to keep them off.</p>
               </div>
               <div class="wis-block" id="repVisibility">
                 <h4 class="wis-h">2 · What do people see about each person?</h4>
@@ -7892,6 +7896,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                     <label><input id="f_show_stats_comp" type="checkbox" checked /> Comp cards</label>
                     <label><input id="f_show_stats_port" type="checkbox" checked /> Model portfolio</label>
                   </div>
+                  <p class="wis-missing" id="wisModelMissing" hidden></p>
                   <div class="wis-detail" id="wisFineModel" hidden>
                 <table class="vis-table">
                   <thead><tr><th></th><th>Comp cards &amp; portfolio</th><th>Homepage</th><th>PDFs</th></tr></thead>
@@ -7912,6 +7917,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                     <select id="wisAgency" aria-label="What shows about the agency"><option value="hidden">Hidden</option><option value="names">Name only</option><option value="ig">Name + Instagram</option><option value="all">Name + all links</option><option value="custom" disabled>Custom — see Fine-tune</option></select>
                     <button type="button" class="wis-fine" data-fine="wisFineAgency" aria-expanded="false" aria-controls="wisFineAgency">Fine-tune ▸</button>
                   </div>
+                  <p class="wis-missing" id="wisAgencyMissing" hidden></p>
                   <div class="wis-detail" id="wisFineAgency" hidden>
                 <p class="wis-note">Agency links only appear where the agency name does.</p>
                 <table class="vis-table">
@@ -8884,6 +8890,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           l.classList.toggle("on", !!l.querySelector("input")?.checked && (isSite || site));
           l.classList.toggle("dim", !isSite && !site);
         });
+        const warn = $("#wisFeedsNote"), row = $("#f_feeds_row");
+        if (warn) warn.hidden = !(site && row && row.style.display !== "none" && $("#f_feeds_model_cards")?.checked && !$("#f_on_compcards")?.checked);
       };
       $("#wisModel")?.addEventListener("change", (e) => { apply("model", e.target.value); paint(); });
       $("#wisAgency")?.addEventListener("change", (e) => { apply("agency", e.target.value); paint(); });
@@ -8904,6 +8912,181 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       form.addEventListener("change", (e) => { if (e.target.closest && e.target.closest("#fs_publish")) paint(); });
       paint();
       setTimeout(paint, 0);   // an album being edited is filled in further down this function
+
+      /* ---- The preview (v635): what visitors will see, before saving --------
+         Drawn by the site's own viewer and comp card builder (asVisitor), so
+         it cannot say something the site would not. The album is the saved one
+         with what the form says now laid over it; the save itself is not
+         touched. */
+      const grid2 = form.closest(".upload-grid");
+      if (grid2 && typeof asVisitor === "function") {
+        const V = (id) => (($("#" + id) || {}).value || "").trim();
+        const C = (id, dflt) => { const el = $("#" + id); return el ? el.checked : dflt; };
+        const draftAlbum = () => {
+          const base = editingShoot ? { ...editingShoot } : { id: "preview-new-album", photos: [], createdAt: Date.now() };
+          const agency = V("f_agency"), picked = [...pickedModels];
+          const photos = staged.map((f, i) => ({ id: f.fullId || (f.id + "-" + i), url: f.url, dataUrl: f.dataUrl, ...(f.small ? { small: f.small } : {}), ...(f.medium ? { medium: f.medium } : {}), usage: f.usage || "both", polaroid: f.polaroid === true, look: f.look || "", models: Array.isArray(f.models) ? f.models : [], caption: f.caption || "", objectPosition: f.objectPosition, excludeFromCompCard: !!f.excludeFromCompCard }));
+          const out = {
+            ...base,
+            title: V("f_title") || "Untitled", brand: V("f_brand") || "Other", activity: V("f_activity"), type: V("f_type"), season: V("f_season"),
+            photographer: V("f_photographer") || "Studio", secondaryPhotographers: V("f_photographer2"), artDirector: V("f_ad"),
+            stylist: V("f_stylist") || "—", hair: V("f_hair") || "—", mua: V("f_mua") || "—", videographer: V("f_video") || "—",
+            mentor: V("f_mentor"), credits: V("f_credits"), talent: V("f_talent"), location: V("f_location"), description: V("f_desc"),
+            instagram: V("f_ig"), kavyar: V("f_kavyar"),
+            height: statIn("height"), chest: statIn("chest"), chestLabel: chestLabelOf({ chestLabel: V("f_chest_label") }), waist: statIn("waist"), hips: statIn("hips"), shoes: shoeIn(), modelHair: V("f_model_hair"), modelEyes: V("f_model_eyes"),
+            agencyCredit: agency, agency: getTalentCleanName(agency), agencyHandle: igHandleFromCredit(agency), agencySite: siteFromCredit(agency), agencyLinks: socialsFromCredit(agency),
+            modelEmail: V("f_model_email"), modelTypes: modelTypesOf({ modelTypes: readModelTypes() }),
+            ...(picked.length ? { modelKeys: picked, feedsModelCards: C("f_feeds_model_cards", false) } : {}),
+            ...repSwitchValues(),
+            showCrewSocials: C("f_show_crew_socials", false), showStatsOnCompCard: C("f_show_stats_comp", true), showStatsOnModelPortfolio: C("f_show_stats_port", true),
+            showTestShootCategory: C("f_show_test_shoot_cat", false), showCredits: C("f_show_credits", true), showPdf: C("f_show_pdf", true), showInstagram: C("f_show_instagram", true), showKavyar: C("f_show_kavyar", true), showLocation: C("f_show_location", true),
+            isPublic: C("f_is_public", true), showAsCompCard: C("f_on_compcards", false), hideFromCompCard: !C("f_on_compcards", false), showOnModelPortfolio: C("f_on_portfolio", false), disableCompCardDownload: C("f_disable_download", false), showPolaroidsInAlbum: C("f_show_polaroids", false),
+            lightingDiagramVisibility: V("f_diagram_visibility") || base.lightingDiagramVisibility,
+            photos,
+            coverPhotoId: (staged.find((x) => x.isCover) || staged[0] || {}).id || base.coverPhotoId || null
+          };
+          return out;
+        };
+        // The model records as the save would leave them (it writes the album's switches, and a lone model's details, onto them).
+        const draftRoster = (d) => {
+          const list = modelRoster((typeof getModels === "function" ? (getModels() || {}).items : null) || undefined).map((m) => ({ ...m }));
+          const keys = [...pickedModels];
+          if (!keys.length) return list;
+          if (keys.length === 1 && !list.some((m) => m.key === keys[0])) list.push({ key: keys[0], name: modelNameFromKey(keys[0]), talent: d.talent || modelNameFromKey(keys[0]) });
+          const flags = repSwitchValues();
+          return list.map((m) => {
+            if (!keys.includes(m.key)) return m;
+            const rec = { ...m, ...flags };
+            if (keys.length === 1) {
+              ["height", "chest", "waist", "hips", "shoes", "modelHair", "modelEyes", "modelEmail"].forEach((k) => { if (d[k]) rec[k] = d[k]; });
+              rec.chestLabel = d.chestLabel;
+              if (d.agencyCredit) Object.assign(rec, { agencyCredit: d.agencyCredit, agency: d.agency, agencyHandle: d.agencyHandle, agencySite: d.agencySite, agencyLinks: d.agencyLinks });
+              if (d.modelTypes && d.modelTypes.length) rec.modelTypes = d.modelTypes;
+            }
+            return rec;
+          });
+        };
+        const draftPool = (d) => {
+          const pool = (cardShoots() || []).slice(), i = pool.findIndex((s) => s.id === d.id);
+          if (i >= 0) pool[i] = d; else pool.unshift(d);
+          return pool;
+        };
+
+        const pv = document.createElement("div");
+        pv.className = "wis-preview";
+        pv.id = "wisPreview";
+        pv.hidden = true;
+        pv.innerHTML = `
+          <div class="wis-pv-head"><strong>What visitors see</strong>
+            <div class="wis-pv-tabs" role="group" aria-label="Which page">
+              <button type="button" data-pv="web" class="on" aria-pressed="true">Website</button>
+              <button type="button" data-pv="card" aria-pressed="false">Comp card</button>
+              <button type="button" data-pv="pdf" aria-pressed="false">PDFs</button>
+            </div>
+          </div>
+          <p class="wis-pv-note">Updates as you change things, before you save.</p>
+          <div class="wis-pv-body" aria-live="polite"></div>`;
+        const body = pv.querySelector(".wis-pv-body");
+        let pvTab = "web";
+        const empty = (msg) => `<div class="wis-pv-empty">${esc(msg)}</div>`;
+        // The preview is a picture of the page, not a second copy of it: no ids, no handlers.
+        const inert = (html) => String(html || "").replace(/\s(id|onclick|onchange)="[^"]*"/g, "");
+        const coverOf = (d) => d.photos.find((p) => String(p.id).split("-")[0] === d.coverPhotoId) || d.photos[0] || {};
+        const KIND = { instagram: "Instagram", kavyar: "Kavyar", linkedin: "LinkedIn", behance: "Behance", website: "Website", email: "Email" };
+        const pdfHtml = (d, card, pool) => asVisitor("CompCard", pool, () => {
+          const s = card || d;
+          const linkText = (l) => `${KIND[l.kind] || "Link"}: ${l.label}`;
+          const links = visibleModelLinks(s, "Pdf").map(linkText);
+          const email = s.modelEmail && showRep(s, "Email", "Pdf") ? s.modelEmail : "";
+          const agency = s.agency && showRep(s, "Agency", "Pdf") ? [s.agency, ...visibleAgencyLinks(s, "Pdf").map(linkText)] : [];
+          const stats = [["Height", statText("height", s.height)], [chestLabelOf(s), statText("chest", s.chest)], ["Waist", statText("waist", s.waist)], ["Hips", statText("hips", s.hips)], ["Shoes", statText("shoes", s.shoes)], ["Hair", s.modelHair], ["Eyes", s.modelEyes]]
+            .filter(([, v]) => v && String(v).trim()).map(([k, v]) => `${k} ${v}`);
+          const name = getTalentCleanName(s.talent || d.title);
+          const list = (arr) => (arr.length ? arr.map((x) => `<span class="lb-person">${esc(x)}</span>`).join("") : `<span class="lb-person wis-pv-no">nothing</span>`);
+          const row = (k, v) => `<div class="lb-credit"><dt>${esc(k)}</dt><dd>${v}</dd></div>`;
+          const block = (title, note, statsOn, emailText) => `<div class="wis-pv-pdf"><h5>${esc(title)}</h5>${note ? `<p class="wis-note">${esc(note)}</p>` : ""}<dl class="lb-credits">${row("Name", list([name]))}${row("Measurements", list(statsOn ? stats : []))}${row("Model contact", list(emailText ? links.concat(emailText) : links))}${row("Agency", list(agency))}</dl></div>`;
+          return block("Free comp card PDF", !d.showAsCompCard ? "This album is not on comp cards." : d.disableCompCardDownload ? "Its download is switched off." : "", s.showStatsOnCompCard !== false, email ? "Email: kept for the paid portfolio PDF" : "")
+            + block("Paid portfolio PDF", d.showOnModelPortfolio ? "" : "Model portfolio is off for this album.", s.showStatsOnModelPortfolio !== false, email ? `Email: ${email}` : "");
+        });
+        // A choice with nothing saved to show would look broken, so say why.
+        const sayMissing = (d) => {
+          const roster = draftRoster(d);
+          const rec = [...pickedModels].map((k) => roster.find((m) => m.key === k)).find(Boolean) || {};
+          const line = String(d.talent || "") + " " + String(rec.talent || "");
+          const modelIg = /@|instagram\.com/i.test(line) || !!d.instagram;
+          const modelAny = /\(/.test(line) || !!d.instagram || !!d.kavyar;
+          const agLinks = [...(d.agencyLinks || []), ...(rec.agencyLinks || [])];
+          const agName = d.agency || rec.agency || "";
+          const agIg = !!(d.agencyHandle || rec.agencyHandle || agLinks.some((l) => l.kind === "instagram"));
+          const agAny = agIg || !!(d.agencySite || rec.agencySite || agLinks.length);
+          const put = (id, msg) => { const el = $("#" + id); if (el) { el.textContent = msg; el.hidden = !msg; } };
+          const m = $("#wisModel")?.value, a = $("#wisAgency")?.value;
+          put("wisModelMissing", m === "ig" && !modelIg ? "No Instagram is saved for this model yet. Add it under Credits, like Name (@handle)."
+            : m === "all" && !modelAny ? "No links are saved for this model yet. Add them under Credits, like Name (@handle; website)." : "");
+          put("wisAgencyMissing", a !== "hidden" && !agName ? "No agency is named for this album. Add it under Credits."
+            : a === "ig" && !agIg ? "No Instagram is saved for this agency yet."
+              : a === "all" && !agAny ? "No links are saved for this agency yet." : "");
+        };
+        const draw = () => {
+          if (pv.hidden) return;
+          let html = "";
+          try {
+            const d = draftAlbum(), pool = draftPool(d);
+            sayMissing(d);
+            if (pvTab === "web") {
+              if (!d.isPublic) html = empty("The Website switch is off, so visitors don't see this album at all.");
+              else {
+                const cover = coverOf(d), src = photoSrc(cover);
+                html = (src ? `<img class="wis-pv-photo" src="${esc(src)}" alt="" />` : "") + inert(asVisitor("Home", pool, () => renderLbSidebar({ ...cover, shoot: d, shootId: "__preview__" })));
+              }
+            } else {
+              const roster = draftRoster(d);
+              const card = asVisitor("CompCard", pool, () => buildCompCardDisplayList(pool.filter((s) => qualifiesAsCompCard(s)), "type", "Comp Cards", { roster, pool }).find((c) => (c.sourceShootIds || []).includes(d.id) || c.id === d.id) || null);
+              if (pvTab === "pdf") html = pdfHtml(d, card, pool);
+              else if (!card) html = empty(!d.isPublic ? "The Website switch is off, so this album is on no comp card." : "This album isn't on a model's comp card. Switch Comp cards on (and name the model) to see it there.");
+              else {
+                const cover = (card.photos || [])[0] || {}, src = photoSrc(cover);
+                html = (src ? `<img class="wis-pv-photo" src="${esc(src)}" alt="" />` : "") + inert(asVisitor("CompCard", pool, () => renderLbSidebar({ ...cover, shoot: card, shootId: "__preview__" })));
+              }
+            }
+          } catch (err) {
+            console.error("Preview:", err);
+            html = empty("The preview could not be drawn. Saving is not affected.");
+          }
+          body.innerHTML = html;
+        };
+        let drawTimer = 0;
+        const redraw = () => { clearTimeout(drawTimer); drawTimer = setTimeout(draw, 120); };
+        pv.querySelectorAll("[data-pv]").forEach((b) => b.addEventListener("click", () => {
+          pvTab = b.dataset.pv;
+          pv.querySelectorAll("[data-pv]").forEach((x) => { const on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-pressed", String(on)); });
+          draw();
+        }));
+        // Beside the form on a wide screen (the photos make way for it), above the tab's own settings on a narrow one.
+        const wide = window.matchMedia("(min-width: 1068px)");
+        const place = () => {
+          const on = form.dataset.tab === "fs_publish";
+          pv.hidden = !on;
+          grid2.classList.toggle("wis-previewing", on && wide.matches);
+          if (!on) return;
+          paint();   // who is ticked may have changed on another tab
+          if (wide.matches) { if (pv.parentNode !== grid2) grid2.insertBefore(pv, grid2.firstChild); }
+          else { const fs = $("#fs_publish"); if (fs && pv.parentNode !== fs) fs.insertBefore(pv, fs.querySelector(".wis-block")); }
+          redraw();
+        };
+        if ("MutationObserver" in window) new MutationObserver(place).observe(form, { attributes: true, attributeFilter: ["data-tab"] });
+        if (wide.addEventListener) wide.addEventListener("change", place);
+        form.addEventListener("input", redraw);
+        form.addEventListener("change", redraw);
+        form.addEventListener("click", (e) => { if (e.target.closest("#fs_publish button")) redraw(); });
+        // "↑ Photos" while the preview has the photo column: go back to the first tab, where the photos are.
+        $("#stickyJumpPhotos")?.addEventListener("click", () => {
+          if (!grid2.classList.contains("wis-previewing")) return;
+          document.querySelector('#uploadSections button[data-target="fs_shoot"]')?.click();
+          setTimeout(() => $("#dropzone")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+        });
+        setTimeout(place, 0);
+      }
     }
     // Photos added here and not yet saved are lost if the tab closes, so the
     // browser is asked to warn first (A17). Saved or published, the flag drops.

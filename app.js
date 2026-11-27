@@ -2594,7 +2594,18 @@ window.resolveContractArchive = function(version) {
      written into the frame directly and never loads this script, so it is not
      affected. */
   const isFramed = () => { try { return window.top !== window.self; } catch (e) { return true; } };
-  const isAdmin = () => !isFramed() && isAdminAuthorized() && sessionStorage.getItem("wps-admin") === "1";
+  /* The album editor's preview ("Where it shows", v635) draws the viewer as a
+     visitor on a named page, from an album that may not be saved yet. While
+     asVisitor runs, and only then (it is synchronous), nobody is the admin,
+     the page counts as that surface, and the album list is the one handed in. */
+  let previewAs = null;
+  const asVisitor = (surface, pool, fn) => {
+    const was = previewAs, card = window.currentCompCardShootObj;
+    previewAs = { surface, pool };
+    try { return fn(); }
+    finally { previewAs = was; window.currentCompCardShootObj = card; }
+  };
+  const isAdmin = () => !previewAs && !isFramed() && isAdminAuthorized() && sessionStorage.getItem("wps-admin") === "1";
 
   /* The studio's own half of the app — the /calendar, /contracts and /upload
      screens, the code and package editors, the contract archive, publishing —
@@ -2691,6 +2702,7 @@ window.resolveContractArchive = function(version) {
   // portfolio PDF could not be offered beside a comp card.)
   const COMP_CARDS_PAGE = "/services/model-portfolio-shoot-noida/";
   function isCurrentlyCompCardView() {
+    if (previewAs) return previewAs.surface === "CompCard";
     if (location.pathname.replace(/\/?$/, "/") === COMP_CARDS_PAGE) return true;
     const search = location.pathname + location.search;
     const decoded = decodeURIComponent(search).replace(/\+/g, " ");
@@ -2781,7 +2793,7 @@ window.resolveContractArchive = function(version) {
   // polaroids; reading this where SHOOTS was meant would leak a polaroid into
   // an album, which is why the album side is the default and this is opt in.
   let CARD_SHOOTS = [];
-  const cardShoots = () => (CARD_SHOOTS.length ? CARD_SHOOTS : SHOOTS);
+  const cardShoots = () => (previewAs && previewAs.pool ? previewAs.pool : CARD_SHOOTS.length ? CARD_SHOOTS : SHOOTS);
   let usingDemo = true;
   let CURRENT_VIEW_SHOOTS = [];
   // Resolves once boot() has loaded shoots and painted the first render (or
@@ -9707,6 +9719,8 @@ window.resolveContractArchive = function(version) {
     putShoot, readAsDataURL, removeCalBooking, render, repSwitchValues, resize, webPhoto, isPhotoFile, refusedPhotosText, saveCalendarSettings, showRep,
     showsOnModelPage, siteFromCredit, socialsFromCredit, syncCalendarWithAudits, syncCalendarWithShoots, toast, toggleCalDateBlock, uid,
     updateCalBooking, view, wireView,
+    // The "Where it shows" preview (v635): the viewer, the comp card builder and the visibility rules themselves.
+    asVisitor, renderLbSidebar, buildCompCardDisplayList, qualifiesAsCompCard, cardShoots, visibleModelLinks, visibleAgencyLinks, statText,
   };
 
   (async function boot() {

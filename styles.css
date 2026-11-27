@@ -4713,3 +4713,26 @@ html.theme-dark .cx-live.is-going { color: #7aa7ff; background: rgba(122, 167, 2
 .wis-detail[hidden] { display: none; }
 .wis-note { margin: 4px 0; font-size: 12px; color: var(--ink-soft); }
 @media (max-width: 560px) { .wis-row { grid-template-columns: 1fr; gap: 6px; } .wis-stats { margin-left: 0; } .upload-grid #fs_publish .wis-block, .wis-block { padding: 12px; } }
+
+/* The preview beside "Where it shows" (v635): drawn by the site's own viewer, never clickable. */
+.upload-grid.wis-previewing > .dropzone { display: none; }
+.wis-preview { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+.wis-preview[hidden] { display: none; }
+.upload-grid > .wis-preview { grid-column: 1; grid-row: 1; position: sticky; top: calc(100px + var(--admin-banner-h, 0px)); max-height: calc(100vh - 140px); overflow-y: auto; margin: 0; }
+.wis-pv-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.wis-pv-head strong { font-family: "Inter", system-ui, sans-serif; font-size: 15px; color: var(--ink); }
+.wis-pv-tabs { display: flex; gap: 6px; }
+.upload-grid .wis-pv-tabs button, #fs_publish .wis-pv-tabs button { padding: 6px 12px; border: 1px solid var(--line); border-radius: 99px; background: var(--paper); color: var(--ink); font-family: "Inter", system-ui, sans-serif; font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; cursor: pointer; }
+.upload-grid .wis-pv-tabs button.on, #fs_publish .wis-pv-tabs button.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.wis-pv-note { margin: 8px 0 12px; font-size: 12px; color: var(--ink-soft); }
+.wis-pv-body * { pointer-events: none; }
+.wis-pv-photo { display: block; width: 100%; max-height: 220px; object-fit: cover; border-radius: 10px; margin-bottom: 12px; }
+.wis-pv-empty { padding: 18px; border: 1px dashed var(--line); border-radius: 10px; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
+.wis-pv-pdf h5 { margin: 12px 0 4px; font-family: "Inter", system-ui, sans-serif; font-size: 13.5px; color: var(--ink); }
+.wis-pv-no { color: var(--ink-soft); font-style: italic; }
+.wis-warn { margin: 8px 0 0; padding: 8px 10px; border: 1px solid #B7791F; border-radius: 8px; background: rgba(183,121,31,.09); font-size: 12.5px; line-height: 1.45; color: var(--ink); }
+.wis-warn[hidden] { display: none; }
+.wis-missing { margin: 6px 0 0 88px; font-size: 12px; line-height: 1.45; color: #8A5A10; }
+.theme-dark .wis-missing { color: #E3B25A; }
+.wis-missing[hidden] { display: none; }
+@media (max-width: 560px) { .wis-missing { margin-left: 0; } }
