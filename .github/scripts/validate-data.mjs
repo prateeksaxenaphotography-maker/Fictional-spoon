@@ -956,6 +956,11 @@ for (const s of shoots) {
     const roles = ["secondaryPhotographers", "artDirector", "stylist", "hair", "mua", "videographer", "mentor", "client"], choices = ["hidden", "names", "ig", "all"];
     if (!s.crewShow || typeof s.crewShow !== "object" || Array.isArray(s.crewShow) || Object.entries(s.crewShow).some(([k, v]) => !roles.includes(k) || !choices.includes(v))) fail(`album "${name}" has a crewShow the site cannot read: ${JSON.stringify(s.crewShow)}`);
   }
+  // "Use these for new albums" (v638): a snapshot of switches, never anything else (and never an email switch).
+  if (s.newAlbumDefaults !== undefined) {
+    const d = s.newAlbumDefaults;
+    if (!d || typeof d !== "object" || !d.ticks || typeof d.ticks !== "object" || Object.entries(d.ticks).some(([k, v]) => !/^f_show_[a-z_]+$/.test(k) || /email/.test(k) || typeof v !== "boolean")) fail(`album "${name}" has saved new-album choices the site cannot read: ${JSON.stringify(d).slice(0, 200)}`);
+  }
 }
 
 // ── 10. a publish must not strip what the previous one carried ─────────────

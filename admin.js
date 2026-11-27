@@ -7664,6 +7664,9 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               <span style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft);">Polaroid:</span>
               <button type="button" class="thumb-bulk-polaroid-btn" data-on="1" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">Mark as Polaroid</button>
               <button type="button" class="thumb-bulk-polaroid-btn" data-on="0" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink-soft); cursor:pointer;">Not a Polaroid</button>
+              <span style="width:1px; align-self:stretch; background:var(--line-2);"></span>
+              <span style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft);">Shows on:</span>
+              ${[["both", "Comp card + Portfolio"], ["comp", "Comp card only"], ["portfolio", "Portfolio only"], ["none", "Album only"]].map(([u, t]) => `<button type="button" class="thumb-bulk-show-btn" data-usage="${u}" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">${t}</button>`).join("")}
               <!-- Filled in whenever the album has more than one model in it:
                    with six models and forty frames, tagging one at a time is
                    the difference between the feature being used and not. -->
@@ -7967,6 +7970,11 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                   <input id="f_show_gear" type="checkbox" checked />
                 </div>
               </div>
+              <div class="wis-copy">
+                <button type="button" id="wisUseNew" title="New albums start with these choices">Use these for new albums</button>
+                <button type="button" id="wisApplyModel">Apply to this model's other albums</button>
+                <p class="wis-note" id="wisCopyNote" role="status" aria-live="polite"></p>
+              </div>
             </fieldset>
 
 
@@ -8109,6 +8117,27 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         selectedForBulk.clear();
         renderStaged();
         toast(on ? `${n} photo${n > 1 ? "s" : ""} marked as Polaroid.` : `${n} photo${n > 1 ? "s" : ""} no longer ${n > 1 ? "are" : "is a"} Polaroid${n > 1 ? "s" : ""}.`);
+      });
+    });
+    // Where a photo shows, a batch at a time (v638): the same stored usage the
+    // tile's Comp card and Portfolio buttons set.
+    bulkToolbar?.querySelectorAll(".thumb-bulk-show-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (!selectedForBulk.size) { toast("Tick the checkbox on each photo first."); return; }
+        const usage = btn.dataset.usage;
+        let n = 0, kept = 0;
+        staged.forEach((item) => {
+          if (!selectedForBulk.has(item.id)) return;
+          // A Polaroid is left out of the album, so it cannot be album only.
+          if (usage === "none" && item.polaroid) { kept++; return; }
+          item.usage = usage;
+          item.excludeFromCompCard = usage === "portfolio" || usage === "none";
+          n++;
+        });
+        selectedForBulk.clear();
+        renderStaged();
+        const where = { both: "comp card and portfolio", comp: "comp card only", portfolio: "portfolio only", none: "the album only" }[usage];
+        toast(`${n} photo${n === 1 ? " now shows" : "s now show"} on ${where}.${kept ? ` ${kept} Polaroid${kept === 1 ? " was" : "s were"} left as before.` : ""}`);
       });
     });
     // Kind of work, a look at a time: tick the photos of one look, click its kind.
@@ -8874,6 +8903,47 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       activate(chips[0].dataset.target);
       syncChips();
     }
+    /* The two copy buttons on "Where it shows" (v638). Both only mark what the
+       next save should also do, so nothing changes until the album is saved.
+
+       "Use these for new albums" keeps a snapshot on this album
+       (newAlbumDefaults); a new album starts from the newest one. Only what
+       people see: never where an album appears, never an email or a brand
+       credit, since the next album may be someone else. */
+    let newDefaults = null;     // set by the button, saved with this album
+    let applyToModel = "";      // model key: copy to their other albums on save
+    const DEFAULT_TICKS = [
+      ...["ig", "kavyar", "linkedin", "behance", "website", "agency", "agency_ig", "agency_kavyar", "agency_linkedin", "agency_behance", "agency_website"]
+        .flatMap((id) => ["cc", "home", "pdf"].map((s) => `f_show_${id}_${s}`)),
+      "f_show_crew_socials", "f_show_stats_comp", "f_show_stats_port", "f_show_credits", "f_show_pdf", "f_show_instagram", "f_show_kavyar", "f_show_location"
+    ];
+    const savedDefaults = () => shootsNow()
+      .filter((s) => s && !s.demo && s.newAlbumDefaults && s.newAlbumDefaults.ticks)
+      .sort((a, b) => (Number(b.newAlbumDefaults.at) || 0) - (Number(a.newAlbumDefaults.at) || 0))[0] || null;
+    // A model's other albums: the ones with them alone, and a count of the shared ones.
+    const modelAlbums = (key) => {
+      const theirs = shootsNow().filter((s) => s && !s.demo && s.id !== (editingShoot && editingShoot.id) && albumModelKeys(s).includes(key));
+      return { alone: theirs.filter((s) => albumModelKeys(s).length === 1), shared: theirs.filter((s) => albumModelKeys(s).length > 1).length };
+    };
+    /* Copies the model, agency and measurement choices. Each album is first
+       merged with the published copy as it is now, so an edit made on another
+       computer is not undone by this one. */
+    const copyToModelAlbums = async (key, patch) => {
+      const live = new Map();
+      try {
+        const res = await fetch(`/data.js?live=${Date.now()}`, { cache: "no-store" });
+        if (res.ok) (parseShootsFromDataJs(await res.text()) || []).forEach((s) => live.set(s.id, s));
+      } catch (e) { /* offline: this computer's copy is all there is */ }
+      let n = 0;
+      for (const s of modelAlbums(key).alone) {
+        const published = live.get(s.id);
+        const base = published ? mergeAlbumCopies({ ...s }, published) : s;
+        await putShoot({ ...base, ...patch, updatedAt: Date.now() });
+        n++;
+      }
+      return n;
+    };
+
     /* "Where it shows" (v634): the drop-downs and the three presets are only
        views onto the ticks, never a second store. Choosing one sets the ticks
        (with a change event each); a tick changed by hand updates the
@@ -8995,8 +9065,74 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         b.textContent = open ? "Fine-tune ▾" : "Fine-tune ▸";
       }));
       form.addEventListener("change", (e) => { if (e.target.closest && e.target.closest("#fs_publish")) paint(); });
+
+      /* ---- The two copy buttons (v638) ---- */
+      const useBtn = $("#wisUseNew"), modelBtn = $("#wisApplyModel"), copyNote = $("#wisCopyNote");
+      let startedFrom = "";
+      const theModel = () => (pickedModels.size === 1 ? [...pickedModels][0] : "");
+      const paintCopy = () => {
+        if (!useBtn || !modelBtn || !copyNote) return;
+        useBtn.textContent = newDefaults ? "✓ New albums will use these (undo)" : "Use these for new albums";
+        useBtn.setAttribute("aria-pressed", String(!!newDefaults));
+        const key = theModel();
+        if (applyToModel && applyToModel !== key) applyToModel = "";   // who is in the album changed
+        const { alone, shared } = key ? modelAlbums(key) : { alone: [], shared: 0 };
+        const name = key ? rosterName(key) : "";
+        modelBtn.disabled = !alone.length;
+        modelBtn.setAttribute("aria-pressed", String(!!applyToModel));
+        modelBtn.textContent = applyToModel ? `✓ Also updating ${alone.length} of ${name}'s albums (undo)`
+          : alone.length ? `Apply to ${name}'s other albums (${alone.length})` : "Apply to this model's other albums";
+        const notes = [];
+        if (newDefaults) notes.push("Save this album to keep them. New albums start with these “what people see” choices; where they appear, emails and brand credit are not copied.");
+        if (applyToModel) notes.push(`Saving this album also updates: ${alone.map((s) => s.title || "Untitled").join(", ")}.`);
+        if (!applyToModel && !alone.length) notes.push(pickedModels.size > 1 ? "“Apply” works on albums with one model." : key ? `${name} has no other albums of their own${shared ? " (shared albums are left alone)" : ""}.` : "Choose who is in the album to copy these to their other albums.");
+        if (startedFrom && !newDefaults) notes.push(`Started from your saved choices (from “${startedFrom}”).`);
+        copyNote.textContent = notes.join(" ");
+      };
+      useBtn?.addEventListener("click", () => {
+        if (newDefaults) newDefaults = null;
+        else {
+          const crew = readPick();
+          delete crew.client;
+          newDefaults = { at: Date.now(), ticks: Object.fromEntries(DEFAULT_TICKS.map((id) => [id, !!$("#" + id)?.checked])), crew };
+        }
+        paintCopy();
+      });
+      // The snapshot is of what is on screen when the album is saved, not when the button was pressed.
+      form.addEventListener("change", (e) => {
+        if (newDefaults && e.target.closest && e.target.closest("#fs_publish")) {
+          const crew = readPick();
+          delete crew.client;
+          newDefaults = { at: newDefaults.at, ticks: Object.fromEntries(DEFAULT_TICKS.map((id) => [id, !!$("#" + id)?.checked])), crew };
+        }
+        paintCopy();
+      });
+      modelBtn?.addEventListener("click", () => {
+        if (applyToModel) { applyToModel = ""; paintCopy(); return; }
+        const key = theModel();
+        if (!key) return;
+        const { alone, shared } = modelAlbums(key);
+        if (!alone.length) return;
+        const email = ["email", "agency_email"].some((id) => ["cc", "home", "pdf"].some((s) => $(`#f_show_${id}_${s}`)?.checked));
+        const ask = `When you save this album, copy its model, agency and measurement choices to ${rosterName(key)}'s other album${alone.length === 1 ? "" : "s"} too?\n\n${alone.map((s) => "• " + (s.title || "Untitled")).join("\n")}\n\nWhere each album appears does not change.${email ? "\n\nThis includes SHOWING AN EMAIL ADDRESS." : ""}${shared ? `\n\n${shared} album${shared === 1 ? "" : "s"} shared with other models will be left as ${shared === 1 ? "it is" : "they are"}.` : ""}`;
+        if (confirm(ask)) applyToModel = key;
+        paintCopy();
+      });
+      // The model can be ticked on another tab; look again when this one opens.
+      if ("MutationObserver" in window) new MutationObserver(paintCopy).observe(form, { attributes: true, attributeFilter: ["data-tab"] });
+
+      // A new album starts from the choices saved with "Use these for new albums".
+      if (!editId) {
+        const from = savedDefaults();
+        if (from) {
+          const { ticks, crew } = from.newAlbumDefaults;
+          DEFAULT_TICKS.forEach((id) => { if (typeof ticks[id] === "boolean") tick($("#" + id), ticks[id]); });
+          if (crew && typeof crew === "object") writePick({ ...crew });
+          startedFrom = from.title || "Untitled";
+        }
+      }
       paint();
-      setTimeout(paint, 0);   // an album being edited is filled in further down this function
+      setTimeout(() => { paint(); paintCopy(); }, 0);   // an album being edited is filled in further down this function
 
       /* ---- The preview (v635): what visitors will see, before saving --------
          Drawn by the site's own viewer and comp card builder (asVisitor), so
@@ -9890,6 +10026,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         showCrewSocials: $("#f_show_crew_socials")?.checked === true,
         // Per-person choices (v636). Always written, even empty, so a publish from an older copy can't undo one.
         crewShow: (() => { try { const o = JSON.parse($("#f_crew_show")?.value || "{}"); return o && typeof o === "object" && !Array.isArray(o) ? o : {}; } catch (e) { return {}; } })(),
+        // "Use these for new albums" (v638): set by the button, otherwise kept as it was.
+        ...(newDefaults || (editingShoot && editingShoot.newAlbumDefaults) ? { newAlbumDefaults: newDefaults || editingShoot.newAlbumDefaults } : {}),
         coverPhotoId: (coverItem ? coverItem.id : null),
         // When this copy was last changed, and which photos were taken out of
         // it: the two things that let a publish from another device tell a
@@ -9944,6 +10082,16 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         return;
       }
       window.__uploadDirty = false;
+      // "Apply to this model's other albums" (v638): after this album is safely saved.
+      let copied = 0;
+      if (applyToModel && pickedModels.size === 1 && pickedModels.has(applyToModel)) {
+        try {
+          copied = await copyToModelAlbums(applyToModel, { ...repSwitchValues(), showStatsOnCompCard: shoot.showStatsOnCompCard, showStatsOnModelPortfolio: shoot.showStatsOnModelPortfolio });
+        } catch (err) {
+          console.error("Copying to the model's other albums failed:", err);
+          alert(`“${shoot.title}” is saved, but the choices could not be copied to all of this model's other albums. Open the album again and press Apply once more.`);
+        }
+      }
       await loadShoots();
       // The camera originals of the new photos (v633): kept on this computer
       // now, before the form is cleared, and copied to the private storage
@@ -9951,7 +10099,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       // problem here never costs the studio its photos.
       const keeping = origKeepOn() ? origKeepStaged(staged.filter((x) => x.original).map((x) => ({ id: String(x.id).split("-")[0], file: x.original }))) : Promise.resolve();
       // Saved here; "live" is only said once GitHub has taken it (A11).
-      toast(`Saved “${shoot.title}” on this device — publishing it now…`);
+      toast(`Saved “${shoot.title}”${copied ? ` and updated ${copied} other album${copied === 1 ? "" : "s"}` : ""} on this device — publishing ${copied ? "them" : "it"} now…`);
       staged = [];
       history.pushState(null, "", "/"); render();
       try { await syncToGitHub(shootsNow()); }

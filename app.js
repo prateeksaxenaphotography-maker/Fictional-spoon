@@ -2086,6 +2086,10 @@ window.resolveContractArchive = function(version) {
     if (local.crewShow === undefined && published.crewShow) {
       local.crewShow = published.crewShow;
     }
+    // "Use these for new albums" (v638), kept on the album it was pressed on.
+    if (local.newAlbumDefaults === undefined && published.newAlbumDefaults) {
+      local.newAlbumDefaults = published.newAlbumDefaults;
+    }
     // Whether the album shows its Polaroids. A copy saved before the switch
     // existed has no field; publishing from it must not hide them again.
     if (local.showPolaroidsInAlbum === undefined && typeof published.showPolaroidsInAlbum === "boolean") {

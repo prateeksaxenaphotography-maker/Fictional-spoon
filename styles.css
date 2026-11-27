@@ -4710,6 +4710,13 @@ html.theme-dark .cx-live.is-going { color: #7aa7ff; background: rgba(122, 167, 2
 .wis-detail { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow-x: auto; }
 .wis-detail[hidden] { display: none; }
 .wis-note { margin: 4px 0; font-size: 12px; color: var(--ink-soft); }
+/* The two copy buttons at the foot of the tab (v638). */
+.wis-copy { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+#fs_publish .wis-copy button { padding: 9px 14px; border: 1.5px solid var(--line); border-radius: 99px; background: var(--surface); color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer; text-align: left; }
+#fs_publish .wis-copy button[aria-pressed="true"] { border-color: var(--accent); background: rgba(210,78,26,.08); color: var(--accent-text); }
+#fs_publish .wis-copy button:disabled { opacity: .5; cursor: default; }
+.wis-copy .wis-note { flex-basis: 100%; }
+.wis-copy .wis-note:empty { display: none; }
 @media (max-width: 560px) { .wis-row { grid-template-columns: 1fr; gap: 6px; } .wis-stats { margin-left: 0; } .upload-grid #fs_publish .wis-block, .wis-block { padding: 12px; } }
 
 /* The preview beside "Where it shows" (v635): drawn by the site's own viewer, never clickable. */
