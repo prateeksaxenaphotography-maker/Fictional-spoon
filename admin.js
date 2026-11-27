@@ -7682,7 +7682,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               <button type="button" data-target="fs_credits">Credits</button>
               <button type="button" data-target="modelStatsFieldset">Model stats</button>
               <button type="button" data-target="fs_details">Details &amp; links</button>
-              <button type="button" data-target="fs_publish">Publish settings</button>
+              <button type="button" data-target="fs_publish">Where it shows</button>
             </nav>
 
             <fieldset id="fs_shoot"><legend>The shoot</legend>
@@ -7761,12 +7761,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                      belong to the person, not to this shoot, so they follow
                      them onto every card built from any album they are in. -->
                 <div id="f_model_detail" style="display: none; margin-top: 12px; padding: 14px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--bone-2);"></div>
-                <label id="f_feeds_row" style="display: none; align-items: flex-start; gap: 10px; margin-top: 14px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
-                  <input id="f_feeds_model_cards" type="checkbox" style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent-text); flex: 0 0 auto;" />
-                  <span>These photographs may appear on the models' own comp cards<br /><em id="f_feeds_hint" style="font-style: normal; font-weight: 400; font-size: var(--font-xs); color: var(--ink-soft);"></em></span>
-                </label>
               </div>
-              <p class="field-note credits-note" style="margin-top: -2px;">Models move between agencies — the comp card and PDF use the agency from the model's most recent album. Where the agency and email may appear is set under Publish settings.</p>
+              <p class="field-note credits-note" style="margin-top: -2px;">Models move between agencies — the comp card and PDF use the agency from the model's most recent album. What shows, where, is set under Where it shows.</p>
               <div class="field-row" id="f_mentor_row" style="display: none;">
                 <label class="field" style="grid-column: 1 / -1;"><span>Teacher / Mentor</span><input id="f_mentor" type="text" placeholder="e.g. Mentor One (@handle; site.com), Mentor Two" /><span class="field-verify" id="f_mentor_verify" style="display: none;"></span></label>
               </div>
@@ -7816,16 +7812,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               </div>
               <label class="field"><span>Eye color</span><input id="f_model_eyes" type="text" placeholder="e.g. Green" /></label>
               ${measureUnitsChooser("f_measure_units_album")}
-              <div class="field-row" style="margin-top: 12px; gap: 20px; flex-wrap: wrap;">
-                <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
-                  <input id="f_show_stats_comp" type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--accent-text);" />
-                  Show stats on Comp Cards
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
-                  <input id="f_show_stats_port" type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--accent-text);" />
-                  Show stats on Model Portfolio
-                </label>
-              </div>
+              <p class="field-note" style="margin-top: 12px;">Where measurements show is set under Where it shows.</p>
               </div>
             </fieldset>
 
@@ -7862,55 +7849,74 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               </div>
             </fieldset>
 
-            <!-- Everything that decides WHERE the album shows up, in one place.
-                 These toggles used to be split between "Links & meta" (homepage
-                 / comp card / PDF) and "Visibility & Privacy" (public + field
-                 visibility), with the TFP category tag off in "The shoot". -->
-            <fieldset id="fs_publish"><legend>Publish settings</legend>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <input id="f_is_public" type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--accent-text); margin: 0; cursor: pointer;" />
-                <label for="f_is_public" style="font-weight: 600; cursor: pointer; margin: 0;">Show this album on the site <span class="label-hint" style="font-weight: 400; text-transform: none; letter-spacing: 0; font-family: inherit; font-size: 12.5px;">— untick to keep it off the homepage, Albums and every other page. It stays saved, and its photos are still offered in your portfolio book: a book-only album.</span></label>
-              </div>
-              <div class="publish-toggles">
-                <label>
-                  <input id="f_featured" type="checkbox" checked style="width: 15px; height: 15px; accent-color: var(--accent-text); margin: 3px 0 0;" />
-                  <span class="tog-text"><strong>Show on the homepage</strong><small>In Photoshoots on the home page. The album stays on Albums either way.</small></span>
-                </label>
-                <label>
-                  <input id="f_on_compcards" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent-text); margin: 3px 0 0;" />
-                  <span class="tog-text"><strong>Show on Comp cards</strong><small>On for test shoots unless you untick it. The album itself stays on the site either way.</small></span>
-                </label>
-                <label>
-                  <input id="f_on_portfolio" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent-text); margin: 3px 0 0;" />
-                  <span class="tog-text"><strong>Show on Model portfolio</strong><small>On for test shoots unless you untick it. Its photos can go into portfolio PDFs.</small></span>
-                </label>
-                <label>
-                  <input id="f_show_polaroids" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent-text); margin: 3px 0 0;" />
-                  <span class="tog-text"><strong>Show polaroids in this album</strong><small>Photos marked Polaroid stay on comp cards and PDFs and are left out of the album. Tick this to show them in the album too.</small></span>
-                </label>
-                <label>
-                  <input id="f_disable_download" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent-text); margin: 3px 0 0;" />
-                  <span class="tog-text"><strong>Turn off the comp card download</strong><small>People can still see the comp card, just not download it. The paid portfolio PDF isn't affected.</small></span>
-                </label>
-                <label>
-                  <input id="f_show_test_shoot_cat" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent-text); margin: 3px 0 0;" />
-                  <span class="tog-text"><strong>Show that it was a test shoot</strong><small>Adds a "Test shoot" or "Collab" label. Left off, it looks like any other album.</small></span>
+            <!-- "Where it shows" (v634): one tab answering "where does this
+                 appear, and what is said about whom". Redrawn from the old
+                 Publish settings, the stats ticks of Model stats and the comp
+                 card permission of Credits, because the owner found them
+                 scattered. Every id and stored value is the one it was; the
+                 drop-downs only set the same ticks (see paintWhere). -->
+            <fieldset id="fs_publish"><legend>Where it shows</legend>
+              <div class="wis-block">
+                <h4 class="wis-h">1 · Where does this album appear?</h4>
+                <div class="wis-places">
+                  <label class="wis-place" data-place="site"><input id="f_is_public" type="checkbox" checked /><span class="wis-ic" aria-hidden="true">🌐</span><strong>Website</strong><small>Albums and every other page. Off keeps it saved as a book-only album.</small></label>
+                  <label class="wis-place" data-place="home"><input id="f_featured" type="checkbox" checked /><span class="wis-ic" aria-hidden="true">🏠</span><strong>Home page</strong><small>In Photoshoots on the home page.</small></label>
+                  <label class="wis-place" data-place="cc"><input id="f_on_compcards" type="checkbox" /><span class="wis-ic" aria-hidden="true">🪪</span><strong>Comp cards</strong><small>The model's card. On for test shoots unless you switch it off.</small></label>
+                  <label class="wis-place" data-place="port"><input id="f_on_portfolio" type="checkbox" /><span class="wis-ic" aria-hidden="true">📄</span><strong>Model portfolio</strong><small>Portfolio page and PDFs. On for test shoots unless you switch it off.</small></label>
+                </div>
+                <div class="wis-opts">
+                  <label><input id="f_disable_download" type="checkbox" /> <span>Turn off the comp card download <small>People can still see the card. The paid portfolio PDF isn't affected.</small></span></label>
+                  <label><input id="f_show_test_shoot_cat" type="checkbox" /> <span>Label it as a test shoot <small>Adds "Test shoot" or "Collab".</small></span></label>
+                  <label><input id="f_show_polaroids" type="checkbox" /> <span>Show Polaroid photos in the album too <small>Otherwise they are only on comp cards and PDFs.</small></span></label>
+                </div>
+                <label id="f_feeds_row" style="display: none; align-items: flex-start; gap: 10px; margin-top: 12px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
+                  <input id="f_feeds_model_cards" type="checkbox" style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent-text); flex: 0 0 auto;" />
+                  <span>These photographs may appear on the models' own comp cards<br /><em id="f_feeds_hint" style="font-style: normal; font-weight: 400; font-size: var(--font-xs); color: var(--ink-soft);"></em></span>
                 </label>
               </div>
-              <div class="vis-matrix" id="repVisibility">
-                <p class="vis-matrix-title">Contact details</p>
-                <p class="vis-matrix-sub">Tick where each detail should appear. Everything starts off: only names show until you tick a detail on. Agency links only appear where the agency name does.</p>
+              <div class="wis-block" id="repVisibility">
+                <h4 class="wis-h">2 · What do people see about each person?</h4>
+                <p class="vis-matrix-sub">Everything starts off: only names show until you choose more. Pick once for everyone, then change anyone. Email is only ever switched on under Fine-tune.</p>
+                <div class="wis-presets" role="group" aria-label="Set everyone at once">
+                  <button type="button" data-preset="names">Names only</button>
+                  <button type="button" data-preset="ig">Names + Instagram</button>
+                  <button type="button" data-preset="all">Names + all links</button>
+                </div>
+                <div class="wis-person">
+                  <div class="wis-row">
+                    <strong>Model</strong>
+                    <select id="wisModel" aria-label="What shows about the model"><option value="names">Name only</option><option value="ig">Name + Instagram</option><option value="all">Name + all links</option><option value="custom" disabled>Custom — see Fine-tune</option></select>
+                    <button type="button" class="wis-fine" data-fine="wisFineModel" aria-expanded="false" aria-controls="wisFineModel">Fine-tune ▸</button>
+                  </div>
+                  <div class="wis-stats"><span>Measurements show on:</span>
+                    <label><input id="f_show_stats_comp" type="checkbox" checked /> Comp cards</label>
+                    <label><input id="f_show_stats_port" type="checkbox" checked /> Model portfolio</label>
+                  </div>
+                  <div class="wis-detail" id="wisFineModel" hidden>
                 <table class="vis-table">
                   <thead><tr><th></th><th>Comp cards &amp; portfolio</th><th>Homepage</th><th>PDFs</th></tr></thead>
                   <tbody>
-                    <tr class="vis-group"><th colspan="4">Model</th></tr>
                     <tr><th>Instagram</th><td><input id="f_show_ig_cc" type="checkbox" aria-label="Model Instagram on comp cards and portfolio" /></td><td><input id="f_show_ig_home" type="checkbox" aria-label="Model Instagram on homepage" /></td><td><input id="f_show_ig_pdf" type="checkbox" aria-label="Model Instagram on PDFs" /></td></tr>
                     <tr><th>Kavyar</th><td><input id="f_show_kavyar_cc" type="checkbox" aria-label="Model Kavyar on comp cards and portfolio" /></td><td><input id="f_show_kavyar_home" type="checkbox" aria-label="Model Kavyar on homepage" /></td><td><input id="f_show_kavyar_pdf" type="checkbox" aria-label="Model Kavyar on PDFs" /></td></tr>
                     <tr><th>LinkedIn</th><td><input id="f_show_linkedin_cc" type="checkbox" aria-label="Model LinkedIn on comp cards and portfolio" /></td><td><input id="f_show_linkedin_home" type="checkbox" aria-label="Model LinkedIn on homepage" /></td><td><input id="f_show_linkedin_pdf" type="checkbox" aria-label="Model LinkedIn on PDFs" /></td></tr>
                     <tr><th>Behance</th><td><input id="f_show_behance_cc" type="checkbox" aria-label="Model Behance on comp cards and portfolio" /></td><td><input id="f_show_behance_home" type="checkbox" aria-label="Model Behance on homepage" /></td><td><input id="f_show_behance_pdf" type="checkbox" aria-label="Model Behance on PDFs" /></td></tr>
                     <tr><th>Website</th><td><input id="f_show_website_cc" type="checkbox" aria-label="Model website on comp cards and portfolio" /></td><td><input id="f_show_website_home" type="checkbox" aria-label="Model website on homepage" /></td><td><input id="f_show_website_pdf" type="checkbox" aria-label="Model website on PDFs" /></td></tr>
                     <tr><th>Email</th><td><input id="f_show_email_cc" type="checkbox" aria-label="Model email on comp cards and portfolio" /></td><td><input id="f_show_email_home" type="checkbox" aria-label="Model email on homepage" /></td><td><input id="f_show_email_pdf" type="checkbox" aria-label="Model email on PDFs" /></td></tr>
-                    <tr class="vis-group"><th colspan="4">Agency</th></tr>
+                  </tbody>
+                </table>
+                  </div>
+                </div>
+                <div class="wis-person">
+                  <div class="wis-row">
+                    <strong>Agency</strong>
+                    <select id="wisAgency" aria-label="What shows about the agency"><option value="hidden">Hidden</option><option value="names">Name only</option><option value="ig">Name + Instagram</option><option value="all">Name + all links</option><option value="custom" disabled>Custom — see Fine-tune</option></select>
+                    <button type="button" class="wis-fine" data-fine="wisFineAgency" aria-expanded="false" aria-controls="wisFineAgency">Fine-tune ▸</button>
+                  </div>
+                  <div class="wis-detail" id="wisFineAgency" hidden>
+                <p class="wis-note">Agency links only appear where the agency name does.</p>
+                <table class="vis-table">
+                  <thead><tr><th></th><th>Comp cards &amp; portfolio</th><th>Homepage</th><th>PDFs</th></tr></thead>
+                  <tbody>
                     <tr><th>Agency name</th><td><input id="f_show_agency_cc" type="checkbox" aria-label="Agency name on comp cards and portfolio" /></td><td><input id="f_show_agency_home" type="checkbox" aria-label="Agency name on homepage" /></td><td><input id="f_show_agency_pdf" type="checkbox" aria-label="Agency name on PDFs" /></td></tr>
                     <tr><th>Instagram</th><td><input id="f_show_agency_ig_cc" type="checkbox" aria-label="Agency Instagram on comp cards and portfolio" /></td><td><input id="f_show_agency_ig_home" type="checkbox" aria-label="Agency Instagram on homepage" /></td><td><input id="f_show_agency_ig_pdf" type="checkbox" aria-label="Agency Instagram on PDFs" /></td></tr>
                     <tr><th>Kavyar</th><td><input id="f_show_agency_kavyar_cc" type="checkbox" aria-label="Agency Kavyar on comp cards and portfolio" /></td><td><input id="f_show_agency_kavyar_home" type="checkbox" aria-label="Agency Kavyar on homepage" /></td><td><input id="f_show_agency_kavyar_pdf" type="checkbox" aria-label="Agency Kavyar on PDFs" /></td></tr>
@@ -7920,42 +7926,35 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                     <tr><th>Email</th><td><input id="f_show_agency_email_cc" type="checkbox" aria-label="Agency email on comp cards and portfolio" /></td><td><input id="f_show_agency_email_home" type="checkbox" aria-label="Agency email on homepage" /></td><td><input id="f_show_agency_email_pdf" type="checkbox" aria-label="Agency email on PDFs" /></td></tr>
                   </tbody>
                 </table>
-                <label class="vis-crew" style="display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 13px;"><input id="f_show_crew_socials" type="checkbox" style="width: 16px; height: 16px; accent-color: var(--accent-text);" /> The crew's handles in the credits — make-up, hair, styling, mentor, location (off: names only)</label>
+                  </div>
+                </div>
+                <div class="wis-person">
+                  <div class="wis-row">
+                    <strong>Crew</strong>
+                    <select id="wisCrew" aria-label="What shows about the crew"><option value="names">Names only</option><option value="all">Names + their links</option></select>
+                    <span class="wis-note">Make-up, hair, styling, mentor, location</span>
+                  </div>
+                  <input id="f_show_crew_socials" type="checkbox" hidden />
+                </div>
               </div>
-              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 4px 0 0;">On the album page, show:</p>
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-                <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
-                  <input id="f_show_credits" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent-text); margin: 0;" />
-                  Credits
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
-                  <input id="f_show_pdf" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent-text); margin: 0;" />
-                  Attached PDF
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
-                  <input id="f_show_instagram" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent-text); margin: 0;" />
-                  Instagram
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
-                  <input id="f_show_kavyar" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent-text); margin: 0;" />
-                  Kavyar
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
-                  <input id="f_show_testimonials" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent-text); margin: 0;" />
-                  Testimonials
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
-                  <input id="f_show_stats" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent-text); margin: 0;" />
-                  Measurements
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
-                  <input id="f_show_gear" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent-text); margin: 0;" />
-                  Gear
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
-                  <input id="f_show_location" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent-text); margin: 0;" />
-                  Location
-                </label>
+              <div class="wis-block">
+                <h4 class="wis-h">3 · Also on the album's own page</h4>
+                <div class="wis-opts wis-opts-grid">
+                  <label><input id="f_show_credits" type="checkbox" checked /> <span>"Also" credits line</span></label>
+                  <label><input id="f_show_pdf" type="checkbox" checked /> <span>Attached PDF</span></label>
+                  <label><input id="f_show_location" type="checkbox" checked /> <span>Location</span></label>
+                  <label><input id="f_show_instagram" type="checkbox" checked /> <span>The album's Instagram (Follow row)</span></label>
+                  <label><input id="f_show_kavyar" type="checkbox" checked /> <span>The album's Kavyar (Follow row)</span></label>
+                </div>
+                <p class="wis-note">Signed in, you may still see something you've unticked; visitors don't.</p>
+                <!-- These three were offered but nothing on the site reads them.
+                     Kept hidden so what each album already has saved stays as
+                     it is. -->
+                <div hidden>
+                  <input id="f_show_testimonials" type="checkbox" checked />
+                  <input id="f_show_stats" type="checkbox" checked />
+                  <input id="f_show_gear" type="checkbox" checked />
+                </div>
               </div>
             </fieldset>
 
@@ -8832,6 +8831,79 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       }
       activate(chips[0].dataset.target);
       syncChips();
+    }
+    /* "Where it shows" (v634): the drop-downs and the three presets are only
+       views onto the ticks, never a second store. Choosing one sets the ticks
+       (with a change event each); a tick changed by hand updates the
+       drop-down. What is saved is exactly what it always was. */
+    {
+      const SF = ["cc", "home", "pdf"];
+      const LINKS = {
+        model: { ig: "ig", email: "email", all: ["ig", "kavyar", "linkedin", "behance", "website", "email"] },
+        agency: { ig: "agency_ig", email: "agency_email", all: ["agency_ig", "agency_kavyar", "agency_linkedin", "agency_behance", "agency_website", "agency_email"] }
+      };
+      const box = (id, s) => $(`#f_show_${id}_${s}`);
+      const everywhere = (id) => SF.every((s) => !!box(id, s)?.checked);
+      const nowhere = (id) => SF.every((s) => !box(id, s)?.checked);
+      // What the ticks add up to, or "custom" when they are mixed.
+      const stateOf = (who) => {
+        const L = LINKS[who], web = L.all.filter((id) => id !== L.email);
+        if (who === "agency") {
+          if (nowhere("agency") && L.all.every(nowhere)) return "hidden";
+          if (!everywhere("agency")) return "custom";
+        }
+        if (L.all.every(nowhere)) return "names";
+        if (everywhere(L.ig) && L.all.filter((id) => id !== L.ig).every(nowhere)) return "ig";
+        if (web.every(everywhere)) return "all";
+        return "custom";
+      };
+      const tick = (el, v) => { if (el && el.checked !== v) { el.checked = v; el.dispatchEvent(new Event("change", { bubbles: true })); } };
+      const apply = (who, v) => {
+        const L = LINKS[who];
+        if (v === "custom") return;
+        if (who === "agency") SF.forEach((s) => tick(box("agency", s), v !== "hidden"));
+        L.all.forEach((id) => SF.forEach((s) => {
+          // "All links" leaves the email as it was: it is personal data, and only Fine-tune switches it on.
+          if (v === "all" && id === L.email) return;
+          tick(box(id, s), v === "all" || (v === "ig" && id === L.ig));
+        }));
+      };
+      const setCrew = (v) => tick($("#f_show_crew_socials"), v);
+      const paint = () => {
+        const m = $("#wisModel"), a = $("#wisAgency"), c = $("#wisCrew");
+        if (!m || !a || !c) return;
+        m.value = stateOf("model");
+        a.value = stateOf("agency");
+        c.value = $("#f_show_crew_socials")?.checked ? "all" : "names";
+        const preset = ["names", "ig", "all"].find((p) => m.value === p && a.value === p && c.value === (p === "all" ? "all" : "names")) || "";
+        form.querySelectorAll("#repVisibility [data-preset]").forEach((b) => { const on = b.dataset.preset === preset; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+        // With the website off, the other places do nothing, and look it.
+        const site = !!$("#f_is_public")?.checked;
+        form.querySelectorAll(".wis-place").forEach((l) => {
+          const isSite = l.dataset.place === "site";
+          l.classList.toggle("on", !!l.querySelector("input")?.checked && (isSite || site));
+          l.classList.toggle("dim", !isSite && !site);
+        });
+      };
+      $("#wisModel")?.addEventListener("change", (e) => { apply("model", e.target.value); paint(); });
+      $("#wisAgency")?.addEventListener("change", (e) => { apply("agency", e.target.value); paint(); });
+      $("#wisCrew")?.addEventListener("change", (e) => { setCrew(e.target.value === "all"); paint(); });
+      form.querySelectorAll("#repVisibility [data-preset]").forEach((b) => b.addEventListener("click", () => {
+        const p = b.dataset.preset;
+        apply("model", p); apply("agency", p); setCrew(p === "all");
+        paint();
+      }));
+      form.querySelectorAll(".wis-fine").forEach((b) => b.addEventListener("click", () => {
+        const d = document.getElementById(b.dataset.fine);
+        if (!d) return;
+        const open = d.hidden;
+        d.hidden = !open;
+        b.setAttribute("aria-expanded", String(open));
+        b.textContent = open ? "Fine-tune ▾" : "Fine-tune ▸";
+      }));
+      form.addEventListener("change", (e) => { if (e.target.closest && e.target.closest("#fs_publish")) paint(); });
+      paint();
+      setTimeout(paint, 0);   // an album being edited is filled in further down this function
     }
     // Photos added here and not yet saved are lost if the tab closes, so the
     // browser is asked to warn first (A17). Saved or published, the flag drops.
