@@ -8019,15 +8019,43 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     // shoots with a dozen-plus frames. selectedForBulk is transient UI state
     // (never saved), cleared on every re-render of the grid.
     const selectedForBulk = new Set();
-    // A Polaroid is left out of the album, and a photo with Usage "Album only"
-    // is left out of the cards: both together would show it nowhere. Ticking
-    // Polaroid on an "Album only" photo therefore makes it Both, and the Usage
-    // list stops offering "Album only" while it is ticked.
+    // A Polaroid is left out of the album, and a photo kept off both the card
+    // and the portfolio is left out of the cards: both together would show it
+    // nowhere. Ticking Polaroid on such a photo therefore gives it both again,
+    // and a Polaroid's last button of the two cannot be switched off.
     const polaroidsOn = () => !!$("#f_show_polaroids")?.checked;
     function setPolaroid(item, on) {
       item.polaroid = !!on;
       if (on && item.usage === "none") { item.usage = "both"; item.excludeFromCompCard = false; }
     }
+    /* "Shows on" (v637, "Where it shows" stage 4): tap-on buttons in place of
+       the old Usage list. Comp card and Portfolio together are the stored
+       usage: both, comp, portfolio, or none (album only). */
+    const usageFlags = (f) => {
+      const u = f.usage || (f.excludeFromCompCard ? "portfolio" : "both");
+      return { comp: u === "both" || u === "comp", port: u === "both" || u === "portfolio" };
+    };
+    const showsOnHtml = (f) => {
+      const on = usageFlags(f), id = esc(f.id);
+      const inAlbum = !f.polaroid || polaroidsOn();
+      const chip = (show, label, title) => `<button type="button" class="thumb-chip thumb-show${on[show] ? " on" : ""}" data-id="${id}" data-show="${show}" aria-pressed="${on[show]}" title="${title}">${label}</button>`;
+      const tickChip = (cls, label, checked, title) => `<label class="thumb-chip${checked ? " on" : ""}" title="${title}"><input type="checkbox" class="${cls}" data-id="${id}" ${checked ? "checked" : ""} /><span>${label}</span></label>`;
+      const noCard = !$("#f_on_compcards")?.checked && !$("#f_on_portfolio")?.checked && !($("#f_feeds_model_cards")?.checked && $("#f_feeds_row")?.style.display !== "none");
+      const note = f.polaroid ? `<span class="thumb-polaroid-note">${polaroidsOn() ? "Also shown in the album" : "Not shown in the album"}</span>`
+        : !on.comp && !on.port ? "Album only: not on the model's card or PDFs."
+          : noCard ? "This album reaches no model card yet (see Where it shows)." : "";
+      return `<div class="thumb-shows" role="group" aria-label="Where this photo shows">
+        <span class="thumb-shows-title">Shows on</span>
+        <div class="thumb-chips">
+          <span class="thumb-chip is-static${inAlbum ? " on" : ""}" title="${inAlbum ? "Every photo is in the album unless it is a Polaroid." : "A Polaroid is left out of the album."}">${inAlbum ? "Album ✓" : "Not in album"}</span>
+          ${chip("comp", "Comp card", "On the model's comp card and its free PDF")}
+          ${chip("port", "Portfolio", "In the model's portfolio PDF")}
+          ${tickChip("thumb-home-check", "Home", !!f.onHome, "Show this photo in the home page slideshow")}
+          ${tickChip("thumb-polaroid-check", "Polaroid", !!f.polaroid, "Kept for comp cards and PDFs and left out of the album")}
+        </div>
+        ${note ? `<p class="thumb-shows-note">${note}</p>` : ""}
+      </div>`;
+    };
     // "Show on Comp cards" and "Show on Model portfolio" start ticked for a
     // test shoot. On a new album they follow the Type until either is touched;
     // an album being edited keeps what it has.
@@ -8101,6 +8129,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     const syncFollowText = () => grid.querySelectorAll('.thumb-look-select option[value=""]').forEach((o) => { o.textContent = followAlbumText(); });
     $("#f_activity")?.addEventListener("change", syncFollowText);
     $("#f_show_polaroids")?.addEventListener("change", () => renderStaged());
+    // The photos' note says when the album reaches no model card at all.
+    ["#f_on_compcards", "#f_on_portfolio", "#f_feeds_model_cards"].forEach((sel) => $(sel)?.addEventListener("change", () => renderStaged()));
     $("#f_type")?.addEventListener("change", syncFollowText);
     // "Also for" never repeats the main client.
     const forSelect = $("#f_for_client");
@@ -9177,10 +9207,6 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <input type="radio" name="coverSelect" class="thumb-cover-radio" data-id="${f.id}" ${f.isCover ? 'checked' : ''} />
             Cover
           </label>
-          <label class="thumb-cover-ctrl thumb-home-ctrl" title="Show this photo in the home page slideshow">
-            <input type="checkbox" class="thumb-cover-radio thumb-home-check" data-id="${f.id}" ${f.onHome ? 'checked' : ''} />
-            Home
-          </label>
           <div class="thumb-frame" style="position: relative; width: 100%; aspect-ratio: ${homeMode ? "16 / 9" : "1"}; overflow: hidden;">
             <img src="${esc(photoSrc(f))}" style="width: 100%; height: 100%; object-fit: cover; object-position: ${esc(pos)}" alt="${esc(f.name)}"/>
             <div class="thumb-focal" data-id="${f.id}" title="Drag to set focal point" style="position: absolute; inset: 0; z-index: 2; cursor: crosshair;">
@@ -9203,10 +9229,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             </label>
             <input type="text" class="thumb-caption-input" data-id="${f.id}" value="${esc(f.caption || '')}" placeholder="Add caption…" style="width: 100%; box-sizing: border-box; font-size: var(--font-xs); padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); color: var(--ink); outline: none;" />
             
-            <label class="thumb-polaroid-row" title="A Polaroid is kept for comp cards and PDFs and left out of the album." style="display: flex; align-items: flex-start; gap: 6px; font-size: var(--font-xs); color: var(--ink); cursor: pointer;">
-              <input type="checkbox" class="thumb-polaroid-check" data-id="${f.id}" ${f.polaroid ? 'checked' : ''} style="width: 13px; height: 13px; accent-color: var(--accent-text); margin: 1px 0 0; cursor: pointer;" />
-              <span><strong>Polaroid</strong>${f.polaroid ? `<br /><span class="thumb-polaroid-note" style="color: var(--ink-soft);">${polaroidsOn() ? "Also shown in the album" : "Not shown in the album"}</span>` : ""}</span>
-            </label>
+            ${showsOnHtml(f)}
             <div style="display: grid; grid-template-columns: 1fr; gap: 4px;">
               <label style="font-size: var(--font-xs); color: var(--ink-soft); display: flex; flex-direction: column; gap: 2px;">
                 <span>Kind of work</span>
@@ -9225,15 +9248,6 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                   }).join("")}
                 </div>
               </div>` : ""}
-              <label style="font-size: var(--font-xs); color: var(--ink-soft); display: flex; flex-direction: column; gap: 2px;">
-                <span>Usage</span>
-                <select class="thumb-usage-select" data-id="${f.id}" style="font-size: var(--font-xs); padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); color: var(--ink); width: 100%;">
-                  <option value="both" ${f.usage === 'both' ? 'selected' : ''}>Both (Comp & Port)</option>
-                  <option value="portfolio" ${f.usage === 'portfolio' ? 'selected' : ''}>Portfolio Only</option>
-                  <option value="comp" ${f.usage === 'comp' ? 'selected' : ''}>Comp Card Only</option>
-                  ${f.polaroid ? "" : `<option value="none" ${f.usage === 'none' ? 'selected' : ''}>Album only (not on the model's card or PDFs)</option>`}
-                </select>
-              </label>
               <label style="font-size: var(--font-xs); color: var(--ink-soft); display: flex; flex-direction: column; gap: 2px;">
                 <span>Angle / Profile</span>
                 <select class="thumb-angle-select" data-id="${f.id}" style="font-size: var(--font-xs); padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); color: var(--ink); width: 100%;">
@@ -9288,21 +9302,27 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         cb.addEventListener("mousedown", (e) => e.stopPropagation());
       });
 
-      grid.querySelectorAll(".thumb-usage-select").forEach((sel) => {
-        sel.addEventListener("change", (e) => {
-          const item = staged.find(x => x.id === e.target.dataset.id);
-          if (item) {
-            item.usage = e.target.value;
-            // The old boolean is kept in step with the dropdown. It is a second
-            // lock on the comp card surfaces, and the only one a visitor still
-            // running a cached older build understands — that build has never
-            // heard of "none", so without this it would put the photo on a
-            // comp card until it next reloads.
-            item.excludeFromCompCard = (e.target.value === "portfolio" || e.target.value === "none");
-          }
+      grid.querySelectorAll(".thumb-show").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault(); e.stopPropagation();
+          const item = staged.find((x) => x.id === btn.dataset.id);
+          if (!item) return;
+          const on = usageFlags(item);
+          on[btn.dataset.show] = !on[btn.dataset.show];
+          // A Polaroid is left out of the album, so it must stay somewhere.
+          if (item.polaroid && !on.comp && !on.port) { toast("A Polaroid is left out of the album, so it needs Comp card or Portfolio."); return; }
+          item.usage = on.comp && on.port ? "both" : on.comp ? "comp" : on.port ? "portfolio" : "none";
+          // The old boolean is kept in step. It is a second lock on the comp
+          // card surfaces, and the only one a visitor still running a cached
+          // older build understands — that build has never heard of "none",
+          // so without this it would put the photo on a comp card until it
+          // next reloads.
+          item.excludeFromCompCard = (item.usage === "portfolio" || item.usage === "none");
+          renderStaged();
         });
-        sel.addEventListener("mousedown", (e) => e.stopPropagation());
+        btn.addEventListener("mousedown", (e) => e.stopPropagation());
       });
+      grid.querySelectorAll(".thumb-chip").forEach((chip) => chip.addEventListener("mousedown", (e) => e.stopPropagation()));
 
       grid.querySelectorAll(".thumb-angle-select").forEach((sel) => {
         sel.addEventListener("change", (e) => {
