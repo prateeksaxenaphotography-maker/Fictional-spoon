@@ -7179,6 +7179,435 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
   /* ---- upload view ---- */
   /* ---------- Upload view (rich, grouped form) ---------- */
   let staged = []; // {id,dataUrl,name}
+  /* ---- Full-size originals (v633) --------------------------------------
+     The website keeps every photo at 1600 px on its long edge (resize() in
+     app.js: lighter pages, and no camera body, lens or GPS left in the file),
+     so the camera original never reaches it. The studio asked to download a
+     photo at FULL size as admin, from any computer, so the original is kept
+     twice, both times privately:
+
+       - on this computer: IndexedDB "wps-originals", written the moment an
+         album is saved;
+       - online: a PRIVATE GitHub repository of the studio's own (never the
+         site's public one), filled after a publish or by the Back up button,
+         so another computer can fetch it with the token it publishes with.
+
+     A photo is keyed by the stable part of its id (before the first "-"),
+     which it keeps for life. Photos uploaded before this existed have no
+     original: "Find my originals" matches a folder of the studio's files to
+     them with the portfolio book's own matcher (book-builder.js).
+
+     NEVER the public repository: origEnsureRepo refuses anything that is not
+     private, and the site's own repo by name. These calls do not go through
+     ghFetch on purpose: it deletes the saved publishing token on a 403, and a
+     token that merely cannot reach the private storage must not log the
+     studio out of publishing. */
+  const ORIG_DB = "wps-originals", ORIG_STORE = "files";
+  const ORIG_KEEP_KEY = "wps-keep-originals";          // "0" = off; on unless switched off
+  const ORIG_REPO_KEY = "wps-originals-repo";           // "owner/name", once the storage is set up on this computer
+  const ORIG_REPO_NAME = "nerdyphotographer-originals";
+  const ORIG_MAX_ONLINE = 60 * 1024 * 1024;             // GitHub's contents API takes up to 100 MB; base64 adds a third
+  const origKeyOf = (photoId) => String(photoId || "").split("-")[0];
+  const origKeyOk = (k) => /^[A-Za-z0-9_]{3,40}$/.test(String(k || ""));
+  const origKeepOn = () => { try { return localStorage.getItem(ORIG_KEEP_KEY) !== "0"; } catch (e) { return true; } };
+  const origRepoName = () => { try { return localStorage.getItem(ORIG_REPO_KEY) || ""; } catch (e) { return ""; } };
+  const origSafeName = (n) => String(n || "original.jpg").replace(/[^A-Za-z0-9._ -]+/g, "_").replace(/^[. ]+/, "").slice(-100) || "original.jpg";
+  const origMb = (n) => n >= 1073741824 ? `${(n / 1073741824).toFixed(1)} GB` : `${(n / 1048576).toFixed(n < 10485760 ? 1 : 0)} MB`;
+
+  let origDbP = null;
+  function origDb() {
+    if (!origDbP) {
+      origDbP = new Promise((res, rej) => {
+        let r;
+        try { r = indexedDB.open(ORIG_DB, 1); } catch (e) { rej(e); return; }
+        r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains(ORIG_STORE)) r.result.createObjectStore(ORIG_STORE, { keyPath: "id" }); };
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+        r.onblocked = () => rej(new Error("blocked"));
+      }).catch((e) => { origDbP = null; throw e; });
+    }
+    return origDbP;
+  }
+  const origPutRec = (rec) => origDb().then((d) => new Promise((res, rej) => { const tx = d.transaction(ORIG_STORE, "readwrite"); tx.objectStore(ORIG_STORE).put(rec); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error || new Error("aborted")); }));
+  const origGetRec = (id) => origDb().then((d) => new Promise((res, rej) => { const q = d.transaction(ORIG_STORE, "readonly").objectStore(ORIG_STORE).get(id); q.onsuccess = () => res(q.result || null); q.onerror = () => rej(q.error); }));
+  const origAllMeta = () => origDb().then((d) => new Promise((res, rej) => {
+    const out = [], q = d.transaction(ORIG_STORE, "readonly").objectStore(ORIG_STORE).openCursor();
+    q.onsuccess = () => { const c = q.result; if (c) { const { blob, ...meta } = c.value; out.push(meta); c.continue(); } else res(out); };
+    q.onerror = () => rej(q.error);
+  }));
+
+  // A file's pixel size, as it will be seen, read from its header: a PNG's IHDR, or a JPEG's frame header turned by its
+  // EXIF orientation. Never through an <img>: the page's security policy does not allow pictures from blob: addresses.
+  // Anything else (WebP and the like) is decoded once to find out.
+  function origExifOrient(dv, t, end) {
+    if (t + 8 > end) return 0;
+    const le = dv.getUint16(t) === 0x4949;
+    if (dv.getUint16(t + 2, le) !== 0x2A) return 0;
+    const ifd = t + dv.getUint32(t + 4, le);
+    if (ifd + 2 > end) return 0;
+    const count = dv.getUint16(ifd, le);
+    for (let i = 0; i < count; i++) {
+      const e = ifd + 2 + i * 12;
+      if (e + 12 > end) return 0;
+      if (dv.getUint16(e, le) === 0x0112) return dv.getUint16(e + 8, le);
+    }
+    return 0;
+  }
+  async function origDims(file) {
+    let dv;
+    try { dv = new DataView(await file.slice(0, 262144).arrayBuffer()); } catch (e) { return null; }
+    const N = dv.byteLength;
+    let out = null;
+    if (N > 24 && dv.getUint32(0) === 0x89504E47) out = { w: dv.getUint32(16), h: dv.getUint32(20) };
+    else if (N > 4 && dv.getUint16(0) === 0xFFD8) {
+      let p = 2, w = 0, h = 0, orient = 1;
+      while (p + 4 <= N) {
+        if (dv.getUint8(p) !== 0xFF) break;
+        const m = dv.getUint8(p + 1);
+        if (m === 0xFF) { p++; continue; }
+        if (m === 0xD8 || m === 0x01 || (m >= 0xD0 && m <= 0xD7)) { p += 2; continue; }
+        const len = dv.getUint16(p + 2);
+        if (m === 0xE1 && p + 10 <= N && dv.getUint32(p + 4) === 0x45786966) orient = origExifOrient(dv, p + 10, Math.min(N, p + 2 + len)) || orient;
+        if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) { if (p + 9 <= N) { h = dv.getUint16(p + 5); w = dv.getUint16(p + 7); } break; }
+        if (m === 0xDA) break;
+        p += 2 + len;
+      }
+      if (w && h) out = orient >= 5 && orient <= 8 ? { w: h, h: w } : { w, h };
+    }
+    if (out && out.w && out.h) return out;
+    try { const bmp = await createImageBitmap(file); const r = { w: bmp.width, h: bmp.height }; if (bmp.close) bmp.close(); return r; } catch (e) { return null; }
+  }
+  async function origKeep(key, file) {
+    if (!origKeyOk(key)) throw new Error("no usable id for this photo");
+    const dims = await origDims(file);
+    // A COPY of the bytes, not the File itself. A File from the studio's folder can be kept as a pointer to that
+    // file, and then moving, renaming or deleting it would leave the "kept" original unreadable.
+    const blob = new Blob([await file.arrayBuffer()], { type: file.type || "image/jpeg" });
+    await origPutRec({ id: key, name: file.name || "original.jpg", type: blob.type, size: blob.size, w: dims ? dims.w : 0, h: dims ? dims.h : 0, blob, savedAt: Date.now(), online: false });
+  }
+  async function origKeepStaged(list) {
+    if (!list.length) return;
+    let ok = 0, failed = 0;
+    for (const { id, file } of list) { try { await origKeep(id, file); ok++; } catch (e) { failed++; } }
+    if (ok) toast(`Kept ${ok} full-size original${ok === 1 ? "" : "s"} on this computer.`);
+    if (failed) toast(`${failed} original${failed === 1 ? "" : "s"} could not be kept on this computer (storage full or blocked). The photos themselves are saved.`);
+  }
+
+  // The private storage, over the GitHub API. A 401 is a dead token (cleared, as everywhere); a 403 only
+  // means THIS storage is off limits to the token, and says so without touching the publishing token.
+  async function origFetch(pat, path, opts = {}) {
+    const url = /^https?:/.test(path) ? path : `https://api.github.com${path}`;
+    for (let attempt = 0; ; attempt++) {
+      const res = await fetch(url, { cache: "no-store", ...opts, headers: { "Authorization": `token ${pat}`, "Accept": "application/vnd.github+json", ...(typeof opts.body === "string" ? { "Content-Type": "application/json" } : {}), ...(opts.headers || {}) } });
+      const wait = await slowDownFor(res);
+      if (wait) {
+        if (wait > 90000 || attempt >= 3) throw explains(new Error("GitHub asked to slow down. Wait a minute or two and press the button again; nothing is lost."));
+        await sleep(wait); continue;
+      }
+      if (res.status === 401) throw clearRejectedToken("401");
+      return res;
+    }
+  }
+  const origPathUrl = (path) => path.split("/").map(encodeURIComponent).join("/");
+  async function origEnsureRepo(pat, { create }) {
+    const owner = GH_REPO.split("/")[0];
+    const full = origRepoName() || `${owner}/${ORIG_REPO_NAME}`;
+    if (full.toLowerCase() === GH_REPO.toLowerCase()) throw explains(new Error("Originals can never go in the website's own repository."));
+    let res = await origFetch(pat, `/repos/${full}`);
+    if (res.status === 404) {
+      if (!create) throw explains(new Error("The private storage is not set up yet. Press “Set up private online storage” first."));
+      const mk = await origFetch(pat, "/user/repos", { method: "POST", body: JSON.stringify({ name: full.split("/")[1], private: true, auto_init: true, description: "Full-size original photos. Private. Not part of the website." }) });
+      if (mk.status === 403 || mk.status === 404) throw explains(new Error(`GitHub would not let this token create a private repository. Make one by hand, private, named “${full.split("/")[1]}”, or use a token with the “repo” permission, then press the button again.`));
+      if (!mk.ok && mk.status !== 422) throw explains(new Error(`GitHub could not create the private storage (${mk.status}).`));
+      for (let i = 0; i < 5; i++) { res = await origFetch(pat, `/repos/${full}`); if (res.status !== 404) break; await sleep(1200); }
+    }
+    if (res.status === 403) throw explains(new Error("This token cannot open the private storage. Use a token with the “repo” permission."));
+    if (!res.ok) throw explains(new Error(`GitHub could not open the private storage (${res.status}).`));
+    const info = await res.json();
+    if (info.private !== true) throw explains(new Error("That repository is PUBLIC, so nothing was sent. Originals only ever go to a private one."));
+    try { localStorage.setItem(ORIG_REPO_KEY, info.full_name || full); } catch (e) { /* private window: asked again next time */ }
+    return { full: info.full_name || full, branch: info.default_branch || "main" };
+  }
+  // Every original already online, from one listing of the repository.
+  async function origOnlineList(pat, repo) {
+    const res = await origFetch(pat, `/repos/${repo.full}/git/trees/${encodeURIComponent(repo.branch)}?recursive=1`);
+    if (res.status === 404 || res.status === 409) return new Map();     // nothing there yet
+    if (!res.ok) throw explains(new Error(`GitHub would not list the private storage (${res.status}).`));
+    const j = await res.json(), out = new Map();
+    for (const t of j.tree || []) {
+      const m = /^originals\/([A-Za-z0-9_]+)\/([^/]+)$/.exec(t.path || "");
+      if (t.type === "blob" && m) out.set(m[1], { path: t.path, name: m[2], size: t.size || 0 });
+    }
+    return out;
+  }
+  async function origUploadOne(pat, repo, key, rec) {
+    if (rec.size > ORIG_MAX_ONLINE) return { skipped: `over ${Math.round(ORIG_MAX_ONLINE / 1048576)} MB, so it stays on this computer only` };
+    const path = `originals/${key}/${origSafeName(rec.name)}`;
+    const b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(",")[1] || ""); fr.onerror = () => rej(fr.error); fr.readAsDataURL(rec.blob); });
+    for (let i = 0; i < 4; i++) {
+      const res = await origFetch(pat, `/repos/${repo.full}/contents/${origPathUrl(path)}`, { method: "PUT", body: JSON.stringify({ message: `Original ${key}`, content: b64, branch: repo.branch }) });
+      if (res.ok || res.status === 422) return { ok: true };              // 422: it is already there
+      if ((res.status === 404 || res.status === 409) && i < 3) { await sleep(1500 * (i + 1)); continue; }   // a new repository, or the last upload still landing
+      if (res.status === 403) throw explains(new Error("This token is not allowed to write to the private storage."));
+      throw explains(new Error(`GitHub refused an upload (${res.status}). Press the button again to carry on.`));
+    }
+    throw explains(new Error("GitHub did not take an upload. Press the button again to carry on."));
+  }
+  let origBackupBusy = false;
+  // Copies every original kept on this computer that is not online yet. Stops at the first real error;
+  // what was copied before it stays copied, and the next press carries on from there.
+  async function origBackup({ pat, say, create = false }) {
+    if (origBackupBusy) throw explains(new Error("A backup is already running."));
+    origBackupBusy = true;
+    try {
+      const repo = await origEnsureRepo(pat, { create });
+      const online = await origOnlineList(pat, repo);
+      const metas = (await origAllMeta()).filter((m) => origKeyOk(m.id));
+      for (const m of metas) if (online.has(m.id) && !m.online) { const r = await origGetRec(m.id); if (r) { r.online = true; await origPutRec(r); } }
+      const todo = metas.filter((m) => !online.has(m.id));
+      let done = 0; const skipped = [];
+      for (const m of todo) {
+        if (say) say(`Copying ${done + skipped.length + 1} of ${todo.length} to private storage…`);
+        const rec = await origGetRec(m.id);
+        if (!rec) continue;
+        const r = await origUploadOne(pat, repo, m.id, rec);
+        if (r.ok) { rec.online = true; await origPutRec(rec); done++; } else skipped.push(`${m.name}: ${r.skipped}`);
+      }
+      return { done, skipped, already: metas.length - todo.length, repo: repo.full };
+    } finally { origBackupBusy = false; }
+  }
+  // After a publish, or an added original: carry on quietly, but only with a token already saved and storage already set up.
+  async function origBackupSoon() {
+    if (!origRepoName() || origBackupBusy) return;
+    let pat = null; try { pat = localStorage.getItem("wps-github-pat"); } catch (e) { /* none */ }
+    if (!pat) return;
+    try {
+      const r = await origBackup({ pat });
+      if (r.done) toast(`Copied ${r.done} original${r.done === 1 ? "" : "s"} to your private storage.`);
+    } catch (err) {
+      toast(err.userFacing ? err.message : "The online copy of your originals did not finish. They are safe on this computer. Press “Back up online now” on the Upload page to try again.");
+    }
+  }
+  // One photo's original from the private storage, by listing its own folder.
+  async function origFetchOnline(pat, key) {
+    const full = origRepoName();
+    if (!full || !origKeyOk(key)) return null;
+    const ls = await origFetch(pat, `/repos/${full}/contents/originals/${key}`);
+    if (ls.status === 404) return null;
+    if (ls.status === 403) throw explains(new Error("This token cannot open the private storage. Use a token with the “repo” permission."));
+    if (!ls.ok) throw explains(new Error(`GitHub would not open the private storage (${ls.status}).`));
+    const arr = await ls.json(), f = Array.isArray(arr) ? arr.find((x) => x.type === "file") : null;
+    if (!f) return null;
+    const raw = await origFetch(pat, `/repos/${full}/contents/${origPathUrl(f.path)}`, { headers: { "Accept": "application/vnd.github.raw+json" } });
+    if (!raw.ok) throw explains(new Error(`GitHub would not hand over the original (${raw.status}).`));
+    return { blob: await raw.blob(), name: f.name };
+  }
+  // A photo not yet published is held as a data: address, which the page may not fetch(); decode it by hand.
+  function origDataUrlBlob(u) {
+    const m = /^data:([^;,]*)(;base64)?,([\s\S]*)$/.exec(u);
+    if (!m) return null;
+    const bin = m[2] ? atob(m[3]) : decodeURIComponent(m[3]), a = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    return new Blob([a], { type: m[1] || "image/jpeg" });
+  }
+  function origSave(blob, name) {
+    const url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href = url; a.download = name; a.style.display = "none";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+  // On this computer first; then the private storage (asking for the token if it is not saved). "" = none.
+  async function origDownload(p, say) {
+    const key = origKeyOf(p.id);
+    const rec = await origGetRec(key).catch(() => null);
+    if (rec && rec.blob) { origSave(rec.blob, rec.name); return "this computer"; }
+    if (origRepoName()) {
+      const pat = await githubToken("download this photo's full-size original from your private storage");
+      if (!pat) throw explains(new Error("Paste your GitHub token to fetch it from the private storage."));
+      if (say) say("Fetching the original from your private storage…");
+      const got = await origFetchOnline(pat, key);
+      if (got) { origSave(got.blob, got.name); return "private storage"; }
+    }
+    return "";
+  }
+
+  // Every photo the studio has, by key: { id, shoot } (the admin's own copy, hidden albums included).
+  function origPhotoIndex() {
+    const out = new Map();
+    for (const s of shootsNow() || []) for (const p of s.photos || []) { const k = origKeyOf(p.id); if (origKeyOk(k) && !out.has(k)) out.set(k, { id: p.id, photo: p, shoot: s }); }
+    return out;
+  }
+  const origSitePhoto = (id) => new Promise((resolve) => {
+    const info = origPhotoIndex().get(origKeyOf(id));
+    const src = info && (info.photo.small || info.photo.medium || info.photo.url || info.photo.dataUrl);
+    if (!src) { resolve(null); return; }
+    const img = new Image();
+    img.onload = () => resolve(img); img.onerror = () => resolve(null);
+    img.src = /^(data:|blob:|https?:)/.test(src) ? src : "/" + String(src).replace(/^\//, "");
+  });
+
+  // The viewer's admin block: what exists for THIS photo, and the buttons.
+  function paintOriginalBlock(root, p) {
+    if (!root || !p || !p.id || !isAdmin()) return;
+    const key = origKeyOf(p.id);
+    if (!origKeyOk(key)) return;
+    const old = root.querySelector(".lb-original"); if (old) old.remove();
+    const host = document.createElement("div");
+    host.className = "lb-sidebar-section lb-original";
+    host.dataset.key = key;
+    const admin = root.querySelector(".lb-admin");
+    (admin || root).appendChild(host);
+    // Inside the Admin section, which already says only the studio sees it.
+    const head = `<h4 class="lb-h"><span>Full-size original</span>${admin ? "" : "<small>only you see this</small>"}</h4>`;
+    host.innerHTML = `${head}<div class="orig-status" role="status">Checking…</div>`;
+    const say = (m) => { const s = host.querySelector(".orig-status"); if (s) s.textContent = m; };
+    const draw = (rec) => {
+      if (!host.isConnected) return;
+      let status, mode;
+      if (rec) { status = `On this computer${rec.w ? ` · ${rec.w} × ${rec.h} px` : ""} · ${origMb(rec.size)}${rec.online ? " · also in your private storage" : ""}`; mode = "original"; }
+      else if (origRepoName()) { status = "Not on this computer. It may be in your private storage."; mode = "original"; }
+      else { status = "No full-size original saved for this photo. The website keeps it at 1600 px."; mode = "site"; }
+      host.innerHTML = `${head}<div class="orig-status" role="status">${esc(status)}</div>
+        <div class="orig-btns">
+          <button type="button" class="linkish orig-dl" data-mode="${mode}">${mode === "original" ? "⬇ Download original" : "⬇ Download the website copy"}</button>
+          <label class="linkish orig-add">Add original…<input type="file" accept="image/*" class="orig-file" hidden /></label>
+        </div>`;
+    };
+    origGetRec(key).then(draw, () => draw(null));
+    host.addEventListener("click", async (e) => {
+      const b = e.target.closest(".orig-dl");
+      if (!b) return;
+      e.stopPropagation();
+      b.disabled = true;
+      try {
+        if (b.dataset.mode === "site") {
+          const src = photoSrc(p);
+          if (!src) { say("This photo has no file to download."); return; }
+          origSave(/^data:/.test(src) ? origDataUrlBlob(src) : await (await fetch(src)).blob(), `${key}-website-1600px.jpg`);
+          toast("Saved the website copy (1600 px). It is not the camera original.");
+        } else {
+          const from = await origDownload(p, say);
+          if (from) { toast(`Downloaded the full-size original (from ${from}).`); const rec = await origGetRec(key).catch(() => null); draw(rec); }
+          else say("There is no full-size original for this photo. Use “Add original…” to give it one.");
+        }
+      } catch (err) {
+        say(err && err.userFacing ? err.message : "Could not get the original. Check your connection and try again.");
+      } finally { b.disabled = false; }
+    });
+    host.addEventListener("change", async (e) => {
+      const fi = e.target.closest(".orig-file");
+      if (!fi || !fi.files || !fi.files[0]) return;
+      const f = fi.files[0]; fi.value = "";
+      if (!/^image\//.test(f.type || "") && !/\.(jpe?g|png|webp|tiff?)$/i.test(f.name || "")) { toast("That is not a picture file this browser can use."); return; }
+      const dims = await origDims(f);
+      const shown = document.getElementById("lightboxImg");
+      const ref = shown && shown.naturalWidth ? { w: shown.naturalWidth, h: shown.naturalHeight } : null;
+      if (dims && ref && Math.abs(Math.log((dims.w / dims.h) / (ref.w / ref.h))) > 0.06 && !confirm("This picture is a different shape from the one on the website. Use it as this photo's original anyway?")) return;
+      try { await origKeep(key, f); } catch (err) { toast("This computer would not keep that file (storage full or blocked)."); return; }
+      toast("Saved as this photo's original.");
+      draw(await origGetRec(key).catch(() => null));
+      origBackupSoon();
+    });
+  }
+
+  // The Upload page's panel: counts, the keep switch, finding old originals, backing up.
+  // What the panel last said stays on screen through a repaint (the counts change under it), until the page is left.
+  let origLastMsg = "";
+  async function paintOriginalsPanel(fresh) {
+    const host = $("#origPanel");
+    if (!host || !isAdmin()) return;
+    if (fresh) origLastMsg = "";
+    const index = origPhotoIndex();
+    let metas = null;
+    try { metas = await origAllMeta(); } catch (e) { metas = null; }
+    if (!host.isConnected) return;
+    const repoName = origRepoName();
+    const mine = metas ? metas.filter((m) => index.has(m.id)) : [];
+    const onlineN = mine.filter((m) => m.online).length;
+    let space = "";
+    try { if (navigator.storage && navigator.storage.estimate) { const e = await navigator.storage.estimate(); if (e && e.quota) space = ` This browser has room for about ${origMb(Math.max(0, e.quota - (e.usage || 0)))} more.`; } } catch (e) { /* no estimate */ }
+    const line = metas === null
+      ? "This browser cannot keep originals (a private window, or storage is blocked)."
+      : `${mine.length} of ${index.size} photos have their full-size original on this computer${repoName ? `, ${onlineN} of them also copied to your private storage` : ""}.${space}`;
+    host.innerHTML = `
+      <div class="orig-panel">
+        <div class="orig-eyebrow">Full-size originals</div>
+        <p class="orig-line" id="origLine">${esc(line)}</p>
+        <label class="orig-switch"><input type="checkbox" id="origKeep" ${origKeepOn() ? "checked" : ""} /> Keep the full-size original of every new photo I upload</label>
+        <div class="orig-actions">
+          <button type="button" class="admin-cal-btn" id="origFind" title="Choose the folder your photos came from; the site finds each one and keeps it">Find my originals…</button>
+          <button type="button" class="admin-cal-btn ${repoName ? "" : "primary"}" id="origBackup">${repoName ? "Back up online now" : "Set up private online storage"}</button>
+          <input type="file" id="origFolder" accept="image/*" multiple hidden />
+        </div>
+        <div class="orig-prog" id="origProg" role="status" aria-live="polite">${esc(origLastMsg || (repoName ? `Private storage: ${repoName}` : ""))}</div>
+        <details class="orig-how"><summary>How this works</summary>
+          <p>The website keeps every photo at 1600 px, so the camera original is not on it. With this on, each original is also kept <strong>on this computer</strong> (inside this browser) and copied to a <strong>private</strong> place only you can open: a private repository on your GitHub account. It is never part of the public website. Any computer where you are signed in can then download the photo at full size.</p>
+          <p>Photos uploaded before this have no original here. Press <strong>Find my originals</strong> and choose the folder they came from: the site matches each file to its photo by what the picture looks like, so the file names do not matter. Clearing this browser's data removes what is kept on this computer, so keep the online copy up to date.</p>
+        </details>
+      </div>`;
+    const prog = (m) => { origLastMsg = m; const el = $("#origProg"); if (el) el.textContent = m; };
+    $("#origKeep")?.addEventListener("change", (e) => { try { localStorage.setItem(ORIG_KEEP_KEY, e.target.checked ? "1" : "0"); } catch (err) { /* nothing */ } toast(e.target.checked ? "New photos will keep their full-size original." : "New photos will not keep an original."); });
+    const touch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    const fi = $("#origFolder");
+    if (fi && !touch) fi.setAttribute("webkitdirectory", "");
+    $("#origFind")?.addEventListener("click", () => fi && fi.click());
+    fi?.addEventListener("change", async () => {
+      const files = Array.from(fi.files || []); fi.value = "";
+      if (!files.length) return;
+      const btn = $("#origFind"); if (btn) btn.disabled = true;
+      try { await origFindFolder(files, prog); }
+      catch (err) { prog(err && err.userFacing ? err.message : "Something went wrong while looking. Nothing was changed."); }
+      finally { if (btn) btn.disabled = false; paintOriginalsPanel(); }
+    });
+    $("#origBackup")?.addEventListener("click", async (e) => {
+      const btn = e.currentTarget, first = !origRepoName();
+      if (first && !confirm(`This creates a PRIVATE repository on your GitHub account, named “${ORIG_REPO_NAME}”, to keep your full-size originals. It is separate from the website and nobody else can see it.\n\nContinue?`)) return;
+      const pat = await githubToken("keep your full-size originals in a private place on GitHub", btn);
+      if (!pat) { prog("No token was given, so nothing was sent."); return; }
+      btn.disabled = true;
+      try {
+        const r = await origBackup({ pat, say: prog, create: first });
+        prog(r.done || r.skipped.length ? `Copied ${r.done} to your private storage.${r.skipped.length ? ` ${r.skipped.length} left on this computer only (${r.skipped[0]}).` : ""}` : "Everything kept on this computer is already in your private storage.");
+      } catch (err) {
+        prog(err && err.userFacing ? err.message : "The copy did not finish. Check your connection and press the button again; what was copied is kept.");
+      } finally { btn.disabled = false; setTimeout(paintOriginalsPanel, 1500); }
+    });
+  }
+  async function origFindFolder(files, say) {
+    say("Getting ready…");
+    let SB;
+    try { SB = await loadBookBuilder(); } catch (e) { throw explains(new Error("The matching tool would not load. Reload the page and try again.")); }
+    const have = new Set((await origAllMeta().catch(() => [])).map((m) => m.id));
+    const want = [];
+    for (const [key, info] of origPhotoIndex()) if (!have.has(key)) want.push(info.id);
+    if (!want.length) { say("Every photo already has its original on this computer."); return; }
+    // A picture no bigger than the website's own copy (1600 px) can never be a full-size original, and a small
+    // export of a photo would make its full-size twin look like one of two candidates and be left alone. Leave
+    // those out up front, and say how many. Files whose size cannot be read here are passed on as they are.
+    say("Looking at your files…");
+    const big = []; let tiny = 0;
+    for (const f of files) {
+      const d = await origDims(f);
+      if (d && Math.max(d.w, d.h) <= 1600) tiny++; else big.push(f);
+    }
+    if (!big.length) { say(tiny ? `Every picture in what you chose is no bigger than the website's own copy (1600 px), so none of them is a full-size original.` : "No picture files were found in what you chose."); return; }
+    const store = SB.originalsStore();
+    await store.add(big, (d, t) => say(`Reading your files… ${d} of ${t}`));
+    if (!store.count()) { store.forget(); say(`No picture files were found in what you chose.${store.raw ? ` (${store.raw} camera RAW files were skipped: export them as JPEG first.)` : ""}`); return; }
+    const res = await store.match(want, origSitePhoto, (d, t) => say(`Looking for your ${t} photos… ${d} of ${t}`));
+    let kept = 0, failed = 0;
+    for (const [id, f] of res.matched) { try { await origKeep(origKeyOf(id), f.file); kept++; } catch (e) { failed++; } }
+    store.forget();
+    const bits = [`Found and kept ${kept} of ${want.length} originals.`];
+    if (res.ambiguous.length) bits.push(`${res.ambiguous.length} could be more than one file in the folder (the same picture saved twice, say), so ${res.ambiguous.length === 1 ? "was" : "were"} left alone. Move the extra copies out and try again.`);
+    if (res.small.length || tiny) { const n = res.small.length + tiny; bits.push(`${n} picture${n === 1 ? " was" : "s were"} no bigger than the website copy and ${n === 1 ? "was" : "were"} skipped.`); }
+    const lost = res.missing.length;
+    if (lost) bits.push(`${lost} had no match in the folder.`);
+    if (failed) bits.push(`${failed} could not be kept (storage full or blocked).`);
+    if (kept && origRepoName()) bits.push("Press Back up online now to copy them to your private storage.");
+    say(bits.join(" "));
+  }
+
   function viewUpload() {
     // Escaped like every other label: category names come from data.js (S11).
     const opt = (arr) => arr.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
@@ -7203,6 +7632,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         </div>
       </section>
       <section class="section container">
+        <div id="origPanel"></div>
         <div class="upload-grid">
           <div class="dropzone reveal" id="dropzone" tabindex="0" role="button" aria-label="Upload images">
             <input type="file" id="fileInput" accept="image/*" multiple hidden />
@@ -7572,6 +8002,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
   /* ---- upload wiring ---- */
   function wireUpload(editId) {
     staged = [];
+    paintOriginalsPanel(true);   // the full-size originals panel (v633)
     const dz = $("#dropzone"), fi = $("#fileInput"), grid = $("#stagingGrid"), note = $("#queueNote"), pub = $("#publishBtn"), form = $("#shootForm");
     // Bulk pose-tagging: tick photos, click a pose once to tag all of them —
     // avoids setting the Angle/Profile dropdown one photo at a time on
@@ -8277,6 +8708,9 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           id: uid(),
           dataUrl: ready,
           name: f.name,
+          // The camera file itself, held (not read) until the album is saved,
+          // so its original can be kept (v633). Never part of the album record.
+          original: f,
           objectPosition: staged.length === 0 ? "top" : "center",
           isCover: staged.length === 0,
           manuallyAligned: false,
@@ -9178,11 +9612,18 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       }
       window.__uploadDirty = false;
       await loadShoots();
+      // The camera originals of the new photos (v633): kept on this computer
+      // now, before the form is cleared, and copied to the private storage
+      // once the publish below has run. The album is already saved, so a
+      // problem here never costs the studio its photos.
+      const keeping = origKeepOn() ? origKeepStaged(staged.filter((x) => x.original).map((x) => ({ id: String(x.id).split("-")[0], file: x.original }))) : Promise.resolve();
       // Saved here; "live" is only said once GitHub has taken it (A11).
       toast(`Saved “${shoot.title}” on this device — publishing it now…`);
       staged = [];
       history.pushState(null, "", "/"); render();
-      await syncToGitHub(shootsNow());
+      try { await syncToGitHub(shootsNow()); }
+      // The originals do not depend on the publish having worked.
+      finally { keeping.catch(() => {}).then(() => origBackupSoon()); }
     });
     // Both painted last: the prefill above has decided who is ticked by now,
     // and syncModelsUi rebuilds the grid, so renderStaged must already exist.
@@ -9846,6 +10287,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     wireUpload: (editId) => wireUpload(editId),
     wireCalendar: () => wireCalendar(),
     updateReminders: () => updateAdminReminders(),
+    // The viewer's "Full-size original" block (v633); app.js calls it for an admin only.
+    paintOriginal: (root, photo) => paintOriginalBlock(root, photo),
     initStudioSettings: () => initStudioSettingsControls(),
     loadBookBuilder: () => loadBookBuilder(),
     // For the portfolio builder's private copy of books (v618): the same token and the same careful calls publishing uses.

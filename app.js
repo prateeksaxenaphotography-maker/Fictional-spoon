@@ -3688,6 +3688,8 @@ window.resolveContractArchive = function(version) {
           });
         });
       }
+      // The photo's full-size original: download, or add one (admin.js, v633).
+      if (window.WPS_ADMIN && typeof window.WPS_ADMIN.paintOriginal === "function") window.WPS_ADMIN.paintOriginal(lbSidebar, p);
     }
 
     // A link in the panel ("See the full album", "See all models' comp cards")
