@@ -2910,7 +2910,7 @@ window.WPS_DATA = {
       "showAgencyEmailOnPdf": false,
       "showCrewSocials": true,
       "coverPhotoId": "mwlpt93e178f01",
-      "updatedAt": 1795789677218
+      "updatedAt": 1795789976443
     }
   ],
   "DELETED_IDS": [
@@ -3313,8 +3313,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1795789733365,
-    "syncedAt": 1795789733365,
+    "updatedAt": 1795789981019,
+    "syncedAt": 1795789981019,
     "testShootLimits": {
       "default": 3,
       "months": {},
@@ -4188,7 +4188,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1795789677218,
+        "updatedAt": 1795789976443,
         "showModelInstagramOnCompCard": true,
         "showModelInstagramOnHome": true,
         "showModelInstagramOnPdf": true,
