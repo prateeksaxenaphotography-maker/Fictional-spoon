@@ -581,7 +581,10 @@ body.menu-open .upload-sticky-bar { display: none; }
 
 /* ---------- Date Picker ---------- */
 .date-picker-wrap { position: relative; display: flex; align-items: stretch; }
-.date-picker-wrap input { flex: 1; padding-right: 44px; }
+/* The second selector outranks the form's own input padding, which used to take back the room kept for the button and
+   let the example text run under it. */
+.date-picker-wrap input, .field .date-picker-wrap input { flex: 1; min-width: 0; padding-right: 54px; text-overflow: ellipsis; }
+.field .date-picker-wrap:has(> .date-picker-toggle[hidden]) input { padding-right: 14px; }
 .date-picker-toggle {
   position: absolute; right: 0; top: 0; bottom: 0; width: 42px;
   background: none; border: none; border-left: 1px solid var(--line);
@@ -3094,6 +3097,47 @@ html.theme-dark { color-scheme: dark; }
 .production-terms-list span { font-size: 13.5px; font-weight: 600; color: var(--ink); line-height: 1.35; }
 .production-terms-sub { display: block; margin-top: 10px; font-size: 12.5px; color: var(--ink-soft); line-height: 1.45; }
 @media (max-width: 720px) { .production-terms-list { grid-template-columns: 1fr; } }
+
+/* The booking form's layout: the two choices on top, then a picture beside the form (the studio picks it, one per
+   side). A campaign brief's three sections sit in one card; the portfolio form keeps its separate cards. */
+.shoot-form > .scale-cards { margin: 0; }
+.book-wrap #bookingForm .book-main { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.book-wrap #bookingForm.is-production .book-main { gap: 26px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 28px 32px 32px; box-shadow: var(--shadow-sm); }
+.book-wrap #bookingForm.is-production .book-main fieldset { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+.book-wrap #bookingForm.is-production .book-main legend { padding: 0 !important; margin-bottom: 14px; }
+.book-wrap #bookingForm.is-production .talk-first-row { margin: -10px 0 0; }
+.book-wrap #bookingForm.is-production #gearProtectionCallout,
+.book-wrap #bookingForm.is-production #bookingPolicyOuter { margin-bottom: 0 !important; }
+.book-wrap #bookingForm.is-production #bookShootFs > div:has(> #toggleInviteCodeLink) { display: none; }
+.book-brand-photo { display: none; position: relative; margin: 0; border-radius: 14px; overflow: hidden; }
+.book-wrap #bookingForm:not(.is-production) > .book-brand-photo[data-mode="standard"],
+.book-wrap #bookingForm.is-production > .book-brand-photo[data-mode="production"] { display: block; }
+.book-brand-photo img { display: block; width: 100%; height: 300px; object-fit: cover; }
+.book-brand-photo::after { content: ""; position: absolute; inset: 55% 0 0; background: linear-gradient(transparent, rgba(0,0,0,.7)); }
+.book-brand-photo figcaption { position: absolute; z-index: 1; left: 18px; right: 18px; bottom: 16px; color: #fff; font-family: "Archivo", sans-serif; font-weight: 900; font-size: 26px; line-height: 1.08; }
+@media (min-width: 1000px) {
+  .book-wrap.has-picture { max-width: 1256px; padding: 0; }
+  .book-wrap #bookingForm.has-picture { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); column-gap: 32px; row-gap: 20px; align-items: start; }
+  .book-wrap #bookingForm.has-picture > * { grid-column: 2; min-width: 0; }
+  .book-wrap #bookingForm.has-picture > .scale-cards { grid-column: 1 / -1; grid-row: 1; }
+  .book-wrap #bookingForm.has-picture > .book-brand-photo { grid-column: 1; grid-row: 2; position: sticky; top: calc(96px + var(--admin-banner-h, 0px)); }
+  .book-wrap #bookingForm.has-picture > .book-main { grid-row: 2; }
+  .book-wrap #bookingForm.has-picture .book-brand-photo img { height: min(76vh, 640px); }
+  .book-wrap #bookingForm.has-picture .book-brand-photo figcaption { left: 24px; right: 24px; bottom: 22px; font-size: 36px; }
+}
+@media (max-width: 620px) { .book-wrap #bookingForm.is-production .book-main { padding: 18px 16px 22px; border-radius: 12px; } }
+
+/* Studio: choosing the booking page's pictures */
+.bp-slots { display: flex; flex-direction: column; gap: 14px; margin: 12px 0; }
+.bp-slot { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 14px; align-items: center; font-size: 13.5px; }
+.bp-thumb { width: 96px; height: 144px; border-radius: 8px; overflow: hidden; background: var(--bone); display: flex; align-items: center; justify-content: center; text-align: center; font-size: 12px; color: var(--ink-soft); }
+.bp-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.bp-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.bp-grid { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 6px; max-height: 360px; overflow: auto; }
+.bp-grid button { padding: 0; border: 2px solid transparent; border-radius: 6px; background: none; cursor: pointer; aspect-ratio: 2 / 3; overflow: hidden; }
+.bp-grid button:hover, .bp-grid button:focus-visible { border-color: var(--accent-text); }
+.bp-grid img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.bp-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--ink-soft); }
 
 .arranger-terms-note { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-soft); line-height: 1.5; }
 .arranger-terms-note[hidden] { display: none; }

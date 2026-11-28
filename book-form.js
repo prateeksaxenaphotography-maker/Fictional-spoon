@@ -134,7 +134,7 @@
       const box = $("#b_date_later"), text = $("#b_date_label_text"), inp = $("#b_date"), tog = $("#datePickerToggle");
       if (box) box.hidden = !on;
       if (text) text.textContent = on ? "Dates you would like (optional)" : "Preferred Date / Timeline *";
-      if (inp) { inp.placeholder = on ? "e.g. any Saturday in January — or leave empty" : "e.g. 24 Oct 2026, or use the calendar →"; if (on) { inp._wpsPickedDates = []; inp.value = ""; } }
+      if (inp) { inp.placeholder = on ? "e.g. any Saturday in January — or leave empty" : "e.g. 24 Oct 2026"; if (on) { inp._wpsPickedDates = []; inp.value = ""; } }
       if (tog) tog.hidden = !!on;
       clearError("b_date");
       paintTestLimitNote();
@@ -290,7 +290,7 @@
       }
     }
     // Clear an error the moment the visitor starts fixing it.
-    ["b_name", "b_email", "b_date", "b_instagram", "b_location", "b_phone", "b_subject_name", "b_subject_email", "b_guardian_name", "b_guardian_email"].forEach((id) => {
+    ["b_company", "b_name", "b_email", "b_date", "b_instagram", "b_location", "b_phone", "b_subject_name", "b_subject_email", "b_guardian_name", "b_guardian_email"].forEach((id) => {
       $("#" + id)?.addEventListener("input", () => clearError(id));
     });
     $("#b_authorised")?.addEventListener("change", () => clearError("b_authorised"));
@@ -2003,10 +2003,16 @@
     /* An agency or a brand is never the one in front of the camera, so tick
        the box for them. Only on a real change of role, and never unticking
        what they ticked themselves. */
+    /* A campaign brief signs nothing and usually has nobody cast yet, so there a brand is not made to name a model.
+       The exception is a talent under 18: a company is certainly not the child, so the guardian questions must open. */
     const onRoleChosen = () => {
       const box = $("#b_onbehalf"), r = $("#b_role")?.value;
-      if (box && !box.checked && (r === "Agency" || r === "Brand")) { box.checked = true; syncAge(); }
+      if (window.isProductionBrief && window.isProductionBrief() && !talentUnder18()) return;
+      if (box && !box.checked && (r === "Agency" || r === "Brand")) { box.checked = true; box.dataset.auto = "1"; syncAge(); }
     };
+    // A tick the person has touched is theirs, not the form's.
+    $("#b_onbehalf")?.addEventListener("click", (e) => { delete e.currentTarget.dataset.auto; });
+    $("#b_age")?.addEventListener("change", () => { if (window.isProductionBrief && window.isProductionBrief() && talentUnder18()) onRoleChosen(); });
     $("#b_time_start")?.addEventListener("input", () => updateCustomTimeBadge());
     $("#b_time_end")?.addEventListener("input", () => updateCustomTimeBadge());
 
@@ -2064,9 +2070,61 @@
       const isProd = () => radios.some(r => r.checked && r.value === "production");
       window.isProductionBrief = isProd;
       const notice = Array.from(form.querySelectorAll("div")).find(d => /Still Photography creation/.test(d.textContent) && d.querySelectorAll("div").length <= 2);
+      /* A brand's brief is laid out differently (a picture beside one card), is headed for what it is, and starts from a
+         brand's answers rather than a model's. A default is only moved while it is still the untouched default, and put
+         back only if it still reads what was put there, so nobody's own choice is overwritten. */
+      const head = document.querySelector(".book-page-head");
+      const h1 = head && head.querySelector("h1"), sub = head && head.querySelector(".page-sub");
+      const moved = {};
+      let brandMode = false, plainHead = null;
+      const move = (id, from, to) => {
+        const el = $("#" + id);
+        if (!el || el.disabled || el.value !== from) return;
+        moved[id] = { from, to };
+        el.value = to;
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+      const moveBack = (id) => {
+        const el = $("#" + id), was = moved[id];
+        delete moved[id];
+        if (!el || !was || el.value !== was.to) return;
+        el.value = was.from;
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+      const setBrandMode = (on) => {
+        if (on === brandMode) return;
+        brandMode = on;
+        form.closest(".book-wrap")?.classList.toggle("is-production", on);
+        if (h1 && sub) {
+          if (on) {
+            plainHead = { h1: h1.innerHTML, sub: sub.innerHTML };
+            h1.textContent = "Commission a shoot.";
+            sub.textContent = "For brands, designers and magazines. Tell me what you are making and where the pictures will run.";
+          } else if (plainHead) { h1.innerHTML = plainHead.h1; sub.innerHTML = plainHead.sub; }
+        }
+        ["#b_company_field", "#p_paperwork_line"].forEach((sel) => { const el = $(sel); if (el) el.hidden = !on; });
+        const nameLabel = $("#b_name_label"), nameEl = $("#b_name");
+        if (nameLabel) nameLabel.textContent = on ? "Your name *" : "Your Name / Brand *";
+        if (nameEl) nameEl.placeholder = on ? "Who we speak to" : "e.g. John Doe / Brand Name";
+        if (on) { move("b_role", "Model", "Brand"); move("b_type", "Model Portfolio / Comp Card", "Commercial Campaign"); }
+        else { moveBack("b_role"); moveBack("b_type"); clearError("b_company"); }
+        // The tick the form made by itself for a company comes off for a brief, and back on for a priced booking.
+        const tick = $("#b_onbehalf");
+        if (!on) onRoleChosen();
+        else if (tick && tick.checked && tick.dataset.auto && !talentUnder18()) {
+          tick.checked = false;
+          delete tick.dataset.auto;
+          tick.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      };
       const apply = () => {
         const on = isProd();
         form.classList.toggle("is-production", on);
+        setBrandMode(on);
+        // The picture beside the form is the one chosen for this side; a side with none keeps the narrow page.
+        const pictured = !!form.querySelector(`.book-brand-photo[data-mode="${on ? "production" : "standard"}"]`);
+        form.classList.toggle("has-picture", pictured);
+        form.closest(".book-wrap")?.classList.toggle("has-picture", pictured);
         radios.forEach(r => r.closest(".scale-card").classList.toggle("is-on", r.checked));
         if (brief) brief.hidden = !on;
         if (notice) notice.hidden = on;
@@ -2349,7 +2407,10 @@
         if (!val(id)) { setError(id, msg); firstBad = firstBad || id; }
         else clearError(id);
       };
-      require("b_name", "Please add your name or brand.");
+      const brandBrief = !!(window.isProductionBrief && window.isProductionBrief());
+      if (brandBrief) require("b_company", "Please add your brand or magazine.");
+      else clearError("b_company");
+      require("b_name", brandBrief ? "Please add your name." : "Please add your name or brand.");
       if (dateToBeAgreed && bookingIsTestShoot()) clearError("b_date"); else require("b_date", "Let us know a rough date or timeline.");
       require("b_location", "Please let us know your preferred location.");
 
@@ -2758,8 +2819,12 @@
         const isTfpCat = shootCategory === "TFP";
         const isProduction = !!(window.isProductionBrief && window.isProductionBrief());
         const productionSchedule = getProductionSchedule();
+        // The brand behind a brief, and what a brand's finance team needs said up front.
+        const company = isProduction ? val("b_company") : "";
+        const briefWho = company ? `${company} (${name})` : name;
+        const ownPaperwork = $("#p_paperwork")?.checked ? "Yes — they issue their own" : "No";
         const productionLines = isProduction
-          ? `What we're shooting: ${val("p_subject") || "—"}\nUsage: ${val("p_usage") || "—"}\nBudget band: ${val("p_budget") || "Prefer to discuss"}\nRough scale: ${val("p_scale") || "—"}\nPayment terms (shown for information): ${productionSchedule.text} — figures to be confirmed in the proposal.\n`
+          ? `Brand or magazine: ${company || "—"}\nWhat we're shooting: ${val("p_subject") || "—"}\nUsage: ${val("p_usage") || "—"}\nFor how long: ${val("p_term") || "—"}\nOwn purchase order or contract: ${ownPaperwork}\nBudget band: ${val("p_budget") || "Prefer to discuss"}\nRough scale: ${val("p_scale") || "—"}\nPayment terms (shown for information): ${productionSchedule.text} — figures to be confirmed in the proposal.\n`
           : "";
 
         // Did this booking come in on an invite that supplies the venue? Read
@@ -3159,9 +3224,9 @@
             : `\n`) +
           `Concept/Vision:\n${concept || '—'}`;
         const inquiryBody = compactBody + tfpReleaseText;
-        const plainTextBody = `To: ${studioEmail}\nSubject: ${isProduction ? "Production Brief" : "Shoot Booking Request"} — ${name}\n\n` + inquiryBody;
+        const plainTextBody = `To: ${studioEmail}\nSubject: ${isProduction ? "Production Brief" : "Shoot Booking Request"} — ${briefWho}\n\n` + inquiryBody;
 
-        const subject = encodeURIComponent(isProduction ? `Production Brief — ${name}` : isCustomContract ? `Shoot Booking Request (CUSTOM CONTRACT REQUESTED) — ${name}` : `Shoot Booking Request — ${name}`);
+        const subject = encodeURIComponent(isProduction ? `Production Brief — ${briefWho}` : isCustomContract ? `Shoot Booking Request (CUSTOM CONTRACT REQUESTED) — ${name}` : `Shoot Booking Request — ${name}`);
         const body = encodeURIComponent(compactBody);
 
         // A mailto: URL is handed to the operating system, not to the browser,
@@ -3447,11 +3512,12 @@
         // email the first time it's used). If the relay is unreachable or
         // rejects, fall back to opening the visitor's mail app pre-filled.
         const relayFields = {
-          _subject: isProduction ? `Production Brief — ${name}` : (isCustomContract ? `Shoot Booking Request (CUSTOM CONTRACT REQUESTED) — ${name}` : `Shoot Booking Request — ${name}`),
+          _subject: isProduction ? `Production Brief — ${briefWho}` : (isCustomContract ? `Shoot Booking Request (CUSTOM CONTRACT REQUESTED) — ${name}` : `Shoot Booking Request — ${name}`),
           "Enquiry": isProduction ? "Campaign / production brief — quote on the brief after a call" : "Booking request",
           _replyto: email,
           _template: "box",
           "Name": name,
+          ...(isProduction ? { "Brand or magazine": company || "—" } : {}),
           "Role": role,
           "Email": email,
           "Phone": phone || "—",
@@ -3483,7 +3549,7 @@
           "Package": isProduction ? "Quoted on the brief" : (pricesArePublished() ? budget : "Not quoted — prices unavailable"),
           // What this booking delivers, as its signed record names it (v588): the default, or the line its code sets.
           ...(isProduction ? {} : { "Deliverables": dlNow.line ? `${dlNow.line}${dlNow.from === "invite" ? " (set on the invite code)" : dlNow.from === "promo" ? " (set on the promo code)" : ""}` : "—" }),
-          ...(isProduction ? { "What we're shooting": val("p_subject") || "—", "Usage": val("p_usage") || "—", "Budget band": val("p_budget") || "Prefer to discuss", "Rough scale": val("p_scale") || "—" } : {}),
+          ...(isProduction ? { "What we're shooting": val("p_subject") || "—", "Usage": val("p_usage") || "—", "For how long": val("p_term") || "—", "Own purchase order or contract": ownPaperwork, "Budget band": val("p_budget") || "Prefer to discuss", "Rough scale": val("p_scale") || "—" } : {}),
           ...(fallbackPackage ? { "Paid Fallback Package": fallbackPackage } : {}),
           "Invite Code": inviteLine || "—",
           "Promo Code": promoLine || "—",
@@ -4211,7 +4277,7 @@
        forward used to empty every field, a long brief included (Sep 2026
        audit, B25). Cleared once a request is sent, and by "Send another". */
     const BOOK_DRAFT_KEY = "wps-book-draft";
-    const draftFields = () => [...form.querySelectorAll("input[id^='b_'], select[id^='b_'], textarea[id^='b_']")]
+    const draftFields = () => [...form.querySelectorAll("input[id^='b_'], select[id^='b_'], textarea[id^='b_'], input[id^='p_'], select[id^='p_']")]
       .filter((el) => el.type !== "file" && el.type !== "hidden");
     const saveBookDraft = () => {
       try {
@@ -4239,6 +4305,8 @@
     $("#bookAnother")?.addEventListener("click", () => {
       clearBookDraft();
       form.reset();
+      // reset() puts the choice back without saying so; the layout follows it.
+      form.dispatchEvent(new Event("change"));
       // form.reset() empties the field but not the picker behind it: the next
       // request kept reporting the previous date's "already booked" badge, and
       // sent that warning to the studio about a different day (Sep 2026 audit).

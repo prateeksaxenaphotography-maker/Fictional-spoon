@@ -1000,6 +1000,7 @@ const SETTINGS_KEYS = {
   HOME_STUDIO_RATE_TFP: "wps_home_studio_rate_tfp",
   MEASURE_UNITS: "wps_measure_units",
   HOME_SLIDESHOW: "wps_home_slideshow",
+  BOOK_PICTURES: "wps_book_pictures",
   STUDIO: "wps_studio"
 };
 /* Seconds each home-page photo stays up (the owner, Sep 2026: 5 by default,
@@ -1015,6 +1016,22 @@ function getHomeSlideSeconds() {
   return pub && ok(Number(pub.seconds)) ? Number(pub.seconds) : 5;
 }
 window.getHomeSlideSeconds = getHomeSlideSeconds;
+/* The pictures beside the booking form: one for the models and portfolio side, one for campaigns, or one for both
+   (the owner, Nov 2026). Published as { same, models, campaigns }: photo ids, "none" for no picture, "" for the
+   starting choice below. With "same" ticked both sides use the campaigns one. */
+const BOOK_PICTURE_DEFAULTS = { models: "mtrcnsbj428ce3-1", campaigns: "mu1bk493tm3duj-15" };
+window.BOOK_PICTURE_DEFAULTS = BOOK_PICTURE_DEFAULTS;
+function getBookPictures() {
+  const clean = (o) => (o && typeof o === "object" && !Array.isArray(o))
+    ? { same: o.same === true, models: typeof o.models === "string" ? o.models : "", campaigns: typeof o.campaigns === "string" ? o.campaigns : "" }
+    : null;
+  try {
+    const saved = clean(JSON.parse(studioLocal("wps_book_pictures") || "null"));
+    if (saved) return saved;
+  } catch (e) {}
+  return clean(window.WPS_DATA && window.WPS_DATA.BOOK_PICTURES) || { same: false, models: "", campaigns: "" };
+}
+window.getBookPictures = getBookPictures;
 /* How measurements are shown everywhere — "imperial" (height in feet and
    inches, chest/waist/hips in inches) or "metric" (all in cm). Published as
    { display } because the settings reader only reads objects, lists and
@@ -7151,7 +7168,38 @@ window.resolveContractArchive = function(version) {
     });
   }
 
+  /* The picture beside the booking form (the studio's choice, "Booking page pictures" on the studio's calendar page).
+     Chosen by photo id among the public albums, so a photo that has since been removed or hidden leaves the form on its
+     own instead of showing a broken frame. Returns { src, pos } or null. */
+  function bookPhotoById(id) {
+    for (const s of SHOOTS) {
+      if (!s || s.isPublic === false) continue;
+      const p = (s.photos || []).find((x) => x && x.id === id);
+      const src = p ? p.medium || p.url || "" : "";
+      if (!src) continue;
+      // "center" suits the tall frame beside the form but cuts faces off the short one on a phone.
+      const pos = /^[\w.% -]+$/.test(p.objectPosition || "") && p.objectPosition !== "center" ? p.objectPosition : "50% 18%";
+      return { src: /^(https?:|data:|blob:|\/)/.test(src) ? src : `/${src}`, pos };
+    }
+    return null;
+  }
+  window.bookPhotoById = bookPhotoById;
+  // What the studio can choose from: every photograph in a public album, leaving out workshop frames and Polaroids.
+  window.bookPhotoChoices = () => SHOOTS.filter((s) => s && !s.isTestimonial && s.type !== "Workshop Attended" && s.isPublic !== false)
+    .flatMap((s) => (s.photos || []).filter((p) => p && p.id && !p.polaroid && (p.small || p.url)).map((p) => {
+      const src = p.small || p.url;
+      return { id: p.id, album: s.title || "", src: /^(https?:|data:|blob:|\/)/.test(src) ? src : `/${src}` };
+    }));
+  function bookPicture(kind) { // "models" or "campaigns"
+    const set = getBookPictures();
+    const key = set.same ? "campaigns" : kind;
+    const id = set[key] || BOOK_PICTURE_DEFAULTS[key];
+    return id === "none" ? null : bookPhotoById(id);
+  }
+
   function viewBook() {
+    const picModels = bookPicture("models"), picCampaigns = bookPicture("campaigns");
+    const figure = (mode, pic, caption) => pic ? `<figure class="book-brand-photo" data-mode="${mode}"><img src="${esc(pic.src)}" style="object-position: ${esc(pic.pos)};" alt="A portrait by nerdyphotographer.in" loading="lazy" /><figcaption>${caption}</figcaption></figure>` : "";
     const studioEmail = window.STUDIO_CONFIG?.email || "prateeksaxenaphotography@gmail.com";
     const params = new URLSearchParams(location.search);
     const prefilledType = params.get("type") || "";
@@ -7170,7 +7218,7 @@ window.resolveContractArchive = function(version) {
         </div>
       </section>
       <section class="section container">
-        <div class="book-wrap">
+        <div class="book-wrap${picModels ? " has-picture" : ""}">
           <div class="book-success" id="bookSuccess" style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 20px; width: 100%; max-width: 580px; margin: 0 auto;" hidden>
             <div class="book-success-icon" id="bookSuccessIcon" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
@@ -7199,11 +7247,22 @@ window.resolveContractArchive = function(version) {
               <pre id="inquiryTextPreview" style="width: 100%; box-sizing: border-box; background: var(--bone); padding: 14px; border-radius: 6px; font-size: var(--font-xs); font-family: monospace; white-space: pre-wrap; text-align: left; max-height: 200px; overflow-y: auto; border: 1px solid var(--line); color: var(--ink); margin: 0;"></pre>
             </div>
           </div>
-          <form class="shoot-form" id="bookingForm" novalidate>
+          <form class="shoot-form${picModels ? " has-picture" : ""}" id="bookingForm" novalidate>
+            <!-- Two doors, asked before anything is typed. Portfolio / small-brand shoots take the priced path; a campaign
+                 or production sends a brief only — no packages, no quote, no contract at this step — and the studio
+                 quotes after a call. -->
+            <div class="scale-cards" id="scaleCards" role="radiogroup" aria-label="What are we planning?">
+              <label class="scale-card is-on"><input type="radio" id="b_scale_standard" name="shoot_scale" value="standard" checked /><strong>Portfolio or small projects</strong><small>Set packages, an instant quote and standard terms. For portfolios, comp cards and single shoots.</small></label>
+              <label class="scale-card"><input type="radio" id="b_scale_production" name="shoot_scale" value="production" /><strong>Campaign or production</strong><small>Advertising, several days or locations, or a crew. No prices here: send the brief, we set up a call and quote on it.</small></label>
+            </div>
+            ${figure("standard", picModels, "Your shoot<br />starts here.")}
+            ${figure("production", picCampaigns, "Your campaign<br />starts here.")}
+            <div class="book-main">
             <fieldset id="bookContactFs">
               <legend>Contact</legend>
+               <label class="field" id="b_company_field" hidden><span>Brand or magazine *</span><input id="b_company" type="text" maxlength="120" autocomplete="organization" placeholder="Company name" /></label>
                <div class="field-row">
-                 <label class="field"><span>Your Name / Brand *</span><input id="b_name" type="text" required autocomplete="name" placeholder="e.g. John Doe / Brand Name" /></label>
+                 <label class="field"><span id="b_name_label">Your Name / Brand *</span><input id="b_name" type="text" required autocomplete="name" placeholder="e.g. John Doe / Brand Name" /></label>
                  <label class="field"><span>Role *</span>
                    <select id="b_role">
                      <option value="Model">Model / Talent</option>
@@ -7299,15 +7358,6 @@ window.resolveContractArchive = function(version) {
              <div class="talk-first-row"><button type="button" class="btn btn-ghost talk-first-btn" id="talkSubmitBtn">Talk first</button></div>
              <fieldset id="bookShootFs">
                <legend>The shoot</legend>
-                <!-- Two doors. Portfolio / small-brand shoots take the priced
-                     path below; a campaign or production sends a brief only —
-                     no packages, no quote, no contract at this step — and the
-                     studio quotes after a call. -->
-                <div class="scale-cards" id="scaleCards" role="radiogroup" aria-label="What are we planning?">
-                  <label class="scale-card is-on"><input type="radio" name="shoot_scale" value="standard" checked /><strong>Portfolio or small-brand shoot</strong><small>Packages, an instant quote and standard terms. Models, makeup artists, designers, small brands.</small></label>
-                  <label class="scale-card"><input type="radio" name="shoot_scale" value="production" /><strong>Campaign or production</strong><small>No packages or prices here. Send the brief, we set up a call and quote on it.</small></label>
-                </div>
-
                 <!-- Dedicated Still Photography Specialization & Video Coverage Policy Notice -->
                 <div style="background: rgba(var(--accent-rgb), 0.04); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
                   <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">Still photography only</div>
@@ -7383,7 +7433,7 @@ window.resolveContractArchive = function(version) {
                  <label class="field" id="b_date_field">
                     <span><span id="b_date_label_text">Preferred Date / Timeline *</span> <span id="b_date_availability_badge" style="display: none; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 2.5px 7px; border-radius: 4px; margin-left: 8px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.05em;"></span></span>
                     <div class="date-picker-wrap">
-                      <input id="b_date" type="text" required placeholder="e.g. 24 Oct 2026, or use the calendar →" autocomplete="off" />
+                      <input id="b_date" type="text" required placeholder="e.g. 24 Oct 2026" autocomplete="off" />
                       <button type="button" class="date-picker-toggle" id="datePickerToggle" aria-label="Open date picker" title="Pick dates from calendar">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                       </button>
@@ -7396,8 +7446,8 @@ window.resolveContractArchive = function(version) {
                   <div id="b_date_later" hidden role="status" style="margin-top: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);"><strong style="color: var(--ink);">The date is to be agreed by email.</strong> Everything else is booked as usual: the costs and the terms are below for you to read and sign, and the studio will reply to fix a date with you. Put any dates you would like in the box above, or leave it empty for whenever the studio is free. <button type="button" id="b_date_later_undo" class="link-arrow" style="padding: 0; font-size: var(--font-xs);">Choose a date instead</button></div>
                </div>
                 <div class="production-brief" id="productionBrief" hidden>
+                  <label class="field"><span>What are we shooting, and for whom?</span><input id="p_subject" type="text" placeholder="e.g. Autumn campaign for a footwear brand" /></label>
                   <div class="field-row">
-                    <label class="field"><span>What are we shooting, and for whom?</span><input id="p_subject" type="text" placeholder="e.g. Autumn campaign for a footwear brand" /></label>
                     <label class="field"><span>Where will the images be used?</span>
                       <select id="p_usage">
                         <option value="">Choose…</option>
@@ -7405,6 +7455,16 @@ window.resolveContractArchive = function(version) {
                         <option>E-commerce</option>
                         <option>Print &amp; outdoor</option>
                         <option>Web, print &amp; outdoor campaign</option>
+                        <option>Not sure yet</option>
+                      </select>
+                    </label>
+                    <label class="field"><span>For how long?</span>
+                      <select id="p_term">
+                        <option value="">Choose…</option>
+                        <option>6 months</option>
+                        <option>1 year</option>
+                        <option>2 years</option>
+                        <option>Longer</option>
                         <option>Not sure yet</option>
                       </select>
                     </label>
@@ -7517,7 +7577,7 @@ window.resolveContractArchive = function(version) {
                 </div>
 
                <div class="field-row">
-                 <label class="field" id="b_budget_field" style="grid-column: 1 / -1;"><span>Package · set tiers *</span><span class="field-hint">Anything larger than these — multi-day, multi-location, or a campaign with a crew — is quoted on the brief: choose "Campaign or production" at the top of this section.</span>
+                 <label class="field" id="b_budget_field" style="grid-column: 1 / -1;"><span>Package · set tiers *</span><span class="field-hint">Anything larger than these — multi-day, multi-location, or a campaign with a crew — is quoted on the brief: choose "Campaign or production" at the top of the form.</span>
                    <select id="b_budget">
                      ${getAdminPackages().map((p, i) => `<option value="₹${esc(p.price.toLocaleString('en-IN'))} (${esc(p.name)})"${i===0?' selected':''}>₹${esc(p.price.toLocaleString('en-IN'))} · ${esc(p.name)} (${esc(p.specs)})</option>`).join("")}
                    </select>
@@ -7849,7 +7909,9 @@ window.resolveContractArchive = function(version) {
              </div>
            </div>
 
+            <label class="check-line" id="p_paperwork_line" hidden><input type="checkbox" id="p_paperwork" /><span>We issue our own purchase order or contract</span></label>
             <button type="submit" class="btn btn-dark btn-block" id="bookSubmitBtn">Submit Booking Request</button>
+            </div>
             <!-- Pinned total + submit while the form is on screen; mirrors
                  #summaryFinalAmount / #bookSubmitBtn and just clicks the real
                  button, so validation and the terms flow stay untouched.

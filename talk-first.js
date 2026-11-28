@@ -51,7 +51,9 @@ window.WPS_TALK_FIRST = function ({ $, esc, setError, clearError, form, panel, a
   const heard = v("b_heard");
   const referredBy = heard === "Referred by someone" ? v("b_referrer").replace(/\s+/g, " ").slice(0, 120) : "";
   const heardLines = heard ? [["How they heard about the studio", heard], ...(heard === "Referred by someone" ? [["Referred by", referredBy || "(no details given)"]] : [])] : [];
-  const lines = [["Name", name], ["Role", role ? role.text.trim() : "—"], ["Email", email], ["Phone", v("b_phone") || "—"], ["Instagram / Website", v("b_instagram") || "—"], ...heardLines, ...((ask && ask.extra) || [])];
+  // The brand box is only on the page for a campaign brief; its answer travels with the name it belongs to.
+  const brand = $("#b_company_field") && !$("#b_company_field").hidden ? v("b_company") : "";
+  const lines = [["Name", name], ...(brand ? [["Brand or magazine", brand]] : []), ["Role", role ? role.text.trim() : "—"], ["Email", email], ["Phone", v("b_phone") || "—"], ["Instagram / Website", v("b_instagram") || "—"], ...heardLines, ...((ask && ask.extra) || [])];
   const plain = `Hi,\n\n${ask ? ask.intro : "I'd like to talk first, before booking."}\n\n${lines.map(([k, x]) => `${k}: ${x}`).join("\n")}\n\nThanks,\n${name}`;
   const enc = encodeURIComponent;
   const links = {

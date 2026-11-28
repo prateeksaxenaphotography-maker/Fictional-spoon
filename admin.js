@@ -66,6 +66,37 @@ function markUnsavedChanges() {
 }
 window.markUnsavedChanges = markUnsavedChanges;
 
+/* "Booking page pictures": the picture beside the booking form, for models, for campaigns, or one for both. The
+   choice and the photographs live in app.js (getBookPictures, bookPhotoById, bookPhotoChoices); this draws them. */
+const bpEsc = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function bookPicsHtml() {
+  const set = window.getBookPictures();
+  const slots = set.same
+    ? [["campaigns", "Both sides of the booking page"]]
+    : [["models", "Portfolio and small projects"], ["campaigns", "Campaigns and productions"]];
+  const slot = ([key, label]) => {
+    const id = set[key] || window.BOOK_PICTURE_DEFAULTS[key];
+    const pic = id === "none" ? null : window.bookPhotoById(id);
+    const words = id === "none" ? "No picture" : "That photo is no longer on the site";
+    return `<div class="bp-slot">
+      <div class="bp-thumb">${pic ? `<img src="${bpEsc(pic.src)}" style="object-position: ${bpEsc(pic.pos)};" alt="">` : `<span>${words}</span>`}</div>
+      <div><strong>${label}</strong>
+        <div class="bp-actions">
+          <button type="button" class="admin-cal-btn" data-act="open" data-key="${key}">Change picture</button>
+          <button type="button" class="admin-cal-btn" data-act="none" data-key="${key}">No picture</button>
+        </div>
+      </div>
+      <div class="bp-grid" id="bookPicsGrid_${key}" hidden></div>
+    </div>`;
+  };
+  return `<label class="check-line"><input type="checkbox" id="bookPicsSame"${set.same ? " checked" : ""} /><span>Use the same picture for both</span></label>
+    <div class="bp-slots">${slots.map(slot).join("")}</div>
+    <div class="bp-foot"><button type="button" class="admin-cal-btn primary" data-act="publish">Save &amp; push live</button><span>Pick from any photo in your public albums. Kept on this computer until you publish.</span></div>`;
+}
+function bookPicsChoices(key) {
+  return window.bookPhotoChoices().map((c) => `<button type="button" data-act="pick" data-key="${key}" data-id="${bpEsc(c.id)}" title="${bpEsc(c.album)}"><img src="${bpEsc(c.src)}" loading="lazy" alt="Photo from ${bpEsc(c.album)}"></button>`).join("");
+}
+
 // A code edit is kept on this device the moment it is made, so it can outlive
 // the page — and so must the fact that it has not been published. Without the
 // flag a reload painted "all changes saved to live site" over an edit no
@@ -2602,7 +2633,7 @@ window.moveAdminPackageRow = function(index, dir) {
     // publish can keep a newer copy made on another device.
     const settings = {};
     const stamps = parseObjectAfterKey(text, '"SETTINGS_AT"') || {};
-    ["PACKAGES", "TFP_PACKAGE", "INVITE_CODES", "PROMO_CODES", "PORTFOLIO_PDF", "HOME_STUDIO_RATE", "HOME_STUDIO_RATE_TFP", "MEASURE_UNITS", "HOME_SLIDESHOW", "STUDIO"].forEach((k) => {
+    ["PACKAGES", "TFP_PACKAGE", "INVITE_CODES", "PROMO_CODES", "PORTFOLIO_PDF", "HOME_STUDIO_RATE", "HOME_STUDIO_RATE_TFP", "MEASURE_UNITS", "HOME_SLIDESHOW", "BOOK_PICTURES", "STUDIO"].forEach((k) => {
       const v = parseValueAfterKey(text, `"${k}"`);
       if (v !== undefined) settings[k] = v;
     });
@@ -2728,6 +2759,40 @@ window.moveAdminPackageRow = function(index, dir) {
     const shoeSelect = (attrs, raw) => `<select ${attrs} aria-label="Shoe size system" style="flex: 0 0 84px;">${SHOE_SYSTEMS.map((v) => `<option${splitShoe(raw).sys === v ? " selected" : ""}>${v}</option>`).join("")}</select>`;
     const measureUnitsChooser = (id) => `<label class="field" style="margin: 0;"><span>Show measurements on comp cards &amp; model portfolio in</span>
       <select id="${id}" class="measure-units-choice"><option value="imperial"${window.getMeasureUnits() === "imperial" ? " selected" : ""}>ft / in (height) and inches</option><option value="metric"${window.getMeasureUnits() === "metric" ? " selected" : ""}>cm</option></select></label>`;
+    /* Booking page pictures: choose, remove, or use one for both. Kept on this device until a publish. */
+    const saveBookPics = (next, said) => {
+      try { localStorage.setItem("wps_book_pictures", JSON.stringify(next)); } catch (err) { toast("Not saved: this browser's storage for the site is full."); return; }
+      if (typeof window.stampSetting === "function") window.stampSetting("wps_book_pictures");
+      const body = document.getElementById("bookPicsBody");
+      if (body) body.innerHTML = bookPicsHtml();
+      toast(`${said} Press “Save & push live” to show it on the booking page.`);
+    };
+    document.addEventListener("change", (e) => {
+      if (!e.target || e.target.id !== "bookPicsSame") return;
+      saveBookPics({ ...window.getBookPictures(), same: e.target.checked }, e.target.checked ? "One picture for both." : "Two pictures again.");
+    });
+    document.addEventListener("click", async (e) => {
+      const t = e.target && e.target.closest && e.target.closest("#booking-pictures button");
+      if (!t) return;
+      const key = t.dataset.key;
+      if (t.dataset.act === "open") {
+        const grid = document.getElementById(`bookPicsGrid_${key}`);
+        if (!grid) return;
+        const opening = grid.hidden;
+        document.querySelectorAll("#booking-pictures .bp-grid").forEach((g) => { g.hidden = true; g.innerHTML = ""; });
+        if (opening) { grid.innerHTML = bookPicsChoices(key); grid.hidden = false; }
+      } else if (t.dataset.act === "pick") {
+        saveBookPics({ ...window.getBookPictures(), [key]: t.dataset.id }, "Picture chosen.");
+      } else if (t.dataset.act === "none") {
+        saveBookPics({ ...window.getBookPictures(), [key]: "none" }, "No picture there.");
+      } else if (t.dataset.act === "publish") {
+        if (typeof window.publishStudioDataToLiveSite !== "function") { toast("Publishing is unavailable here. Open the site as admin and try again."); return; }
+        t.disabled = true;
+        const ok = await window.publishStudioDataToLiveSite();
+        t.disabled = false;
+        if (ok) toast("✅ The booking page pictures will be live within a few minutes.");
+      }
+    });
     document.addEventListener("change", (e) => {
       if (!e.target || e.target.id !== "homeSlideSecondsInput") return;
       const n = Math.max(3, Math.min(30, Math.round(Number(e.target.value) || 5)));
@@ -3219,6 +3284,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             HOME_STUDIO_RATE: (typeof window.getHomeStudioRate === "function" ? window.getHomeStudioRate() : 3000),
             PORTFOLIO_PDF: (typeof window.getPortfolioPdfSettings === "function" ? window.getPortfolioPdfSettings() : null),
             HOME_SLIDESHOW: { seconds: (typeof window.getHomeSlideSeconds === "function" ? window.getHomeSlideSeconds() : 5) },
+            BOOK_PICTURES: (typeof window.getBookPictures === "function" ? window.getBookPictures() : null),
             // What and where the studio is (Oct 2026): the booking page and new contracts read it.
             STUDIO: (typeof window.getStudio === "function" ? window.getStudio() : null),
             MEASURE_UNITS: { display: (typeof window.getMeasureUnits === "function" ? window.getMeasureUnits() : "imperial") },
@@ -4769,6 +4835,12 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <span style="font-size: var(--font-xs); color: var(--ink-soft);">${(() => { const n = (window.SHOOTS || window.WPS_DATA?.DEMO_SHOOTS || []).reduce((c, s) => c + (s.photos || []).filter((p) => p.onHome).length, 0); return n ? `${n} photo${n === 1 ? "" : "s"} ticked “Home”.` : "No photos ticked yet — tick “Home” on photos in an album; until then the newest album’s cover shows."; })()}</span>
           </div>
           <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 8px 0 0;">Between 3 and 30. Publish to show a change on the site.</p>
+        </div>
+
+        <!-- The pictures beside the booking form (the owner, Nov 2026): one for models, one for campaigns, or one for both. -->
+        <div class="admin-panel" id="booking-pictures">
+          <div class="admin-panel-head">Booking page pictures</div>
+          <div id="bookPicsBody">${bookPicsHtml()}</div>
         </div>
 
         <!-- What a client pays to download the portfolio PDF they build on the
